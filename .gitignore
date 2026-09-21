@@ -1,0 +1,25 @@
+# Node & PNPM dependencies 
+node_modules/ 
+.pnpm-store/ 
+
+# Build outputs & caches 
+dist/ 
+.next/ 
+out/ 
+build/ 
+*.tsbuildinfo
+
+# Secrets & environment variables
+.env
+.env.local
+.env.*.local 
+
+# Docker persistent local data
+.docker-data/ 
+
+# OS & IDE junk
+.DS_Store 
+Thumbs.db
+.vscode/
+.idea/
+*.log
