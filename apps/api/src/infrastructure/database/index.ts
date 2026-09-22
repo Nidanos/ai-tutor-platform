@@ -20,14 +20,14 @@ export const query = (text: string, params?: any[]) => {
   return pool.query(text, params);
 };
 
-// // Temporary connection test runner
-// async function testConnection() {
-//   try {
-//     const res = await query("SELECT NOW()");
-//     console.log("✅ Database connected successfully at:", res.rows[0]);
-//   } catch (err) {
-//     console.error("❌ Database connection failed:", err);
-//   }
-// }
+// Temporary connection test runner
+async function testConnection() {
+  try {
+    const res = await query("SELECT NOW()");
+    console.log("✅ Database connected successfully at:", res.rows[0]);
+  } catch (err) {
+    console.error("❌ Database connection failed:", err);
+  }
+}
 
-// testConnection();
+testConnection();
