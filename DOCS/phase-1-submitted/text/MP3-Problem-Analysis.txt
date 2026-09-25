@@ -1,0 +1,748 @@
+Minor Project – III (MCA-269): Problem Analysis
+Project
+
+AI Tutor: An Evidence-Based Adaptive Learning System with Deliberate
+Scaffolding Withdrawal
+
+Programme
+
+Master of Computer Applications, Semester III, Batch 2025–2027
+
+Institution
+
+Jagan Institute of Management Studies, Rohini
+
+Submitted by
+
+Ashwani Kumar Puri (Roll No. ______________ )
+
+Guide
+
+______________
+
+Date
+
+24 September 2026 (first draft 7 September 2026)
+
+Submission
+
+Phase 1: Synopsis, Problem Analysis, Literature Survey, SRS
+
+1. Purpose of this Document
+The synopsis describes the problem briefly and then moves on to the solution. This document looks
+at the problem in more detail. It defines the problem, traces each weakness to its cause, lists who is
+affected, sets the objectives the system has to meet, fixes the scope, and checks feasibility before we
+start building. The SRS then turns these objectives into numbered requirements. Everything here is
+based on the synopsis or the literature survey.
+
+2. Problem Definition
+Students who learn technical subjects on their own have no tool that measures or improves their
+ability to build things without help. Video courses, coding websites, flashcard apps, general AI
+assistants and AI tutors all reward consumption: videos watched, lessons finished, streaks kept.
+None of them measure what the student can write alone.
+When AI help is given without limits, the situation gets worse. In a controlled trial with nearly 1,000
+students, students who had unrestricted AI help scored 17% lower afterwards than students who had
+no AI help at all (Bastani et al., 2025).
+So the problem is not one missing feature in one product. Across the whole category there is no
+system that tracks reading and writing ability separately, updates its view of the student only from
+code that was actually run, and reduces its own help on a planned schedule. Every module in the
+SRS traces back to this problem.
+
+3. Study of the Existing System
+Here the "existing system" is not an old application that we are replacing. It is the way a selflearning student works today, using whatever tools they pick up at each step. Nobody designed this
+workflow and no single company is responsible for its problems.
+
+1
+
+Step
+
+Who
+
+What happens
+
+Tools used today
+
+Result
+
+1
+
+Student
+
+Chooses a skill to learn
+
+Job posting, interest,
+syllabus
+
+–
+
+2
+
+Student
+
+Picks a course
+
+YouTube, Udemy,
+Coursera, docs
+
+A course link, no record of the student
+
+3
+
+Student
+
+Watches videos in order
+
+Video player, playlist
+
+Watch percentage
+
+4
+
+Student
+
+Types along with the
+instructor
+
+Editor next to the video
+
+A copy of the instructor's code
+
+5
+
+Student
+
+Marks lessons done
+
+Checkbox
+
+Completion percentage
+
+6
+
+Student
+
+Tries to work alone
+
+Empty editor, no support
+
+Often nothing
+
+7
+
+Student
+
+Gets stuck
+
+–
+
+–
+
+8
+
+Student
+
+Asks an AI assistant
+
+ChatGPT, Copilot, Claude
+
+Working code, given on request
+
+9
+
+Student
+
+Moves on
+
+–
+
+No lasting skill
+
+10
+
+Student
+
+Returns weeks later
+
+–
+
+Has forgotten most of it; no revision
+was planned
+
+Where it goes wrong
+• Steps 3 to 5 train recognition, and the platform records this as progress.
+• Step 6 is the first time the student has to build something. It comes as an empty file with no
+support in between, which is where students most often give up.
+• Step 8 removes the immediate block, but it also removes the effort of recalling that would have
+produced learning. It also makes the student more confident that they understood (Roediger &
+Karpicke, 2006; Literature Survey §2.2).
+• Step 10 cannot be prevented by anything in the earlier steps, because nothing schedules
+revision.
+No step in this process keeps a lasting, evidence-based record of what the student can and cannot do.
+That missing record is the common cause behind every problem in Section 4.
+
+4. Root-Cause Analysis
+No.
+
+Problem
+(synopsis §2.2)
+
+Cause
+
+Evidence
+
+What happens if it is
+not fixed
+
+D1
+
+Completion is
+measured
+instead of
+ability
+
+Products store clicks and
+views, not evidence of what
+the student built
+
+Literature Survey §3.2:
+MOOC completion of 3.13%,
+and no provider measures
+ability after completion
+
+Nobody can tell a
+capable student apart
+from one who just
+watched everything
+
+2
+
+No.
+
+Problem
+(synopsis §2.2)
+
+Cause
+
+Evidence
+
+What happens if it is
+not fixed
+
+D2
+
+Recognition is
+trained, recall is
+not
+
+Videos and read-along
+formats only re-expose the
+student; this builds
+confidence, not retention
+
+Roediger & Karpicke (2006):
+61% vs 40% retention, and the
+re-reading group expected to
+do better
+
+Students feel ready
+and are not; they find
+out only when they
+have to build
+something
+
+D3
+
+Courses are
+linear, students
+are not
+
+No system stores a mastery
+score per skill, so none can
+choose a personal next step
+
+My own test: 10/11 on reading
+code, 0/4 on writing it
+
+Time goes into known
+topics while the real
+gap stays
+
+D4
+
+No system
+keeps a learner
+model
+
+Same cause as D3, seen as a
+missing component
+
+Corbett & Anderson (1994):
+Bayesian Knowledge Tracing
+exists but no consumer
+product we looked at uses it
+
+Every "next step" is
+the student guessing
+
+D5
+
+AI assistants
+make it worse
+
+They are tuned to be as
+helpful as possible in each
+reply, which removes the
+effort that produces learning
+
+Bastani et al. (2025): 17%
+drop with unrestricted access;
+hint-only access avoided the
+drop
+
+The newest and most
+used tool in the
+workflow harms
+learning unless limited
+
+D6
+
+Unrevised
+material is
+forgotten
+
+No product tracks forgetting
+for skills (Anki and Quizlet
+do it, but for facts)
+
+Cepeda et al. (2006): the
+revision gap should grow with
+how long you want to
+remember; no skill-building
+product we surveyed does this
+
+Skills measured once
+are not skills kept;
+relearning keeps
+happening
+
+D7
+
+The empty file
+ends the session
+
+No product adjusts task
+difficulty to the student's
+level; support is either
+always on (coding sites) or
+absent (practice sites)
+
+Sweller & Cooper (1985) and
+the expertise reversal effect:
+worked examples help
+beginners but hurt students
+who are nearly experts
+
+Students give up
+instead of progressing
+slowly
+
+All of these come back to the same gap from Section 3: there is no lasting, evidence-based model of
+the individual student. That is why the main component of our system is the learner model (M4),
+and not a content library.
+
+5. Stakeholders
+Stakeholder
+
+Role
+
+What they want
+
+Current difficulty
+
+What they need from
+us
+
+Student
+
+Learns the skill
+
+To be able to work
+independently, quickly
+
+Cannot tell real
+progress from
+completion
+numbers; gives up at
+the empty file
+
+An honest mastery
+score, tasks at the right
+level, and help that
+reduces over time
+
+3
+
+Stakeholder
+
+Role
+
+What they want
+
+Current difficulty
+
+What they need from
+us
+
+Curriculum
+author
+
+Writes and
+maintains the
+skill graph and
+sample
+exercises
+
+A correct prerequisite
+structure that is easy
+to maintain
+
+No tool keeps graph
+writing separate
+from content
+generation
+
+An editing screen that
+checks for cycles, with
+a bank of hand-written
+exercises as backup
+
+Administrator
+
+Runs the
+platform
+
+Cost control, accurate
+predictions, uptime
+
+No way to see
+whether the mastery
+predictions are
+correct
+
+Accuracy dashboards,
+logs of failed exercise
+generation, cost and
+usage figures
+
+Institution or
+employer
+(buyer)
+
+Pays for
+training and
+answers for
+results
+
+Proof that training
+built ability
+
+Only gets
+completion numbers
+
+A skill profile for each
+student, backed by
+evidence (synopsis
+§7.2)
+
+Evaluation
+panel
+
+Assesses the
+project
+
+A working system,
+sound design
+decisions, use of
+semester coursework
+
+–
+
+A system that every
+team member can
+explain and that can be
+demonstrated live
+
+The student and the buyer want different things from the same data: the student wants to know what
+to do next, and the buyer wants proof of ability. The same evidence-based mastery model serves
+both, which is why this document and the SRS are built around it.
+
+6. Objectives
+Each objective addresses one or more of the problems in Section 4.
+• O1. Keep two mastery scores per skill for each student (reading and writing), updated only from
+evidence produced by running code. (D1, D2, D3, D4)
+• O2. Choose the next step with fixed rules, using the prerequisite graph and current mastery, not
+a fixed course order. (D3, D4)
+• O3. Limit AI help in the system's design itself, through a hint level stored on the server and an
+output filter, not only through prompt instructions. Help should be available without replacing
+the student's own work. (D5)
+• O4. Calculate how mastery fades over time and schedule revision before it falls below a
+threshold. (D6)
+• O5. Offer five difficulty levels chosen from the writing score, so the student only reaches an
+empty file when they are ready for it. (D7)
+• O6. Reduce support on a schedule linked to the student's plan, and not only when the student
+asks. Because of the expertise reversal effect (Literature Survey §2.5), this is needed for
+correctness. (D5, D7)
+
+4
+
+• O7. Log every time the system had to reveal a full answer as a failure, and use this to adjust
+difficulty. This keeps the mastery model honest about how much help was really given.
+(supports O1, O5)
+
+7. Scope
+7.1 In scope for version 1
+• One subject: Data Structures and Algorithms. Topic coverage is checked against the roadmap.sh
+DSA roadmap. Prerequisite links, topic descriptions and exercises are written by us (synopsis
+§3.2).
+• Text, code and generated exercises, each checked against a reference solution before use.
+• The full learner model: separate reading and writing scores, exponential decay, and rule-based
+choice of the next step.
+• The five-level exercise ladder and the hint engine (hint ladder, output filter, logging of answer
+reveals).
+• Isolated code execution and grading in a sandbox.
+• Basic curriculum editing and admin screens, enough for our team to run a pilot.
+
+7.2 Out of scope (synopsis Appendix)
+• Video content.
+• More than one subject in version 1.
+• Mobile apps.
+• Social features, leaderboards and streaks.
+• Certificates. The mastery graph is the record of skill.
+• Payments, until the institutional phase.
+• Training our own language models.
+• Building our own code sandbox. We will use a managed service.
+Anything added to the scope later has to replace something already in it (synopsis §3.2). We added
+this rule to avoid the scope creep that both the department guidelines and the literature warn about.
+
+8. Feasibility Study
+8.1 Technical feasibility
+Every part of the stack is already mature and used in production: Next.js/React with TypeScript for
+the frontend, Monaco for the in-browser editor, Node/Express for the backend, PostgreSQL with
+pgvector for relational and vector data, Redis with BullMQ for sessions and background jobs, and a
+managed sandbox service (synopsis §5.2). The new work is not in the infrastructure. It is in the
+mastery maths (decay, weighting of evidence, scoring of the next step) and in the pipeline that
+
+5
+
+generates and checks exercises. Both are part of version 1 and are owned by one team member, with
+a clear API boundary to the rest of the system (synopsis §4.1).
+Result: feasible. The exercise generation and checking pipeline (M6) carries the most technical risk.
+It is covered in the risk table below.
+
+8.2 Operational feasibility
+One hand-written DSA graph, with its topics checked against a well-known public roadmap, can be
+maintained by one or two curriculum authors, which matches our team. Admin work (checking
+accuracy and cost) is mostly dashboards and logs and does not need a separate operations team.
+Result: feasible with our current team size and division of work.
+
+8.3 Economic feasibility
+During the pilot, the main running cost is paid API usage (language model calls and sandbox run
+time), not fixed servers. We use a small model for the many hint and grading requests and a larger
+model only for generating exercises, to keep this cost under control (synopsis §5.2). The validation
+pilot in synopsis §7.5 needs no upfront spending.
+Result: feasible on a student-level API budget. We should fix a cost limit before Phase 2, once we
+have measured real token use per session.
+
+8.4 Schedule feasibility
+This document and the SRS are part of the Phase 1 submission on 24 September 2026. The
+remaining dates are system design and partial implementation on 7 October 2026, implementation,
+testing and draft report on 23 October 2026, and the final report and viva after that (synopsis §6.4).
+Nothing in this analysis changes those dates.
+Result: feasible, as long as risks R5 and R7 in Section 9 are handled early.
+
+8.5 Legal feasibility
+The system stores learning data: attempts, scores and timestamps. It does not store health, financial
+or other specially protected data. Normal data minimisation and access control, which the SRS
+security requirements already ask for, are enough for a pilot. There are no extra legal obligations
+beyond normal handling of education data.
+Result: feasible. Consent and data handling should still be written up in the final report.
+
+6
+
+9. Risk Analysis
+ID
+
+Risk
+
+Type
+
+Likelihood
+
+Impact
+
+How we handle it
+
+R1
+
+A generated exercise cannot be
+solved or its tests are wrong
+
+Technical
+
+Medium
+
+High
+
+Run the reference solution
+against the generated tests
+before use (M6); use a handwritten exercise if the check
+fails
+
+R2
+
+Code escapes the sandbox or
+uses up resources
+
+Security
+
+Low
+
+High
+
+Managed sandbox with no
+network and resource limits
+(M7); building our own
+sandbox is out of scope
+
+R3
+
+A new student has no evidence
+yet (cold start)
+
+Product
+
+High
+
+Medium
+
+The diagnostic test (M3) sets
+the starting reading and
+writing scores before the first
+step
+
+R4
+
+Examiners see one subject as
+too narrow
+
+Academic
+
+Medium
+
+Medium
+
+The literature survey and the
+methodology (synopsis §6.3)
+explain why we chose depth
+over breadth
+
+R5
+
+A student other than the author
+does not finish a multi-session
+project before submission
+
+Schedule /
+Commercial
+
+Medium
+
+High
+
+Already listed in synopsis
+§7.5; plan time for it well
+before Phase 3
+
+R6
+
+Language model costs exceed
+the pilot budget
+
+Economic
+
+Low to
+Medium
+
+Medium
+
+Use the large model only for
+generation (§8.3); measure
+real cost per session early
+
+R7
+
+Too much of the core work
+(learner model, recommender,
+generation, sandbox, hint
+engine) sits with one team
+member
+
+Schedule
+
+Medium
+
+High
+
+Agree on API contracts
+between modules early so
+frontend and UI work is not
+held up by the backend
+
+R8
+
+A student finds a way around
+the hint ladder or the filter
+
+Product
+
+Medium
+
+Low
+
+Two checks (server-side hint
+level and output filter,
+synopsis §3.6), and answer
+reveals are logged, not just
+blocked
+
+R9
+
+The pilot produces too little
+data to check the model's
+accuracy
+
+Product
+
+Medium
+
+Medium
+
+Held-back test exercises
+(M13) start collecting data
+from the very first pilot
+student
+
+7
+
+10. Conclusion
+None of the products we surveyed keeps a lasting, evidence-based model of the individual student.
+The newest tool in the workflow, unrestricted generative AI, has been shown to make results worse
+when no such model exists. The feasibility study did not find anything that blocks the project on
+technical, operational, economic, schedule or legal grounds. The main risks are the exercise
+generation pipeline (R1), the workload on one team member (R7) and the validation check (R5), and
+all three can be tracked. Based on this and the literature survey, we move on to the SRS, which turns
+the objectives in Section 6 and the modules in the synopsis into numbered requirements.
+
+8
+
+

@@ -27,7 +27,8 @@ ai-tutor-platform/
 - **Backend:** Node.js, Express, TypeScript (Clean Architecture)
 - **Database:** PostgreSQL with `pgvector` (Skill DAG &amp; Vector Embeddings)
 - **Queue &amp; Cache:** Redis + BullMQ (Asynchronous Generation &amp; Sandbox Execution)
-- **Execution Environment:** Sandboxed Code Execution Engine
+- **Execution Environment:** E2B sandbox (network off) + our own judge adapter; exercises in C++20 on clang 19 (see `DOCS/adr/`)
+- **v1 Domain:** Data Structures & Algorithms
 
 ---
 
@@ -42,11 +43,15 @@ ai-tutor-platform/
 ### Installation &amp; Local Setup
 
 ```text
+# 0. Create env files from the examples, then set real passwords
+cp .env.example .env
+cp apps/api/.env.example apps/api/.env
+
 # 1. Install all monorepo dependencies
 pnpm install
 
 # 2. Spin up local PostgreSQL and Redis containers
-docker compose up -d
+pnpm db:up   # = docker compose up -d
 
 # 3. Start development servers across apps
 pnpm dev

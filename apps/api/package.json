@@ -4,7 +4,8 @@
   "main": "src/server.ts",
   "scripts": {
     "dev": "tsx watch src/server.ts",
-    "build": "tsc"
+    "build": "tsc",
+    "typecheck": "tsc --noEmit"
   },
   "dependencies": {
     "@ai-tutor/types": "workspace:*",

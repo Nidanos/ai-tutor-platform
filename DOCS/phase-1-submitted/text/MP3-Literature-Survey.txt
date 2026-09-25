@@ -1,0 +1,653 @@
+Minor Project – III (MCA-269): Literature Survey
+Project
+
+AI Tutor: An Evidence-Based Adaptive Learning System with Deliberate
+Scaffolding Withdrawal
+
+Programme
+
+Master of Computer Applications, Semester III, Batch 2025–2027
+
+Institution
+
+Jagan Institute of Management Studies, Rohini
+
+Submitted by
+
+Ashwani Kumar Puri (Roll No. ______________ )
+
+Guide
+
+______________
+
+Date
+
+24 September 2026 (first draft 7 September 2026)
+
+1. Purpose and Method
+This survey looks at two sets of work and compares them.
+The first is research on how people learn. Over roughly forty years, repeated experiments have
+shown the conditions under which learning lasts. These results are well accepted in the field.
+The second is the set of products and research systems used to teach technical subjects. For each one
+we checked which of the research findings it actually uses.
+When we put the two side by side, we found that the methods known to produce lasting learning are
+mostly missing from the products sold to teach. The reason seems to be commercial, not technical.
+This gap is the main justification for our project.
+We chose sources on three grounds: well-cited foundational papers, recent experiments on
+generative AI in learning, and commercial products available in 2026.
+
+2. Foundational Research on Learning
+2.1 Bloom's two-sigma problem
+Bloom, B. S. (1984). The 2 Sigma Problem: The Search for Methods of Group Instruction as
+Effective as One-to-One Tutoring. Educational Researcher, 13(6), 4–16.
+Bloom found that students who got one-to-one tutoring together with mastery learning scored about
+two standard deviations above students taught in a normal classroom. That means the average
+tutored student did better than about 98% of the classroom group. Bloom presented this as a
+problem: one-to-one tutoring works, but it is too expensive to give everyone, so the challenge is to
+find methods that get close to it for large groups.
+How it relates to our project. Bloom's result sets the target. Every system in this survey, ours
+included, tries to get close to one-to-one tutoring at scale. We take two ideas directly from Bloom's
+study: mastery learning, where a student moves on only after showing mastery of the current topic,
+and individual pacing. Our learner model is a way of making the mastery check automatic.
+
+1
+
+2.2 The testing effect
+Roediger, H. L., & Karpicke, J. D. (2006). The Power of Testing Memory: Basic Research and
+Implications for Educational Practice. Perspectives on Psychological Science, 1(3), 181–210.
+Roediger and Karpicke showed that trying to recall information builds stronger memory than
+reading it again. Students who read a passage once and then practised recalling it remembered 61%
+after a week. Students who read it four times remembered 40%. The re-reading group also expected
+to do better, so their confidence was the opposite of their actual result.
+How it relates to our project. This is why our system updates mastery only from evidence of
+producing something, never from reading or watching. It also explains the problem we started with:
+watching an instructor is re-exposure, and re-exposure builds confidence without building skill. The
+exercise ladder in synopsis §3.5 is a structured form of recall practice.
+
+2.3 Desirable difficulties
+Bjork, R. A., & Bjork, E. L. (2020). Desirable Difficulties in Theory and Practice. Journal of
+Applied Research in Memory and Cognition, 9(4), 475–479. Bjork, E. L., & Bjork, R. A. (2011).
+Making Things Hard on Yourself, But in a Good Way: Creating Desirable Difficulties to Enhance
+Learning. In Psychology and the Real World, 56–64.
+The Bjorks separate two things: how well a student performs while practising, and how well they
+remember and apply it later. These often move in opposite directions. Spacing, mixing topics,
+changing practice conditions and testing all slow down practice and cause more mistakes, but they
+lead to better long-term learning. Practice that feels smooth tends to do the reverse.
+How it relates to our project. Our main design rule comes from this. If some difficulty during
+practice helps learning, then a tutor that removes all difficulty is working against its own goal. The
+hint ladder, the refusal to give solution code and the planned reduction of support are all ways of
+keeping a useful level of difficulty. This work also explains why products avoid these methods: they
+feel worse in the moment, so products judged on user satisfaction are pushed away from them.
+
+2.4 The spacing effect
+Cepeda, N. J., Pashler, H., Vul, E., Wixted, J. T., & Rohrer, D. (2006). Distributed Practice in
+Verbal Recall Tasks: A Review and Quantitative Synthesis. Psychological Bulletin, 132(3), 354–380.
+This meta-analysis covers 839 assessments from 317 experiments in 184 articles. It shows that
+spreading practice over time gives better retention than doing it all at once. More useful for us, it
+shows that the best gap between study sessions grows with how long the material needs to be
+remembered. So spacing is not one fixed schedule; it depends on the goal.
+How it relates to our project. Our decay model is based on this. The system stores a decay rate for
+each skill and reduces the mastery score exponentially with the time since the last evidence. When
+the score drops below a threshold, the skill goes back into the revision queue. Cepeda et al. support
+both having a decay term and letting its rate differ by type of material.
+
+2
+
+2.5 Worked examples and the expertise reversal effect
+Sweller, J., & Cooper, G. A. (1985). The Use of Worked Examples as a Substitute for Problem
+Solving in Learning Algebra. Cognition and Instruction, 2(1), 59–89. Sweller, J. (1988). Cognitive
+Load During Problem Solving: Effects on Learning. Cognitive Science, 12(2), 257–285.
+Sweller and Cooper found that beginners who studied worked examples did better than beginners
+who solved the same problems alone. Solving without guidance uses up working memory on
+searching for a method, which leaves less capacity for actually learning the pattern. Later studies
+found the expertise reversal effect: as students get better, worked examples help less and less, and
+eventually solving problems alone becomes the better option.
+How it relates to our project. Put together, these results say that support should change over time.
+Support that suits a beginner can hold back an intermediate student. This is why we have a five-level
+ladder that starts with examples and prediction tasks and ends with building from scratch, and why
+support is reduced on a schedule. Keeping support at one fixed level would be wrong for most of a
+student's progress.
+
+2.6 Knowledge tracing
+Corbett, A. T., & Anderson, J. R. (1994). Knowledge Tracing: Modeling the Acquisition of
+Procedural Knowledge. User Modeling and User-Adapted Interaction, 4(4), 253–278.
+Bayesian Knowledge Tracing (BKT) treats each skill as a hidden yes/no variable (mastered or not)
+and updates it from the student's answers using a hidden Markov model. It has four parameters: prior
+knowledge, learning rate, slip probability and guess probability. It is used in the Cognitive Tutor
+systems and is still the standard method in this area.
+How it relates to our project, and where we differ. We follow the general idea of BKT: estimate
+hidden skill from noisy evidence, taking context into account. We differ from classic BKT in three
+ways:
+1. Two scores per skill. BKT has one mastery variable per skill. We track reading and writing
+ability separately because they can be very different. A profile of 10/11 on reading and 0/4 on
+writing averages to about 0.65, which does not tell you what the student should do next.
+2. Forgetting over time. Classic BKT has no forgetting, so once a skill is mastered it stays
+mastered in the model. We add exponential decay, as described in §2.4.
+3. Only execution counts as evidence. We use only code that was run against tests, correct
+predictions of program behaviour, and solved exercises. Self-reports and content completion are
+not used at all.
+
+2.7 How well tutoring systems work
+VanLehn, K. (2011). The Relative Effectiveness of Human Tutoring, Intelligent Tutoring Systems,
+and Other Tutoring Systems. Educational Psychologist, 46(4), 197–221.
+VanLehn reviewed controlled comparisons and reported two results. The effect of human tutoring (d
+= 0.79) is much smaller than Bloom's two sigma. Intelligent tutoring systems (d = 0.76) come very
+
+3
+
+close to human tutors. He found that the main difference between systems is the level at which they
+interact: systems that respond to each step or part of a step do better than those that only check the
+final answer.
+How it relates to our project. This shapes our design. A system that only marks the final
+submission right or wrong loses most of the benefit. Our hint ladder responds to the student's current
+attempt, we detect when a student is stuck during an exercise instead of after it, and the difficulty
+level can change mid-task. VanLehn's numbers also show that a well-made automated tutor can
+come close to a human one, which makes our goal realistic.
+
+3. Recent Studies on Generative AI in Learning
+3.1 Unrestricted AI help harms learning
+Bastani, H., Bastani, O., Sungu, A., Ge, H., Kabakcı, Ö., & Mariman, R. (2025). Generative AI
+Without Guardrails Can Harm Learning: Evidence from High School Mathematics. Proceedings of
+the National Academy of Sciences (PNAS).
+This is the study closest to our project, so we describe it in some detail.
+It was a randomised controlled trial with nearly 1,000 students in grades 9 to 11 at a large high
+school in Turkey, during the Fall 2023–24 semester. There were three groups:
+Group
+
+What they got
+
+GPT Base
+
+Unrestricted access to a GPT-4 chat interface while practising
+
+GPT Tutor
+
+GPT-4 limited to teacher-designed hints instead of answers
+
+Control
+
+No AI help
+
+What they found:
+• While practising with AI available, both AI groups did better than the control group.
+• When AI was taken away for the exam, the students who had used unrestricted GPT-4 scored
+17% lower than students who never had AI at all.
+• Students used the unrestricted model as a crutch, getting answers instead of working them out.
+• The GPT Tutor group, limited to hints, largely avoided this harm. They kept the benefit during
+practice without becoming dependent.
+How it relates to our project. This study supports our main idea with a controlled experiment. It
+shows that unrestricted AI help damages learning while making students look and feel more
+successful during practice, which is the problem described in synopsis §2.2. It also shows that hintbased help, which is what we propose, reduces that harm.
+We go further than the study in three ways. Our hints are spread over five levels instead of one hint
+policy. The limit is enforced by the server (stored hint level and output filter), not only by the
+prompt, since prompt-only limits can be worked around. And help is reduced over time instead of
+staying the same.
+
+4
+
+3.2 Completion rates in online courses
+Reich, J., & Ruipérez-Valiente, J. A. (2019). The MOOC Pivot. Science, 363(6423), 130–131.
+The authors studied 565 MOOCs from MIT and Harvard on edX over 6.5 years, with 12.67 million
+registrations. Completion among all registered students was 3.13% in 2017–18, down from about
+4% in the two years before and almost 6% in 2014–15. 52% of registered students never started the
+course. Completion did not improve over six years, even among students who said they intended to
+finish or who paid for a verified certificate.
+How it relates to our project. Online technical courses struggle even on the simple measure of
+completion. More important for us, none of these providers report what students who finished can
+actually do. Completion is the final number the industry reports, and it only measures consumption.
+Our system measures what students can produce and ignores completion entirely.
+
+4. Existing Systems
+4.1 Video course platforms (Coursera, Udemy, YouTube)
+Aspect
+
+What we found
+
+Curriculum
+
+Fixed order, same for everyone
+
+Learner model
+
+None
+
+Progress measure
+
+Percentage of content watched
+
+Assessment
+
+Optional quizzes, usually multiple choice, not needed to move on
+
+Adaptivity
+
+None
+
+Revision support
+
+None
+
+Research findings used: none of those in Section 2.
+These platforms are built to deliver content, and the student mostly receives it. All the problems in
+synopsis §2.2 apply, and the completion figures in §3.2 show the limits of this approach at scale.
+
+4.2 Interactive coding platforms (Codecademy, freeCodeCamp, Scrimba)
+Aspect
+
+What we found
+
+Curriculum
+
+Fixed order, same for everyone
+
+Learner model
+
+None; progress is position in the course
+
+Progress measure
+
+Exercises completed
+
+Assessment
+
+Code runs against fixed tests, which is a real improvement
+
+Adaptivity
+
+None; same difficulty for all
+
+Revision support
+
+None
+
+5
+
+Research findings used: recall practice (§2.2), partly, since students write code instead of watching.
+This is a clear step up from video and the closest category to our system. Three issues remain.
+Support is heavy and never reduced: exercises usually give a partly written file with instructions at
+every step, which is level 3 of our ladder kept for the whole course, and by §2.5 that is the wrong
+level for anyone past the beginner stage. There is no model of the student, so someone who already
+knows a topic still has to go through it. Earlier topics are never revisited.
+
+4.3 Practice and assessment platforms (LeetCode, HackerRank, Exercism)
+Aspect
+
+What we found
+
+Curriculum
+
+None; a searchable problem list
+
+Learner model
+
+Number of problems solved and success rate; no skill-level estimate
+
+Progress measure
+
+Problems solved, contest rating
+
+Assessment
+
+Code runs against thorough test suites, which is strong
+
+Adaptivity
+
+Difficulty tags set by editors, not by the student's level
+
+Revision support
+
+None
+
+Research findings used: recall practice (§2.2), at full difficulty.
+These sites have the strongest assessment in the survey but do no teaching. They assume the student
+already knows what to practise and can already build solutions alone, so they really serve students at
+level 5 of our ladder. For a student at level 1 or 2 they are the empty-file problem in its most direct
+form. This matters for DSA in particular, since these are the sites most students use for it. There is
+no prerequisite structure and no sense of whether a student is ready for a problem.
+
+4.4 Spaced-repetition tools (Anki, Quizlet)
+Aspect
+
+What we found
+
+Curriculum
+
+Card decks made by users
+
+Learner model
+
+Ease factor and interval for each card, which is a real forgetting model
+
+Progress measure
+
+Cards due, retention rate
+
+Assessment
+
+Student reports how hard recall was
+
+Adaptivity
+
+Review interval adjusts per card
+
+Revision support
+
+Strong; this is what the product is for
+
+Research findings used: spacing (§2.4) and recall practice (§2.2), both done well.
+This is the only category that handles forgetting and revision properly. Two limits stop it from
+solving our problem. Assessment is self-reported: the student decides whether they recalled
+correctly, which §2.2 shows is unreliable. Cards test facts, not building ability, so no amount of Anki
+practice shows whether someone can write a working program. Cards are also made by hand.
+
+6
+
+We take Anki's scheduling idea, replace self-reporting with evidence from running code, and replace
+fact cards with building tasks.
+
+4.5 General AI assistants (ChatGPT, Claude, GitHub Copilot)
+Aspect
+
+What we found
+
+Curriculum
+
+None
+
+Learner model
+
+Nothing kept between sessions
+
+Progress measure
+
+None
+
+Assessment
+
+None
+
+Adaptivity
+
+Responds only to the current request
+
+Revision support
+
+None
+
+Research findings used: none, and several are directly contradicted.
+The Bastani et al. trial (§3.1) tested this kind of tool directly and found a 17% drop in performance
+once access was removed, compared with no AI help at all. The reason is clear: an assistant that
+answers on request removes the need to recall (§2.2) and removes useful difficulty (§2.3), while
+giving a strong feeling of progress. These products are also judged on engagement and helpfulness
+ratings, which reward giving answers.
+
+4.6 AI tutoring products (Khanmigo, Duolingo Max)
+Khanmigo from Khan Academy is the closest commercial product to ours. It uses Socratic
+questioning and is designed to guide instead of giving answers. As of March 2026 it is available to
+free users and used by teachers in more than 44 countries.
+Duolingo Max adds AI explanations ("Explain My Answer") and role-play conversations to
+Duolingo's gamified course, for $29.99 per month.
+Aspect
+
+Khanmigo
+
+Duolingo Max
+
+Curriculum
+
+Khan Academy's existing linear
+course
+
+Fixed gamified sequence
+
+Learner model
+
+Progress per exercise within the
+platform
+
+Streaks, XP, position in the unit
+
+Refuses to give answers
+
+Yes, through the prompt
+
+No
+
+Support reduced over
+time
+
+No
+
+No
+
+Assessment
+
+Existing exercise checking
+
+Answer matching
+
+Revision support
+
+Limited
+
+Streaks, which drive engagement, not spaced
+revision
+
+7
+
+Research findings used: Khanmigo partly uses the Socratic approach (§2.3). Neither uses §2.4,
+§2.5 or evidence-only assessment.
+Khanmigo shows that a tutor which does not give answers can work commercially at large scale,
+which lowers the risk of our central idea. There are still three differences. As far as we can tell its
+limit is set in the prompt, which a determined user can get around; ours is enforced on the server and
+by an output filter. Its support does not reduce over time, which §2.5 says is wrong for a student who
+is improving. And it sits on top of a linear course instead of a prerequisite graph, so it cannot skip
+known topics or choose the next step from the student's level.
+We included Duolingo Max because it shows the incentive problem most clearly. Streaks and XP are
+there to bring users back every day, and its known limits (short scripted conversations, no
+pronunciation scoring) suggest a product built for daily return more than for final ability.
+
+5. Comparison Summary
+Which research findings each category uses:
+Category
+
+Recall
+practice
+(§2.2)
+
+Desirable
+difficulty
+(§2.3)
+
+Spacing
+(§2.4)
+
+Fading
+support
+(§2.5)
+
+Learner
+model
+(§2.6)
+
+Steplevel
+help
+(§2.7)
+
+Evidencebased
+assessment
+
+Video
+courses
+
+No
+
+No
+
+No
+
+No
+
+No
+
+No
+
+No
+
+Interactive
+coding
+
+Partly
+
+No
+
+No
+
+No
+
+No
+
+Partly
+
+Yes
+
+Practice
+platforms
+
+Yes
+
+Yes
+
+No
+
+No
+
+No
+
+No
+
+Yes
+
+Spaced
+repetition
+
+Yes
+
+Yes
+
+Yes
+
+No
+
+Partly
+
+No
+
+No
+
+General AI
+assistants
+
+No
+
+No
+
+No
+
+No
+
+No
+
+Partly
+
+No
+
+AI tutoring
+products
+
+Partly
+
+Partly
+
+No
+
+No
+
+Partly
+
+Partly
+
+Partly
+
+Our system
+(planned)
+
+Yes
+
+Yes
+
+Yes
+
+Yes
+
+Yes
+
+Yes
+
+Yes
+
+6. Research Gap
+We draw three conclusions from the survey.
+Each method we use already has research behind it. Recall practice, spacing, desirable difficulty,
+fading support, knowledge tracing and step-level interaction are not new. Each has decades of
+
+8
+
+experimental support. Our contribution is to combine all of them in one system, which the table
+above shows has not been done.
+Two of our design choices are new, and both are based on evidence. Keeping reading and writing
+mastery separate does not appear in the knowledge tracing literature, which uses one score per skill.
+We do it because the two scores can differ so much that an average gives a misleading next step.
+Reducing support on a planned schedule, as part of the student's plan and not only on request,
+follows from the expertise reversal effect, but none of the systems we surveyed does it.
+The gap is mainly commercial. None of the methods in Section 2 is hard to build. Spacing is one
+exponential term, and a hint ladder is a number stored on the server. Products leave them out
+because each one lowers engagement: the product feels harder, and users finish and leave sooner. A
+product judged on time in the app, daily active users or satisfaction ratings would hurt its own
+numbers by adopting them.
+This is why a new product can take this approach where existing ones cannot. We treat time spent in
+the app as something to reduce, as long as students gain the same ability. The Bastani et al. trial
+suggests that ignoring this costs students about 17% of what they would otherwise retain.
+
+7. References
+1. Bastani, H., Bastani, O., Sungu, A., Ge, H., Kabakcı, Ö., & Mariman, R. (2025). Generative AI
+Without Guardrails Can Harm Learning: Evidence from High School Mathematics. Proceedings
+of the National Academy of Sciences.
+2. Bjork, E. L., & Bjork, R. A. (2011). Making Things Hard on Yourself, But in a Good Way:
+Creating Desirable Difficulties to Enhance Learning. In M. A. Gernsbacher et al. (Eds.),
+Psychology and the Real World (pp. 56–64). Worth Publishers.
+3. Bjork, R. A., & Bjork, E. L. (2020). Desirable Difficulties in Theory and Practice. Journal of
+Applied Research in Memory and Cognition, 9(4), 475–479.
+4. Bloom, B. S. (1984). The 2 Sigma Problem: The Search for Methods of Group Instruction as
+Effective as One-to-One Tutoring. Educational Researcher, 13(6), 4–16.
+5. Cepeda, N. J., Pashler, H., Vul, E., Wixted, J. T., & Rohrer, D. (2006). Distributed Practice in
+Verbal Recall Tasks: A Review and Quantitative Synthesis. Psychological Bulletin, 132(3), 354–
+380.
+6. Corbett, A. T., & Anderson, J. R. (1994). Knowledge Tracing: Modeling the Acquisition of
+Procedural Knowledge. User Modeling and User-Adapted Interaction, 4(4), 253–278.
+7. Reich, J., & Ruipérez-Valiente, J. A. (2019). The MOOC Pivot. Science, 363(6423), 130–131.
+8. Roediger, H. L., & Karpicke, J. D. (2006). The Power of Testing Memory: Basic Research and
+Implications for Educational Practice. Perspectives on Psychological Science, 1(3), 181–210.
+9. Sweller, J. (1988). Cognitive Load During Problem Solving: Effects on Learning. Cognitive
+Science, 12(2), 257–285.
+10. Sweller, J., & Cooper, G. A. (1985). The Use of Worked Examples as a Substitute for Problem
+Solving in Learning Algebra. Cognition and Instruction, 2(1), 59–89.
+
+9
+
+11. VanLehn, K. (2011). The Relative Effectiveness of Human Tutoring, Intelligent Tutoring
+Systems, and Other Tutoring Systems. Educational Psychologist, 46(4), 197–221.
+
+10
+
+
