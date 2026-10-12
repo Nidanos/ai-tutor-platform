@@ -6,6 +6,7 @@ Reorganised 25 Sep 2026. Nothing was deleted; the old files were moved into the 
 |---|---|---|
 | `phase-1-submitted/` | Synopsis, Problem Analysis, Literature Survey, SRS (DSA version, submitted 24 Sep), plus the MP3 timeline image | **Frozen.** Do not edit |
 | `phase-1-submitted/text/` | Plain-text extracts of those PDFs (tables lose their layout) | For searching and quoting only |
+| `phase-2/` | System design: DFD, ER, UML, schema, API design, traceability, implementation status | **Phase-2 deliverable** (15 Oct) |
 | `adr/` | Architecture Decision Records and the list of open decisions | **Live.** Phase-2 deliverable |
 | `spec/` | Full API specification (~98 operations, the long-term plan) | Live; see the status note at the top |
 | `reference/` | `ai-tutor-mvp.ts`: a fake stub, endpoint shapes only | Reference only |
