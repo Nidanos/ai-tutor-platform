@@ -21,4 +21,4 @@ Reorganised 25 Sep 2026. Nothing was deleted; the old files were moved into the 
 | 7 Oct | Phase 2 | System design (DFD, ER, UML), ADRs, partial implementation |
 | 23 Oct | Phase 3 | Implementation, testing, draft report |
 
-**Note:** `DOCS/` is in `.gitignore`, so none of this is under version control (see the audit, item C1).
+**Note:** `DOCS/` is tracked in git (audit item C1, resolved in commit `f4383b2`).

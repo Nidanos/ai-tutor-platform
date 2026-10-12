@@ -1951,7 +1951,7 @@ POST /api/v1/diagnostic/:id/complete
 ```http
 GET  /api/v1/mastery
 GET  /api/v1/mastery/:skillId
-POST /api/v1/mastery/evidence
+POST /api/v1/mastery/evidence   # internal only, never client-callable (ADR-0006)
 ```
 
 ## Recommendation

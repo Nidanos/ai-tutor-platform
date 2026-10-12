@@ -12,7 +12,7 @@ ai-tutor-platform/
 │   ├── api/          # Node.js + Express + TypeScript Backend (Modules M1–M13)
 │   └── web/          # Next.js Frontend with Monaco Code Editor
 ├── packages/
-│   ├── types/        # Shared TypeScript DTOs &amp; API Contracts (@ai-tutor/types)
+│   ├── types/        # Shared TypeScript DTOs & API Contracts (@ai-tutor/types)
 │   └── config/       # Shared tooling configurations
 ├── docker-compose.yml# Local PostgreSQL (+pgvector) and Redis infrastructure
 └── pnpm-workspace.yaml
@@ -21,12 +21,12 @@ ai-tutor-platform/
 
 ---
 
-## 🛠️ Tech Stack &amp; Infrastructure
+## 🛠️ Tech Stack & Infrastructure
 
 - **Frontend:** Next.js (React), TypeScript, Monaco Editor
 - **Backend:** Node.js, Express, TypeScript (Clean Architecture)
-- **Database:** PostgreSQL with `pgvector` (Skill DAG &amp; Vector Embeddings)
-- **Queue &amp; Cache:** Redis + BullMQ (Asynchronous Generation &amp; Sandbox Execution)
+- **Database:** PostgreSQL with `pgvector` (Skill DAG & Vector Embeddings)
+- **Queue & Cache:** Redis + BullMQ (Asynchronous Generation & Sandbox Execution)
 - **Execution Environment:** E2B sandbox (network off) + our own judge adapter; exercises in C++20 on clang 19 (see `DOCS/adr/`)
 - **v1 Domain:** Data Structures & Algorithms
 
@@ -38,9 +38,9 @@ ai-tutor-platform/
 
 - Node.js v20+ LTS
 - `pnpm` (`npm install -g pnpm`)
-- Docker Desktop (for local PostgreSQL &amp; Redis)
+- Docker Desktop (for local PostgreSQL & Redis)
 
-### Installation &amp; Local Setup
+### Installation & Local Setup
 
 ```text
 # 0. Create env files from the examples, then set real passwords

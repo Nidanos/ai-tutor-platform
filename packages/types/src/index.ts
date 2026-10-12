@@ -1,4 +1,4 @@
-// Shared Domain &amp; API Contracts across Modules M1 to M13
+// Shared Domain & API Contracts across Modules M1 to M13
 
 export type UserRole = "LEARNER" | "AUTHOR" | "ADMIN";
 export type SkillType = "syntactic" | "conceptual";
@@ -23,7 +23,7 @@ export interface SkillNode {
   prerequisites: string[];
 }
 
-// M4: Dual Mastery &amp; Decay
+// M4: Dual Mastery & Decay
 export interface MasteryRecord {
   userId: string;
   skillId: string;
@@ -44,7 +44,7 @@ export interface Exercise {
   tests: string;
 }
 
-// M7: Code Submission &amp; Sandbox Verdict
+// M7: Code Submission & Sandbox Verdict
 export interface SubmissionRequest {
   exerciseId: string;
   code: string;

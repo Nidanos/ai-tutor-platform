@@ -18,7 +18,7 @@ services:
       timeout: 5s
       retries: 5
 
-  # 2. Redis Cache &amp; BullMQ Job Queue
+  # 2. Redis Cache & BullMQ Job Queue
   redis:
     image: redis:7-alpine
     container_name: ai_tutor_redis
