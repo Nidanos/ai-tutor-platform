@@ -54,7 +54,7 @@ Core idea, unchanged from Phase 1: the system keeps a **separate reading and wri
 | Code retention | Learner code is kept until the learner clears that skill, then deleted. Verdicts and test results are kept | 13 Oct |
 | Organisations | Kept. Every learner belongs to one (a personal organisation by default) so colleges can be added without schema changes | 13 Oct |
 | Admin panel | Cut from the MVP: skill graph is seeded by script; analytics is one admin-only page | 13 Oct |
-| Auth | Registration, then a separate first login. 15-minute JWT + 30-day rotating refresh token. httpOnly cookies for web, `Authorization: Bearer` for the planned mobile app. Web reaches the API through a Next.js proxy (same origin) | 13 Oct |
+| Auth | Registration, then a separate first login. 15-minute JWT + 30-day rotating refresh token. httpOnly cookies for web, `Authorization: Bearer` for the planned mobile app. Web reaches the API through a Next.js proxy (same origin, so no CORS). Profile always comes from `GET /auth/me` | 13 Oct |
 | Database | PostgreSQL 16 + pgvector, schema and migrations with Drizzle ORM | 13 Oct |
 | LLM | Google Gemini behind one adapter (small model for hints, large model for generation) | 13 Oct |
 | Queue | Redis + BullMQ, single Redis client (`ioredis`) | 13 Oct |
@@ -92,7 +92,7 @@ flowchart LR
 | API (`apps/api`) | Auth, validation, all 13 modules, fast reads and writes |
 | Worker (`apps/api`, second entry point) | Exercise generation and verification, code execution, scheduled jobs (decay scan, pre-generation, code purge) |
 | PostgreSQL | Single source of truth for all data |
-| Redis | Job queue, rate limits. Holds nothing that can't be lost |
+| Redis | Job queue (and rate-limit counters once the API runs as several processes). Holds nothing that can't be lost |
 | E2B | Runs learner and reference code in isolation |
 | Gemini | Generates exercise drafts and live hints. Never grades, never selects |
 | `packages/types` | Shared request/response contracts between web and API |
@@ -307,6 +307,7 @@ flowchart LR
 | Idempotent writes | Unique keys stop a retried job double-counting evidence and a double-click submitting twice | Correctness under retries |
 | Secrets apart | Solutions, harness and test generators live in `exercise_secrets`, a separate table that public queries never join | A careless query can't leak a solution |
 | One writer per state | M4 alone writes mastery; M12 alone writes fade stages | Each rule lives in one place |
+| Store each fact once | A value that can be derived (the learner of a recommendation, an evidence row's source, "passed" from a verdict) is not stored again | Duplicates can disagree |
 | Scoped rows | Every user has an `org_id`; every content, mastery and fade row has a `language_code` | Institutions and multiple languages without later migrations |
 
 **Conventions**
@@ -322,6 +323,7 @@ flowchart LR
 | User text | `text` with length CHECKs (name ≤ 80, code ≤ 64 KB) | Stops oversized input |
 | Fixed sets | Postgres enums | Invalid values rejected |
 | Extensions | `citext` (email), `vector` (pgvector, later) | Nothing else needed |
+| Constraint names | snake_case; multi-word unique columns are named explicitly | drizzle-kit would otherwise emit camelCase names |
 
 **Delete rules**
 
@@ -640,9 +642,8 @@ erDiagram
     uuid skill_id FK
     text language_code FK
     enum dimension "reading or writing"
-    enum source "submission or diagnostic"
-    uuid submission_id FK
-    uuid diagnostic_id FK
+    uuid submission_id FK "set for graded runs"
+    uuid diagnostic_id FK "set for diagnostic seeds"
     enum verdict
     smallint rung
     smallint hints_used
@@ -669,7 +670,7 @@ erDiagram
 
 - One mastery row per user, skill and language, keyed by those three columns (nothing refers to it by ID). Reading and writing are never combined (FR-M11-02), and each decays from its own last evidence.
 - `cleared_at` is set the first time the learner gets AC on a rung-5 exercise of the skill using 0 or 1 hint.
-- Each evidence row points to exactly one real source (a submission or a diagnostic), enforced by a CHECK. Unique keys on `(submission_id, dimension)` and `(diagnostic_id, skill_id, dimension)` stop evidence being counted twice.
+- Each evidence row points to exactly one real source (a submission or a diagnostic), enforced by a CHECK. Which key is set *is* the source, so no separate "source" column is stored. Unique keys on `(submission_id, dimension)` and `(diagnostic_id, skill_id, dimension)` stop evidence being counted twice.
 - `weight` is computed from rung, hints used and time taken (FR-M4-05); `formula_version` keeps old numbers explainable if the formula changes.
 - A review is created when effective mastery falls below the threshold (FR-M4-04); only one open review per skill.
 
@@ -696,16 +697,15 @@ erDiagram
     text title
     text prompt_md
     text starter_code
-    text function_signature
+    text function_signature "null for rung 1"
     int time_limit_ms "50 to 10000"
     int memory_limit_mb "16 to 1024"
-    uuid generation_job_id FK
     uuid created_by FK
     timestamptz verified_at
   }
   exercise_secrets {
     uuid exercise_id PK "also FK"
-    text harness_code
+    text harness_code "null for rung 1"
     text reference_solution
     text brute_force_solution
     text test_generator_code "seeded"
@@ -718,8 +718,8 @@ erDiagram
     text name
     enum size "small or large"
     enum visibility "sample or hidden"
-    text input "never sent if hidden"
-    text expected_output
+    text input "stored for sample tests only"
+    text expected_output "stored for sample tests only"
   }
   exercise_hints {
     uuid id PK
@@ -755,6 +755,8 @@ erDiagram
 
 - **Content key** `(skill, language, rung, variant_seed, content_version)` is unique: the same request always gets the same frozen exercise.
 - **`exercise_secrets`** holds everything a learner must never see. Only the worker and the hint engine read it; API responses are built from `exercises` alone.
+- Every test runs inside the frozen harness (ADR-0002), so `exercise_tests` only names the tests; input and output are stored just for the sample tests shown to the learner.
+- A generation job points to the exercise it produced; the exercise doesn't point back (one fact, stored once).
 - Template exercises use the same tables (`source = template`) and pass the same verification. `purpose = holdout` exercises are never recommended; they are used only for calibration (M13).
 - A partial unique key on `generation_jobs` stops two jobs generating the same exercise at once.
 
@@ -782,9 +784,10 @@ erDiagram
     smallint ce_count "3 compile errors rule"
     smallint submission_count
     boolean bottomed_out
-    timestamptz started_at
     timestamptz solved_at
     int active_ms
+    timestamptz created_at "when the attempt started"
+    timestamptz updated_at
   }
   submissions {
     uuid id PK
@@ -792,9 +795,9 @@ erDiagram
     uuid user_id FK
     uuid exercise_id FK
     text language_code FK
-    text code "deleted once the skill is cleared"
-    text code_sha256 "kept"
-    timestamptz code_purged_at
+    text answer "code, or predicted output on rung 1; deleted once the skill is cleared"
+    text answer_sha256 "kept"
+    timestamptz answer_purged_at
     text idempotency_key UK
     enum status "queued running completed"
     enum verdict "AC WA CE RE TLE MLE SE"
@@ -831,7 +834,8 @@ erDiagram
   }
 ```
 
-- An **attempt** is one learner on one exercise; it owns the server-side hint level (FR-M8-01). A **submission** is one press of Submit.
+- An **attempt** is one learner on one exercise; it owns the server-side hint level (FR-M8-01). A CHECK keeps `hint_level ≤ hint_ceiling`, so the fade limit holds even if application code has a bug.
+- A **submission** is one press of Submit. Its `answer` is code on rungs 2–5 and the predicted output on rung 1 (Predict).
 - **`context` decides evidence:** practice and review attempts create evidence; diagnostic attempts don't (the diagnostic result seeds mastery once); holdout attempts save a calibration record first, then create evidence.
 - `counts_as_attempt` is false for CE (until the 3rd on the same exercise) and for SE.
 - `submissions` copies `user_id` and `exercise_id` from the attempt on purpose, for simpler analytics. The server sets them, never the client.
@@ -851,7 +855,6 @@ erDiagram
   hint_events {
     bigint id PK
     uuid attempt_id FK
-    uuid user_id FK
     smallint level
     enum kind "offered declined requested delivered blocked denied_ceiling bottomed_out"
     uuid hint_id FK
@@ -885,8 +888,7 @@ erDiagram
   }
   recommendations {
     uuid id PK
-    uuid user_id FK
-    uuid enrollment_id FK
+    uuid enrollment_id FK "identifies the learner"
     uuid skill_id FK
     smallint rung
     enum reason "new_skill review remediation"
@@ -935,6 +937,7 @@ erDiagram
     uuid schedule_id FK
     smallint current_stage FK
     timestamptz stage_entered_at
+    timestamptz created_at
     timestamptz updated_at
   }
   fade_stage_changes {
@@ -981,8 +984,7 @@ erDiagram
     uuid submission_id FK
     double predicted_reading
     double predicted_writing
-    enum observed_verdict
-    boolean observed_passed
+    enum observed_verdict "passed = AC"
   }
   consents {
     uuid id PK
@@ -1017,7 +1019,7 @@ erDiagram
 - **Calibration** compares predicted mastery with the result on a held-out exercise (FR-M13-01).
 - **Consent** is recorded before any learner data is used in the college study, and is never deleted (`RESTRICT`).
 - `llm_calls` tracks token use and estimated cost of every Gemini call.
-- Hint trends, bottom-out rate, exercise effectiveness, generation failure rate, execution statistics and LLM cost are **SQL views** over existing tables, not extra tables.
+- Hint trends, bottom-out rate, exercise effectiveness, generation failure rate, execution statistics and LLM cost will be **SQL views** over existing tables, not extra tables. They are written together with the analytics page, once its exact queries are known.
 
 ### 5.12 Key constraints
 
@@ -1033,8 +1035,9 @@ erDiagram
 | review_items | Partial UNIQUE: one scheduled review per skill | No duplicate reviews |
 | exercises | UNIQUE content key; CHECK rung 1–5 | Determinism |
 | generation_jobs | Partial UNIQUE content key while queued, generating or verifying | No duplicate generation |
-| exercise_attempts | Partial UNIQUE(user_id, exercise_id) where active; CHECK hint_level 0–5 | One live attempt |
-| submissions | UNIQUE(idempotency_key); CHECK code ≤ 64 KB | No duplicate submissions |
+| exercise_attempts | Partial UNIQUE(user_id, exercise_id) where active; CHECK hint_level 0–5; CHECK hint_level ≤ hint_ceiling | One live attempt; the fade limit always holds |
+| submissions | UNIQUE(idempotency_key); CHECK answer ≤ 64 KB | No duplicate submissions |
+| sandbox_runs | CHECK submission_id is set exactly when purpose = submission | Learner runs always link to their submission |
 | learning_sessions | Partial UNIQUE(user_id) where not ended | One active session |
 | session_steps | UNIQUE(session_id, seq); partial UNIQUE(session_id) where active | One current step |
 | skill_scaffolding | PK(user_id, skill_id, language_code); FK (schedule_id, current_stage) → fade_stages | One fade state per skill, always a real stage |
@@ -1046,27 +1049,27 @@ Every foreign key that is queried is indexed.
 
 A table is created only after the tables it points to. Each step is one versioned Drizzle migration; applied migrations are never edited.
 
-| Migration | Tables | When |
+| Migration | Tables | Status |
 | --- | --- | --- |
-| 0001 | Extensions (`citext`) and all enums | Phase 2 |
-| 0002 | organizations, users, refresh_tokens | **Phase 2 (15 Oct)** |
-| 0003 | languages, courses, course_languages, skills, skill_prerequisites, skill_resources | MVP |
-| 0004 | enrollments, fade_schedules, fade_stages, skill_scaffolding | MVP |
-| 0005 | llm_calls, generation_jobs, exercises, exercise_secrets, exercise_tests, exercise_hints, generation_failures | MVP |
-| 0006 | recommendations, learning_sessions, session_steps | MVP |
-| 0007 | exercise_attempts, submissions, sandbox_runs, run_test_results, hint_events, fade_stage_changes | MVP |
-| 0008 | diagnostic_items, diagnostic_attempts, diagnostic_responses, diagnostic_results | MVP |
-| 0009 | mastery_records, evidence_events, review_items | MVP |
-| 0010 | calibration_records, consents, analytics views | MVP |
-| Later | password_reset_tokens, skill_graph_changes, concept_chunks (+ `vector`), audit_log | After MVP |
+| 0000_enable_citext | `citext` extension | **Built** |
+| 0001_identity | organizations, users, refresh_tokens | **Built** |
+| 0002_curriculum | languages, courses, course_languages, skills, skill_prerequisites, skill_resources | **Built** |
+| 0003_enrollment_and_fade | enrollments, fade_schedules, fade_stages, skill_scaffolding | **Built** |
+| 0004_exercises | llm_calls, exercises, exercise_secrets, exercise_tests, exercise_hints, generation_jobs, generation_failures | **Built** |
+| 0005_sessions | recommendations, learning_sessions, session_steps | **Built** |
+| 0006_attempts | exercise_attempts, submissions, sandbox_runs, run_test_results, hint_events, fade_stage_changes | **Built** |
+| 0007_diagnostic | diagnostic_items, diagnostic_attempts, diagnostic_responses, diagnostic_results | **Built** |
+| 0008_mastery | mastery_records, evidence_events, review_items | **Built** |
+| 0009_research | calibration_records, consents | **Built** |
+| Later | analytics views; password_reset_tokens, skill_graph_changes, concept_chunks (+ `vector`), audit_log | With their features |
 
-Totals: 3 tables in Phase 2, 35 more for the MVP, 4 later (42).
+Totals: 38 tables built for the MVP, 4 later (42). Enums are created in the migration of the first table that uses them. The seed (`pnpm db:seed`) loads the C++ language, the `dsa` and `cpp-basics` courses, and the default 4-stage fade schedule; it is safe to run repeatedly.
 
 ### 5.14 Data lifecycle
 
 | Data | Kept | Why |
 | --- | --- | --- |
-| Learner code (`submissions.code`) | Until the learner clears that skill; then a worker job empties it and sets `code_purged_at` | Code is needed while the learner is still working on the skill; afterwards only the results matter |
+| Learner answers (`submissions.answer`) | Until the learner clears that skill; then a worker job empties it and sets `answer_purged_at` | Code is needed while the learner is still working on the skill; afterwards only the results matter |
 | Verdicts, test results, evidence, hint logs | Always | They are the learning record and the research data |
 | Refresh tokens | Until expiry, then removed by a cleanup job | No value after expiry |
 | Consents | Always | Proof of agreement |
@@ -1290,7 +1293,7 @@ sequenceDiagram
   A->>DB: Find user by email
   A->>A: Verify the hash
   A->>DB: INSERT refresh token (hash only, new family)
-  A-->>W: Set-Cookie: access + refresh (httpOnly)
+  A-->>W: 204, Set-Cookie: access + refresh (httpOnly)
   Note over W,A: The mobile app gets the same tokens in the body and sends Authorization Bearer
   W->>A: GET /auth/me (cookie sent automatically)
   A->>A: Verify JWT signature and expiry
@@ -1658,6 +1661,20 @@ In development, Postgres and Redis run locally through `docker compose`.
 | M12 | 6 | fade_schedules, fade_stages, skill_scaffolding, fade_stage_changes |
 | M13 | 8 | calibration_records, llm_calls, analytics views |
 
+### 7.3 Auth endpoints (built)
+
+Base: `/api/v1/auth`. Web sends `client` as `web` (default) and works with cookies; the mobile app sends `client: "mobile"` and stores the returned tokens.
+
+| Endpoint | Request | Success | Errors |
+| --- | --- | --- | --- |
+| `POST /register` | `{ email, password (8–128), displayName (1–80) }` | `201 { user }`, no tokens; the app shows the login screen | `400 VALIDATION_ERROR`, `409 EMAIL_TAKEN`, `429 RATE_LIMITED` |
+| `POST /login` | `{ email, password, client? }` | Web: `204` + cookies. Mobile: `200 { accessToken, refreshToken, expiresIn }` | `401 INVALID_CREDENTIALS` (same for a wrong email or password), `429` |
+| `POST /refresh` | Web: the refresh cookie. Mobile: `{ refreshToken }` | Same as login, with a new token pair | `401 UNAUTHENTICATED` (log in again) |
+| `POST /logout` | Same as refresh | `204`, cookies cleared, the whole login revoked | none |
+| `GET /me` | Access cookie, or `Authorization: Bearer <accessToken>` | `200 { user: { id, email, displayName, role, timezone, createdAt } }` | `401 TOKEN_EXPIRED` (refresh, then retry), `401 UNAUTHENTICATED` |
+
+Rate limits: login 20 per IP and 5 failures per email per 15 minutes; register 5 per IP per hour; refresh 30 per IP per minute. Any cookie-carrying write from an origin other than the web app gets `403 BAD_ORIGIN`.
+
 ---
 
 ## 8. Non-functional design
@@ -1678,7 +1695,7 @@ In development, Postgres and Redis run locally through `docker compose`.
 
 **Determinism.** Content is generated once, verified and frozen, then served by its content key. Grading uses only sandbox execution with a fixed compiler and seeded test generators. Next-step selection is rule-based with a fixed tie-break, and every recommendation and evidence row records the algorithm or formula version used. No LLM output sits in the grading or selection path.
 
-**Security and privacy beyond the NFRs.** Solutions, harness and hidden tests live in `exercise_secrets` and are never returned. Rate limits in Redis protect login, submissions, hints and generation. Refresh tokens rotate, and reuse of an old token revokes the whole login. Learner code reaches Gemini only inside live hint prompts, covered by recorded consent, and is deleted once the learner clears the skill.
+**Security and privacy beyond the NFRs.** Solutions, harness and hidden tests live in `exercise_secrets` and are never returned. Rate limits protect login, registration and refresh now, and will cover submissions, hints and generation; counters are kept in memory for the single API process and move to Redis when the API runs as several processes. Cookie-carrying writes must come from the web app's origin (CSRF guard). Refresh tokens rotate, and reuse of an old token revokes the whole login. Learner code reaches Gemini only inside live hint prompts, covered by recorded consent, and is deleted once the learner clears the skill.
 
 ---
 
@@ -1736,17 +1753,12 @@ In development, Postgres and Redis run locally through `docker compose`.
 
 **Done (in the repository):**
 
-- pnpm monorepo: `apps/api` (Express + TypeScript), `apps/web` (Next.js), `packages/types`, `packages/config`.
-- Module folders for M1–M13 with routes, controllers and services layers.
-- Local infrastructure via `docker compose`: PostgreSQL 16 with pgvector, Redis 7, with secrets in `.env`.
-- API server starts, serves `GET /health`, and connects to PostgreSQL through a pooled `query()` helper.
-- Shared TypeScript configuration and initial shared types.
-
-**Phase 2 slice (in progress):**
-
-- Drizzle migrations 0001–0002: enums, `organizations`, `users`, `refresh_tokens`.
-- `POST /auth/register`, `POST /auth/login`, `POST /auth/refresh`, `POST /auth/logout`, `GET /auth/me` with argon2id hashing, rotating refresh tokens and JWT cookie/Bearer auth.
-- Shared error handling, response envelope, request validation and rate limits.
+- pnpm monorepo: `apps/api` (Express 5 + TypeScript 6), `apps/web` (Next.js 16, React 19), `packages/types`, `packages/config`. Exact pinned versions, Node 22.
+- Local infrastructure via `docker compose`: PostgreSQL 16 with pgvector, Redis 7, with secrets in `.env`; settings validated with zod at startup.
+- **Database:** all 38 MVP tables (section 5) as Drizzle schema files with 10 versioned migrations, plus an idempotent seed.
+- **Auth (M1):** register, login, refresh, logout and me (section 7.3): argon2id passwords, 15-minute JWT, rotating refresh tokens with theft detection, httpOnly cookies for web and Bearer tokens for mobile, rate limits and a CSRF origin check.
+- **Shared layer:** one error type, one response envelope, one error handler.
+- **Tests:** 24 automated tests on a separate test database: 16 check the database rules (uniqueness, ranges, fade ceiling, evidence sources) and 8 check the auth flows (including stolen-token reuse and throttling).
 
 **Next (Phase 3, 23 Oct):** skill graph and resources seed, enrollment and diagnostic, mastery engine, first E2B judge run (AC/WA/CE/TLE end to end), API contract frozen for the frontend.
 
@@ -1763,3 +1775,4 @@ In development, Postgres and Redis run locally through `docker compose`.
 | Template exercises per skill and rung | M6 fallback |
 | Session idle and timeout values | M9 |
 | Hosting provider within budget | Deployment |
+| First ADMIN account (seed from environment variables) | Analytics page |
