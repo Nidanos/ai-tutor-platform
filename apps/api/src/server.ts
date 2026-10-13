@@ -1,20 +1,8 @@
+import { sql } from "drizzle-orm";
 import { app } from "./app.js";
-import { query } from "./infrastructure/database/index.js";
+import { env } from "./config/env.js";
+import { db } from "./infrastructure/database/index.js";
 
-const PORT = parseInt(process.env.PORT || "3001", 10);
+await db.execute(sql`select 1`); // fail fast: never start without a database
 
-// Temporary connection test runner
-async function testConnection() {
-  try {
-    const res = await query("SELECT NOW()");
-    console.log("✅ Database connected successfully at:", res.rows[0]);
-  } catch (err) {
-    console.error("❌ Database connection failed:", err);
-  }
-}
-
-testConnection();
-
-app.listen(PORT, () => {
-  console.log(`API listening on http://localhost:${PORT}`);
-});
+app.listen(env.PORT, () => console.log(`API listening on http://localhost:${env.PORT}`));
