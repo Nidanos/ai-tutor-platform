@@ -59,7 +59,7 @@ Core idea, unchanged from Phase 1: the system keeps a **separate reading and wri
 | LLM | Google Gemini behind one adapter (small model for hints, large model for generation) | 13 Oct |
 | Queue | Redis + BullMQ, single Redis client (`ioredis`) | 13 Oct |
 
-ADR-0001, ADR-0002, ADR-0004 and ADR-0006 will be updated to reflect the 13 Oct decisions.
+Each decision is recorded with its reasoning in `../adr/` (ADR-0001 to ADR-0009, updated 13 Oct).
 
 ---
 
