@@ -18,7 +18,7 @@ import { organizations, users } from "./identity.js";
 export const contentStatus = pgEnum("content_status", ["draft", "published", "retired"]);
 export const skillType = pgEnum("skill_type", ["syntactic", "conceptual"]);
 export const skillStatus = pgEnum("skill_status", ["active", "retired"]);
-export const resourceKind = pgEnum("resource_kind", ["article", "video", "docs", "course"]);
+export const resourceKind = pgEnum("resource_kind", ["article", "docs"]);
 
 // Keyed by a readable code ("cpp"), so language_code = 'cpp' reads well in every table.
 export const languages = pgTable("languages", {
@@ -63,7 +63,6 @@ export const skills = pgTable(
     skillType: skillType().notNull(),
     decayLambda: doublePrecision().notNull(), // per day; syntactic skills fade faster
     difficulty: smallint().notNull(),
-    sourceUrl: text(),
     status: skillStatus().notNull().default("active"),
     ...timestamps,
   },
@@ -101,7 +100,7 @@ export const skillPrerequisites = pgTable(
   ],
 );
 
-// Links to original articles, videos and docs. Reading them never changes mastery (FR-M4-02).
+// "Further reading" links to original articles and docs. Reading them never changes mastery (FR-M4-02).
 export const skillResources = pgTable(
   "skill_resources",
   {

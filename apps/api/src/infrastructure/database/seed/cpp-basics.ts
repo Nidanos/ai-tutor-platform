@@ -1,8 +1,9 @@
 // The cpp-basics course: everything a learner needs to write DSA solutions in C++.
-// Names and descriptions are our own (ADR-0001).
-// Resources link to the original pages and are never copied.
+// Skill names and descriptions are our own (ADR-0001). Resources are "further reading" links,
+// never copied and never fed to the AI (their licences don't allow it).
+import type { resourceKind } from "../schema/index.js";
 
-export type ResourceSeed = { title: string; url: string; kind: "article" | "video" | "docs" | "course" };
+export type ResourceSeed = { title: string; url: string; kind: (typeof resourceKind.enumValues)[number] };
 
 export type SkillSeed = {
   slug: string;
@@ -25,8 +26,6 @@ const cppref = (page: string, title: string): ResourceSeed => ({
   url: `https://en.cppreference.com/cpp/${page}`,
   kind: "docs",
 });
-
-export const CPP_SOURCE_URL = "";
 
 export const cppBasicsSkills: SkillSeed[] = [
   {

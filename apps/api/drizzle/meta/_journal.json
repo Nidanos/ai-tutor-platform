@@ -78,6 +78,13 @@
       "when": 1791966806643,
       "tag": "0010_skill_resources_unique_url",
       "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "7",
+      "when": 1791973374918,
+      "tag": "0011_drop_video_resources",
+      "breakpoints": true
     }
   ]
 }

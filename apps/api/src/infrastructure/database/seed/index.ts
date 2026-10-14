@@ -1,7 +1,7 @@
 import { eq } from "drizzle-orm";
 import { db } from "../index.js";
 import { courseLanguages, courses, fadeSchedules, fadeStages, languages } from "../schema/index.js";
-import { cppBasicsSkills, CPP_SOURCE_URL } from "./cpp-basics.js";
+import { cppBasicsSkills } from "./cpp-basics.js";
 import { courseRows, DEFAULT_LANGUAGE, defaultFadeStages, languageRows } from "./data.js";
 import { seedSkills } from "./seed-skills.js";
 
@@ -26,7 +26,7 @@ await db
   .values(schedules.flatMap((s) => defaultFadeStages.map((stage) => ({ scheduleId: s.id, ...stage }))))
   .onConflictDoNothing();
 
-await seedSkills("cpp-basics", CPP_SOURCE_URL, cppBasicsSkills);
+await seedSkills("cpp-basics", cppBasicsSkills);
 
 await db.$client.end();
 console.log("Seed complete");

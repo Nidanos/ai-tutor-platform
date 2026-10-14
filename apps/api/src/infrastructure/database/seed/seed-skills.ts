@@ -1,4 +1,4 @@
-import { eq, sql } from "drizzle-orm";
+import { eq, inArray, sql } from "drizzle-orm";
 import { db } from "../index.js";
 import { courses, skillPrerequisites, skillResources, skills } from "../schema/index.js";
 import type { SkillSeed } from "./cpp-basics.js";
@@ -6,9 +6,9 @@ import type { SkillSeed } from "./cpp-basics.js";
 // Placeholders until calibration: syntax fades in ~2 weeks, concepts in ~5 (half-life = ln 2 / λ).
 const DECAY_PER_DAY = { syntactic: 0.05, conceptual: 0.02 } as const;
 
-// Skills and resources are upserted, so editing the data file (names, titles, order) and re-seeding
-// updates them. Removing an edge or a resource from the data doesn't delete it.
-export async function seedSkills(courseSlug: string, sourceUrl: string, list: SkillSeed[]) {
+// Re-seeding updates skills in place and replaces their resources, so the data file is the source of
+// truth for links. Removing an edge from the data doesn't delete it.
+export async function seedSkills(courseSlug: string, list: SkillSeed[]) {
   const [course] = await db.select({ id: courses.id }).from(courses).where(eq(courses.slug, courseSlug));
 
   await db
@@ -22,7 +22,6 @@ export async function seedSkills(courseSlug: string, sourceUrl: string, list: Sk
         skillType: s.type,
         decayLambda: DECAY_PER_DAY[s.type],
         difficulty: s.difficulty,
-        sourceUrl,
       })),
     )
     .onConflictDoUpdate({
@@ -33,7 +32,6 @@ export async function seedSkills(courseSlug: string, sourceUrl: string, list: Sk
         skillType: sql`excluded.skill_type`,
         decayLambda: sql`excluded.decay_lambda`,
         difficulty: sql`excluded.difficulty`,
-        sourceUrl: sql`excluded.source_url`,
       },
     });
 
@@ -44,13 +42,8 @@ export async function seedSkills(courseSlug: string, sourceUrl: string, list: Sk
   if (edges.length) await db.insert(skillPrerequisites).values(edges).onConflictDoNothing();
 
   const resources = list.flatMap((s) => s.resources.map((r, position) => ({ skillId: idOf.get(s.slug)!, ...r, position })));
-  if (resources.length) {
-    await db
-      .insert(skillResources)
-      .values(resources)
-      .onConflictDoUpdate({
-        target: [skillResources.skillId, skillResources.url],
-        set: { title: sql`excluded.title`, kind: sql`excluded.kind`, position: sql`excluded.position` },
-      });
-  }
+  await db.transaction(async (tx) => {
+    await tx.delete(skillResources).where(inArray(skillResources.skillId, [...idOf.values()]));
+    if (resources.length) await tx.insert(skillResources).values(resources);
+  });
 }
