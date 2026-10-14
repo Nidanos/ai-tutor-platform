@@ -17,7 +17,9 @@ Last updated: 13 Oct 2026. These record decisions Ashwani has made. Where no dec
 ## Open decisions (Ashwani's to make)
 | # | Question | Blocks |
 |---|---|---|
-| - | The DSA and C++ basics skill lists, edges and resources | Seed data, recommender |
+| - | The DSA skill list, edges and resources (C++ basics done: 20 skills, 14 Oct) | Seed data, recommender |
+| - | Visual format: Mermaid diagrams generated as text and frozen (recommended: cheap, deterministic, readable labels) or an image-generation model | Lesson content |
+| - | Curated videos per skill | `skill_resources` |
 | - | M4 update formula: AC gain, WA penalty, weighting by rung, hints and time | Mastery engine (Phase 3) |
 | - | Prerequisite threshold (0.7 is a placeholder) | Recommender |
 | Q8 | Guide name (roll numbers and team rows are in the Phase 2 doc) | Phase-2 docs |

@@ -15,6 +15,13 @@ The 7 Sep drafts (now in `DOCS/archive/2026-09-07-js-react-drafts/`) set the v1 
   - All prerequisite edges are authored by us.
 - **Resources link out, never copy** *(13 Oct)*. Nidanos is commercial, so no third-party course text or images go into the product. Each skill links to the original articles and docs (`skill_resources`). Skill names, descriptions, edges and exercises are written by us.
 
+## Learning resources *(14 Oct)*
+| Kind | Source | Rule |
+|---|---|---|
+| Text | AI-written explanations, plus "further reading" links to public tutorial and reference sites | The AI writes its own explanations. It never copies, closely paraphrases or is fed text from linked sites (their licences don't allow it). Exact pages per skill are chosen by us and checked to resolve, so the AI never invents links |
+| Visual | AI-generated diagrams and flowcharts | Format still open (see `README.md`) |
+| Video | Curated by Ashwani | Stored as `skill_resources` with kind `video` |
+
 ## Consequences
 - The seed data in `DOCS/reference/ai-tutor-mvp.ts` (JS→React) is obsolete.
 - The submitted PDFs in `DOCS/phase-1-submitted/` are the source of truth for Phase 1.
