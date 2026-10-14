@@ -55,3 +55,10 @@ Checked per test, in this order. The first failing test decides the submission's
 | SE | E2B or our own setup failed (no sandbox, API error, no tests). Retried once by the worker; no mastery effect |
 
 The rules live in one pure function (`m7_execution/services/judge.ts`), unit-tested without E2B.
+
+## How a run works (built 15 Oct)
+- **Template `ai-tutor-cpp`**: Debian 13, clang 19.1.7, GNU `time`; 2 vCPU / 512 MiB. Built from `infrastructure/sandbox/template.ts` with `pnpm sandbox:build`. A warm-up compile during the build keeps clang and the headers in the snapshot's memory.
+- **Three round trips**: create the sandbox, write the files, then one command that compiles and runs every test. Each test is `timeout` + `prlimit --as` (memory limit + 64 MB slack) + `/usr/bin/time` for peak memory. Results come back as one line per test with base64 output; tests stop after the first crash or time-out. The sandbox is killed in the background.
+- **Measured**: about 3.5–7 s per submission, mostly network round trips to E2B (compiling takes about 0.5 s inside the sandbox). Next speed-up if needed: send small files inside the command instead of a separate write.
+- **Check**: `pnpm sandbox:smoke` runs six solutions against real E2B and expects AC, WA, CE, RE, TLE and MLE.
+- **Known limit**: learner code runs as the same user as our script, so a determined learner could fork a process that tampers with result lines. That's acceptable for practice; the fix later is a separate run user.

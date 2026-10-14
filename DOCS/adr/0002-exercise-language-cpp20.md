@@ -11,7 +11,7 @@
 | Languages | **The engine is language-agnostic** *(13 Oct)*: DSA will be offered in C++, Java and Python, so learners start in a language they already know. **Only C++ ships for the 10 Nov MVP**; Java and Python follow |
 | Where language lives | Every exercise, mastery row and fade row carries a `language_code`. A course lists the languages it offers (`course_languages`) |
 | Language standard | **C++20** |
-| Compiler | **clang / LLVM 19**, version fixed (installed in the E2B template, see ADR-0003) |
+| Compiler | **clang / LLVM 19** (19.1.7 on Debian 13), version fixed in the E2B template (ADR-0003). Flags: `-std=c++20 -O2` (`m7_execution/services/toolchains.ts`) |
 | Reproducibility | The compiler version and flags are fixed. They form part of the exercise's `content_version`, so a frozen exercise gives the same result every time |
 | What tests test | **Functions only.** Tests call the student's function |
 | Test harness | `main()` plus the test calls are **generated with the exercise and frozen with it** |
