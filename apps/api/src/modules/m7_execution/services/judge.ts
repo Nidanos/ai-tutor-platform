@@ -1,9 +1,8 @@
 import type { verdict } from "../../../infrastructure/database/schema/index.js";
+import type { Limits, TestRun } from "../../../infrastructure/sandbox/sandbox-provider.js";
 
 // Turns raw sandbox readings into verdicts (ADR-0003, "Verdict mapping"). Pure: no sandbox, no database.
 export type Verdict = (typeof verdict.enumValues)[number];
-export type Limits = { timeLimitMs: number; memoryLimitMb: number };
-export type TestRun = { exitCode: number; timedOut: boolean; peakMemoryKb: number; stdout: string; stderr: string };
 
 const EXCERPT_CHARS = 4000;
 

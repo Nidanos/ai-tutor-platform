@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { excerpt, judgeTest, overallVerdict, sameOutput, type TestRun } from "../src/modules/m7_execution/services/judge.js";
+import type { TestRun } from "../src/infrastructure/sandbox/sandbox-provider.js";
+import { excerpt, judgeTest, overallVerdict, sameOutput } from "../src/modules/m7_execution/services/judge.js";
 
 const LIMITS = { timeLimitMs: 2000, memoryLimitMb: 256 };
 const ok: TestRun = { exitCode: 0, timedOut: false, peakMemoryKb: 3_000, stdout: "42\n", stderr: "" };
