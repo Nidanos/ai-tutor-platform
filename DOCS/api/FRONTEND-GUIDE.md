@@ -47,8 +47,8 @@ Base path: `/api/v1/auth`
 
 | Method + path | Body | Success | Errors |
 | --- | --- | --- | --- |
-| `POST /register` | `{ email, password, displayName }` | `201 { user }` (no login) | `400 VALIDATION_ERROR`, `409 EMAIL_TAKEN`, `429 RATE_LIMITED` |
-| `POST /login` | `{ email, password }` | `204` + cookies set | `401 INVALID_CREDENTIALS`, `429 RATE_LIMITED` |
+| `POST /register` | `{ email, password, displayName, dateOfBirth, acceptTerms, acceptPrivacy, aiTraining?, research? }` | `201 { user }` (no login) | `400 VALIDATION_ERROR`, `409 EMAIL_TAKEN`, `429 RATE_LIMITED` |
+| `POST /login` | `{ email, password }` | `204` + cookies set | `401 INVALID_CREDENTIALS`, `403 PARENT_APPROVAL_PENDING`, `429 RATE_LIMITED` |
 | `POST /refresh` | none (uses the cookie) | `204` + new cookies | `401 UNAUTHENTICATED` → go to login |
 | `POST /logout` | none | `204`, cookies cleared | none |
 | `GET /me` | none | `200 { user }` | `401` → try refresh once (section 6) |
@@ -60,6 +60,9 @@ Form rules (same as the server, so show errors before submitting):
 | email | valid email, ≤ 254 characters (case doesn't matter) |
 | password | 8 to 128 characters, any characters, no "must contain a symbol" rule |
 | displayName | 1 to 80 characters after trimming spaces |
+| dateOfBirth | `"YYYY-MM-DD"`, not in the future (use a date picker) |
+| acceptTerms, acceptPrivacy | must be `true`: two **separate** required tick boxes, each linking to its page (`/terms`, `/privacy`) |
+| aiTraining, research | optional, **unticked by default**. **Show them only if the date of birth makes the user 18+**; the server rejects them for under-18s |
 
 `user` object:
 
@@ -70,6 +73,8 @@ type User = {
   displayName: string;
   role: "LEARNER" | "AUTHOR" | "ADMIN";
   timezone: string;   // e.g. "Asia/Kolkata"
+  dateOfBirth: string | null; // "YYYY-MM-DD"
+  status: "active" | "pending_parent"; // pending_parent = under 18, waiting for a parent
   createdAt: string;  // ISO date
 };
 ```
@@ -78,7 +83,7 @@ type User = {
 
 | Moment | Do this |
 | --- | --- |
-| Sign-up submit | `POST /register` → on `201` go to `/login` with "Account created, please log in". On `409` show "Already registered" + a link to login |
+| Sign-up submit | `POST /register` → on `201`: if `user.status === "pending_parent"` show "Ask a parent or guardian to approve your account" (the parent email step comes next); otherwise go to `/login` with "Account created, please log in". On `409` show "Already registered" + a link to login |
 | Login submit | `POST /login` → on `204` call `GET /me`, keep the user in app state, go to the dashboard. On `401` show `error.message` (it never says which field was wrong, on purpose) |
 | App starts | `GET /me` → `200` logged in; `401` (after one refresh try) logged out |
 | Any call returns `401` | Call `POST /refresh` **once**, then retry the call. If refresh fails, clear the user and go to `/login` |
@@ -128,7 +133,10 @@ export async function api<T = void>(path: string, init: RequestInit = {}, retrie
 Usage:
 
 ```ts
-await api("/auth/register", { method: "POST", body: JSON.stringify({ email, password, displayName }) });
+await api("/auth/register", {
+  method: "POST",
+  body: JSON.stringify({ email, password, displayName, dateOfBirth, acceptTerms, acceptPrivacy, aiTraining, research }),
+});
 await api("/auth/login", { method: "POST", body: JSON.stringify({ email, password }) });
 const { user } = await api<{ user: User }>("/auth/me");
 await api("/auth/logout", { method: "POST" });
@@ -160,6 +168,7 @@ Shapes will be published here when each one goes live. Use mock data until then.
 | `INVALID_CREDENTIALS` | 401 | Wrong email or password | Show the message |
 | `UNAUTHENTICATED` | 401 | Not logged in, or the session ended | Refresh once, else go to login |
 | `TOKEN_EXPIRED` | 401 | The 15-minute access token expired | Refresh once (the helper does it) |
+| `PARENT_APPROVAL_PENDING` | 403 | Under-18 account not yet approved by a parent | Show "Waiting for your parent or guardian to approve" |
 | `BAD_ORIGIN` | 403 | Request didn't come from our site | Bug: you called the API directly instead of through `/api` |
 | `EMAIL_TAKEN` | 409 | Email already registered | Link to login |
 | `RATE_LIMITED` | 429 | Too many tries | Ask to wait |

@@ -392,7 +392,7 @@ erDiagram
 
 | Group | Tables | Modules | Built |
 | --- | --- | --- | --- |
-| Identity and access | organizations, users, refresh_tokens, password_reset_tokens | M1 | Phase 2 (first 3), later |
+| Identity, access and consent | organizations, users, refresh_tokens, consents, password_reset_tokens | M1 | Phase 2 (first 4), later |
 | Courses and skill graph | languages, courses, course_languages, skills, skill_prerequisites, skill_resources, skill_graph_changes, concept_chunks | M2 | MVP (first 6), later |
 | Enrollment and diagnostic | enrollments, diagnostic_items, diagnostic_attempts, diagnostic_responses, diagnostic_results | M1, M3 | MVP |
 | Mastery and reviews | mastery_records, evidence_events, review_items | M4, M10 | MVP |
@@ -400,7 +400,7 @@ erDiagram
 | Attempts and execution | exercise_attempts, submissions, sandbox_runs, run_test_results | M7 | MVP |
 | Hints, sessions, recommendations | hint_events, learning_sessions, session_steps, recommendations | M5, M8, M9 | MVP |
 | Scaffolding fade | fade_schedules, fade_stages, skill_scaffolding, fade_stage_changes | M12 | MVP |
-| Analytics, research, cost | calibration_records, consents, llm_calls, audit_log | M13 | MVP (first 3), later |
+| Analytics, research, cost | calibration_records, llm_calls, audit_log | M13 | MVP (first 2), later |
 
 ### 5.3 Identity and access (M1)
 
@@ -424,7 +424,8 @@ erDiagram
     enum role "LEARNER AUTHOR ADMIN"
     text password_hash "argon2id, never the password"
     text timezone "default Asia/Kolkata, display only"
-    enum status "active or disabled"
+    date date_of_birth "required at sign-up; under 18 needs a parent"
+    enum status "active, disabled or pending_parent"
     timestamptz email_verified_at
     timestamptz last_login_at
     timestamptz created_at
@@ -988,7 +989,7 @@ erDiagram
   consents {
     uuid id PK
     uuid user_id FK
-    enum kind "research_study data_processing"
+    enum kind "data_processing terms parental ai_training research_study"
     text policy_version
     timestamptz granted_at
     timestamptz revoked_at
@@ -1016,7 +1017,7 @@ erDiagram
 ```
 
 - **Calibration** compares predicted mastery with the result on a held-out exercise (FR-M13-01).
-- **Consent** is recorded before any learner data is used in the college study, and is never deleted (`RESTRICT`).
+- **Consent** (owned by M1 since 14 Oct, so sign-up and consent save in one transaction) records each agreement with its policy version. `data_processing` and `terms` are required at sign-up; `ai_training` and `research_study` are optional, adults only. A minor gets none until a parent approves (`parental`). Rows are never deleted (`RESTRICT`); see `DOCS/legal/dpdp-compliance.md`.
 - `llm_calls` tracks token use and estimated cost of every Gemini call.
 - Hint trends, bottom-out rate, exercise effectiveness, generation failure rate, execution statistics and LLM cost will be **SQL views** over existing tables, not extra tables. They are written together with the analytics page, once its exact queries are known.
 
@@ -1060,6 +1061,9 @@ A table is created only after the tables it points to. Each step is one versione
 | 0007_diagnostic | diagnostic_items, diagnostic_attempts, diagnostic_responses, diagnostic_results | **Built** |
 | 0008_mastery | mastery_records, evidence_events, review_items | **Built** |
 | 0009_research | calibration_records, consents | **Built** |
+| 0010_skill_resources_unique_url | UNIQUE(skill_id, url) on skill_resources | **Built** |
+| 0011_drop_video_resources | resource kinds cut to article, docs; unused skills column dropped | **Built** |
+| 0012_consent_at_register | users.date_of_birth, user status pending_parent, consent kinds terms, parental, ai_training | **Built** |
 | Later | analytics views; password_reset_tokens, skill_graph_changes, concept_chunks (+ `vector`), audit_log | With their features |
 
 Totals: 38 tables built for the MVP, 4 later (42). Enums are created in the migration of the first table that uses them. The seed (`pnpm db:seed`) loads the C++ language, the `dsa` and `cpp-basics` courses, and the default 4-stage fade schedule; it is safe to run repeatedly.
@@ -1665,11 +1669,11 @@ Base: `/api/v1/auth`. Web sends `client` as `web` (default) and works with cooki
 
 | Endpoint | Request | Success | Errors |
 | --- | --- | --- | --- |
-| `POST /register` | `{ email, password (8–128), displayName (1–80) }` | `201 { user }`, no tokens; the app shows the login screen | `400 VALIDATION_ERROR`, `409 EMAIL_TAKEN`, `429 RATE_LIMITED` |
-| `POST /login` | `{ email, password, client? }` | Web: `204` + cookies. Mobile: `200 { accessToken, refreshToken, expiresIn }` | `401 INVALID_CREDENTIALS` (same for a wrong email or password), `429` |
+| `POST /register` | `{ email, password (8–128), displayName (1–80), dateOfBirth, acceptTerms, acceptPrivacy, aiTraining?, research? }` | `201 { user }`, no tokens; adults go to login, under-18s get `status: pending_parent` | `400 VALIDATION_ERROR`, `409 EMAIL_TAKEN`, `429 RATE_LIMITED` |
+| `POST /login` | `{ email, password, client? }` | Web: `204` + cookies. Mobile: `200 { accessToken, refreshToken, expiresIn }` | `401 INVALID_CREDENTIALS` (same for a wrong email or password), `403 PARENT_APPROVAL_PENDING`, `429` |
 | `POST /refresh` | Web: the refresh cookie. Mobile: `{ refreshToken }` | Same as login, with a new token pair | `401 UNAUTHENTICATED` (log in again) |
 | `POST /logout` | Same as refresh | `204`, cookies cleared, the whole login revoked | none |
-| `GET /me` | Access cookie, or `Authorization: Bearer <accessToken>` | `200 { user: { id, email, displayName, role, timezone, createdAt } }` | `401 TOKEN_EXPIRED` (refresh, then retry), `401 UNAUTHENTICATED` |
+| `GET /me` | Access cookie, or `Authorization: Bearer <accessToken>` | `200 { user: { id, email, displayName, role, timezone, dateOfBirth, status, createdAt } }` | `401 TOKEN_EXPIRED` (refresh, then retry), `401 UNAUTHENTICATED` |
 
 Rate limits: login 20 per IP and 5 failures per email per 15 minutes; register 5 per IP per hour; refresh 30 per IP per minute. Any cookie-carrying write from an origin other than the web app gets `403 BAD_ORIGIN`.
 

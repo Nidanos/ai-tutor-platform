@@ -13,7 +13,7 @@
 | # | Obligation | How | Status |
 |---|---|---|---|
 | 1 | Standalone, plain-language notice (Rule 3) | [privacy-policy.md](privacy-policy.md) | Draft |
-| 2 | Consent: free, specific, informed, unbundled; withdrawal as easy as giving (s.6) | Separate tick boxes per purpose; a withdraw button in Settings | To build |
+| 2 | Consent: free, specific, informed, unbundled; withdrawal as easy as giving (s.6) | Separate tick boxes per purpose (built: register, migration 0012); a withdraw button in Settings (to build) | Partly built |
 | 3 | Children: verifiable parental consent; no tracking or ads (s.9, Rule 10) | [parental-consent.md](parental-consent.md) | To build |
 | 4 | Reasonable security safeguards (s.8(5), Rule 6) | Section 7 | Partly built |
 | 5 | Breach notice to the Board and each affected user (s.8(6), Rule 7) | [breach-response-plan.md](breach-response-plan.md) | Draft |
@@ -27,7 +27,7 @@
 ## 3. Data inventory
 | Table(s) | Personal data | Purpose | Consent | Retention |
 |---|---|---|---|---|
-| `users` | email, display name, password hash, timezone, DOB *(to add)*, last login | Account, sign-in, age check | core | Until deleted, or 3 years inactive |
+| `users` | email, display name, password hash, timezone, DOB, last login | Account, sign-in, age check | core | Until deleted, or 3 years inactive |
 | `refresh_tokens` | IP, user agent, client, times | Security, theft detection | core | Expired rows kept 1 year, then deleted |
 | `enrollments` | courses, language, goal text | Teaching | core | With the account |
 | `exercise_attempts`, `submissions`, `sandbox_runs`, `run_test_results`, `hint_events` | code, verdicts, timings, hint use | Grading, mastery | core | Code purged when the skill is cleared; the rest stays with the account |
@@ -38,7 +38,7 @@
 | `consents` | kind, notice version, times | Proof of consent | n/a (legal duty) | Up to 3 years after account deletion, linked to an anonymous ID |
 | `llm_calls` | **no personal data** (model, tokens, cost) | Cost control | n/a | 1 year |
 
-**Consent kinds needed** (`consent_kind` enum; today it has only `data_processing` and `research_study`):
+**Consent kinds** (`consent_kind` enum, all built in migration 0012; policy version `0.1`):
 
 | Kind | Required? | Who |
 |---|---|---|
@@ -101,7 +101,7 @@ The Board weighs the size of the business and our good faith, so a documented, h
 
 ## 9. Before launch
 - [ ] Lawyer reviews the Privacy Policy, Terms and parental flow, including a written opinion on s.9(3)
-- [ ] Consent kinds and DOB at register (Part 2 of the build)
+- [x] Consent kinds and DOB at register (Part 2 of the build, 14 Oct)
 - [ ] `GET /me/data`, `PATCH /me`, `DELETE /me`, consent withdrawal
 - [ ] Retention jobs (section 4)
 - [ ] Vendor DPAs accepted and the providers page published
