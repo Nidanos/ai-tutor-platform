@@ -1,27 +1,51 @@
 import { e2bProvider } from "../../../infrastructure/sandbox/e2b-provider.js";
 import type { SandboxProvider } from "../../../infrastructure/sandbox/sandbox-provider.js";
+import { recordEvidence } from "../../m4_mastery/services/mastery.service.js";
 import { getRunnableExercise } from "../../m6_exercises/services/exercises.service.js";
 import * as repo from "../repositories/submissions.repository.js";
 import { excerpt, judgeTest, overallVerdict, sameOutput, type Verdict } from "./judge.js";
 import { TOOLCHAINS } from "./toolchains.js";
 
 const CE_COUNTS_FROM = 3; // the 3rd compile error counts as an attempt and offers a hint (ADR-0004)
+// Practice and review move mastery. The diagnostic seeds it once; holdout calibrates first (design §5.9).
+const EVIDENCE_CONTEXTS = new Set(["practice", "review"]);
 
-// The worker's job: run one submission and save its verdict (design §6.5).
+type Finish = Omit<repo.Outcome, "submissionId" | "attemptId" | "testsTotal">;
+
+// The worker's job: run one submission, save its verdict and its mastery evidence (design §6.5).
 // A sandbox failure is retried with a fresh sandbox; after the last try the verdict is SE.
 export async function runSubmission(submissionId: string, isLastTry: boolean, provider: SandboxProvider = e2bProvider) {
   const found = await repo.findSubmissionForRun(submissionId);
   if (!found || found.submission.status === "completed") return; // gone, or a duplicate job
-  const { submission, ceCount } = found;
+  const { submission, attempt } = found;
   const exercise = await getRunnableExercise(submission.exerciseId);
   const answer = submission.answer ?? "";
-  const base = { submissionId, attemptId: submission.attemptId, testsTotal: exercise.tests.length };
   await repo.setSubmissionStatus(submissionId, "running");
+
+  // Verdict, run details and mastery change are saved in one transaction.
+  const finish = async (outcome: Finish) => {
+    const evidence =
+      outcome.countsAsAttempt && EVIDENCE_CONTEXTS.has(attempt.context)
+        ? {
+            userId: submission.userId,
+            skillId: exercise.skillId,
+            languageCode: submission.languageCode,
+            submissionId,
+            verdict: outcome.verdict,
+            rung: exercise.rung,
+            hintsUsed: attempt.hintLevel,
+            activeMs: attempt.activeMs,
+            isRepeatFailure: await repo.hasPenalisedFailure(submission.attemptId, submissionId),
+          }
+        : undefined;
+    const outcomeRow = { ...outcome, submissionId, attemptId: submission.attemptId, testsTotal: exercise.tests.length };
+    await repo.saveOutcome(outcomeRow, evidence && ((tx) => recordEvidence(tx, evidence)));
+  };
 
   // Rung 1 is "predict the output": the answer is text, so no code runs (ADR-0002).
   if (exercise.rung === 1) {
     const verdict = sameOutput(answer, exercise.tests[0]?.expectedOutput ?? "") ? "AC" : "WA";
-    return repo.saveOutcome({ ...base, verdict, testsPassed: verdict === "AC" ? 1 : 0, countsAsAttempt: true, testResults: [] });
+    return finish({ verdict, testsPassed: verdict === "AC" ? 1 : 0, countsAsAttempt: true, testResults: [] });
   }
 
   const toolchain = TOOLCHAINS[submission.languageCode as keyof typeof TOOLCHAINS];
@@ -49,16 +73,15 @@ export async function runSubmission(submissionId: string, isLastTry: boolean, pr
       await repo.setSubmissionStatus(submissionId, "queued");
       throw err; // BullMQ tries again
     }
-    return repo.saveOutcome({ ...base, verdict: "SE", testsPassed: 0, countsAsAttempt: false, testResults: [] });
+    return finish({ verdict: "SE", testsPassed: 0, countsAsAttempt: false, testResults: [] });
   }
 
   const verdicts = result.tests.map((run, i) => judgeTest(run, exercise.tests[i].expectedOutput ?? "", exercise));
   const verdict: Verdict = result.compile.ok ? overallVerdict(verdicts) : "CE";
-  await repo.saveOutcome({
-    ...base,
+  await finish({
     verdict,
     testsPassed: verdicts.filter((v) => v === "AC").length,
-    countsAsAttempt: verdict !== "SE" && (verdict !== "CE" || ceCount + 1 >= CE_COUNTS_FROM),
+    countsAsAttempt: verdict !== "SE" && (verdict !== "CE" || attempt.ceCount + 1 >= CE_COUNTS_FROM),
     run: {
       id: runId,
       values: {

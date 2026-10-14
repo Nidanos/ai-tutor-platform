@@ -1,5 +1,5 @@
-import { and, desc, eq, sql } from "drizzle-orm";
-import { db } from "../../../infrastructure/database/index.js";
+import { and, desc, eq, inArray, ne, sql } from "drizzle-orm";
+import { db, type Tx } from "../../../infrastructure/database/index.js";
 import {
   exerciseAttempts,
   runTestResults,
@@ -38,11 +38,36 @@ export const findOwnSubmission = async (id: string, userId: string) =>
 export const findSubmissionForRun = async (id: string) =>
   (
     await db
-      .select({ submission: submissions, ceCount: exerciseAttempts.ceCount })
+      .select({
+        submission: submissions,
+        attempt: {
+          context: exerciseAttempts.context,
+          ceCount: exerciseAttempts.ceCount,
+          hintLevel: exerciseAttempts.hintLevel,
+          activeMs: exerciseAttempts.activeMs,
+        },
+      })
       .from(submissions)
       .innerJoin(exerciseAttempts, eq(exerciseAttempts.id, submissions.attemptId))
       .where(eq(submissions.id, id))
   )[0];
+
+// Was a WA/RE already penalised in this attempt? Debugging by trial is penalised once (ADR-0004).
+export const hasPenalisedFailure = async (attemptId: string, exceptSubmissionId: string) =>
+  (
+    await db
+      .select({ id: submissions.id })
+      .from(submissions)
+      .where(
+        and(
+          eq(submissions.attemptId, attemptId),
+          ne(submissions.id, exceptSubmissionId),
+          eq(submissions.countsAsAttempt, true),
+          inArray(submissions.verdict, ["WA", "RE"]),
+        ),
+      )
+      .limit(1)
+  ).length > 0;
 
 export const setSubmissionStatus = (id: string, status: "queued" | "running") =>
   db.update(submissions).set({ status }).where(eq(submissions.id, id));
@@ -67,8 +92,9 @@ export type Outcome = {
   testResults: (typeof runTestResults.$inferInsert)[];
 };
 
-// The verdict and everything behind it are saved together or not at all.
-export const saveOutcome = (o: Outcome) =>
+// The verdict and everything behind it are saved together or not at all; afterSave lets
+// another module (M4 mastery) write in the same transaction.
+export const saveOutcome = (o: Outcome, afterSave?: (tx: Tx) => Promise<void>) =>
   db.transaction(async (tx) => {
     const now = new Date();
     if (o.run) {
@@ -97,6 +123,7 @@ export const saveOutcome = (o: Outcome) =>
         ...(o.verdict === "AC" && { status: "solved" as const, solvedAt: now }),
       })
       .where(eq(exerciseAttempts.id, o.attemptId));
+    await afterSave?.(tx);
   });
 
 // The latest run of a submission (an earlier one may have hit a sandbox error), with its test results.

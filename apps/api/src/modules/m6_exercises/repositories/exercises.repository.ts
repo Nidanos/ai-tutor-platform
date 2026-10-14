@@ -7,6 +7,7 @@ export const findExercise = async (id: string) =>
     await db
       .select({
         id: exercises.id,
+        skillId: exercises.skillId,
         rung: exercises.rung,
         languageCode: exercises.languageCode,
         timeLimitMs: exercises.timeLimitMs,

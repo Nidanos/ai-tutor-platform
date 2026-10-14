@@ -5,8 +5,10 @@ import { describe, expect, it, vi } from "vitest";
 import { app } from "../src/app.js";
 import { db } from "../src/infrastructure/database/index.js";
 import {
+  evidenceEvents,
   exerciseAttempts,
   exerciseSecrets,
+  masteryRecords,
   exerciseTests,
   submissions,
   users,
@@ -51,6 +53,10 @@ const sandbox = (result: Partial<RunResult>): SandboxProvider => ({
   run: async () => ({ sandboxId: "fake", compile: { ok: true, output: "" }, tests: [], ...result }),
 });
 const brokenSandbox: SandboxProvider = { run: () => Promise.reject(new Error("sandbox down")) };
+const evidenceOf = (userId: string) =>
+  db.select().from(evidenceEvents).where(eq(evidenceEvents.userId, userId)).orderBy(evidenceEvents.id);
+const masteryOf = async (userId: string) => (await db.select().from(masteryRecords).where(eq(masteryRecords.userId, userId)))[0];
+const failed = (stdout: string): TestRun => ({ ...passed(stdout), stdout: "wrong" });
 const submissionRow = async (id: string) => (await db.select().from(submissions).where(eq(submissions.id, id)))[0];
 
 describe("submissions", () => {
@@ -111,5 +117,29 @@ describe("submissions", () => {
 
     await runSubmission(id, true, brokenSandbox);
     expect(await submissionRow(id)).toMatchObject({ status: "completed", verdict: "SE", countsAsAttempt: false });
+  });
+
+  it("turns an AC into writing mastery, saved with its ledger row", async () => {
+    const { attempt, api } = await learnerWithAttempt(); // rung 3, no hints
+    await runSubmission(await submit(api, attempt.id), false, sandbox({ tests: [passed("6"), passed("27")] }));
+    expect((await masteryOf(attempt.userId)).writingScore).toBeCloseTo(0.24); // 0.4 × 3/5
+    expect(await evidenceOf(attempt.userId)).toMatchObject([{ verdict: "AC", scoreBefore: 0, formulaVersion: "m4-v1" }]);
+  });
+
+  it("penalises only the first wrong answer of an attempt", async () => {
+    const { attempt, api } = await learnerWithAttempt();
+    for (let i = 0; i < 2; i++) {
+      await runSubmission(await submit(api, attempt.id), false, sandbox({ tests: [failed("6"), passed("27")] }));
+    }
+    const [first, second] = await evidenceOf(attempt.userId);
+    expect(first).toMatchObject({ verdict: "WA", scoreBefore: 0, scoreAfter: 0 }); // nothing to lose yet
+    expect(second.weight).toBe(0); // the repeat was recorded, but not penalised
+  });
+
+  it("records no evidence for SE or an early compile error", async () => {
+    const { attempt, api } = await learnerWithAttempt();
+    await runSubmission(await submit(api, attempt.id), true, brokenSandbox);
+    await runSubmission(await submit(api, attempt.id), false, sandbox({ compile: { ok: false, output: "error" } }));
+    expect(await evidenceOf(attempt.userId)).toEqual([]);
   });
 });
