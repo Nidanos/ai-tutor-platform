@@ -4,6 +4,7 @@ import { courseLanguages, courses, fadeSchedules, fadeStages, languages } from "
 import { cppBasicsSkills } from "./cpp-basics.js";
 import { courseRows, DEFAULT_LANGUAGE, defaultFadeStages, languageRows } from "./data.js";
 import { seedSkills } from "./seed-skills.js";
+import { seedStarterExercise } from "./starter-exercise.js";
 
 // Safe to run any number of times.
 await db.insert(languages).values(languageRows).onConflictDoNothing();
@@ -27,6 +28,7 @@ await db
   .onConflictDoNothing();
 
 await seedSkills("cpp-basics", cppBasicsSkills);
+await seedStarterExercise();
 
 await db.$client.end();
 console.log("Seed complete");

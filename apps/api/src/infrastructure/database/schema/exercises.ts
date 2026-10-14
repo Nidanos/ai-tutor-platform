@@ -80,7 +80,8 @@ export const exerciseSecrets = pgTable("exercise_secrets", {
   generatorSeed: integer(),
 });
 
-// All tests run inside the frozen harness; input/output are stored only to show sample tests.
+// Every test stores its expected output: the judge compares outside the sandbox (ADR-0003).
+// Hidden tests' input and output never leave the server.
 export const exerciseTests = pgTable(
   "exercise_tests",
   {
