@@ -1,7 +1,7 @@
 # ADR-0004: Grading verdicts, limits and evidence policy
 
-- **Status:** Accepted (the M4 formula sizes are still open)
-- **Date:** 25 Sep 2026, updated 13 Oct 2026
+- **Status:** Accepted
+- **Date:** 25 Sep 2026, updated 13 and 15 Oct 2026
 - **Decided by:** Ashwani Kumar Puri
 - **SRS links:** FR-M4-02, FR-M4-05, FR-M6-02, FR-M6-03, FR-M7-02, FR-M7-03, FR-M8-03, FR-M8-05, NFR-R2
 
@@ -36,6 +36,22 @@
   3. the brute force **fails the big tests with TLE** (proving the tests can tell fast from slow).
 - **If the tests can't tell fast from slow,** regenerate with a bigger n (max 2 retries). If that still fails, **discard the exercise and fall back to the template bank** (option (a), 25 Sep).
 
+## M4 formula v1 *(approved 15 Oct; `formula_version = m4-v1`)*
+```
+AC:       new = old + 0.40 × weight × (1 − old)        weight = rung/5 × hints × time
+WA / RE:  new = old × (1 − 0.15 × failWeight)           failWeight = (6 − rung)/5
+TLE/MLE:  as WA, penalty 0.15/20 doubling per consecutive TLE/MLE, capped at 0.15
+```
+| Factor | Value |
+|---|---|
+| hints | 1 − 0.15 per hint used; hint level 5 (solution shown) = 0 |
+| time | 1, falling to 0.7 when much slower than the rung's usual time (5/8/12/15/20 min, placeholders). 1 until sessions track active time |
+| Dimension | Rung 1 (Predict) moves **reading**; rungs 2–5 move **writing** |
+| Repeated WA/RE in one attempt | **Only the first is penalised**; debugging by trial isn't punished again |
+| Counted CE (3rd+) | Counts in attempt totals, **no score change** |
+| SE, early CE, diagnostic attempts | No evidence |
+
+About five good solves (rungs 2→5) take a new skill from 0 to 0.72, just past the 0.7 prerequisite threshold. Code: `m4_mastery/services/mastery-formula.ts` (pure, unit-tested). The verdict and its evidence are saved in one transaction, with the mastery row locked.
+
 ## Open
-- **M4 formula:** the size of the AC gain and the WA penalty, and how rung, hints and time weight them (FR-M4-05).
 - **Q10c:** minimum number of handwritten template exercises per skill and rung for the MVP. The template bank is load-bearing, because every exercise that fails verification falls back to it.

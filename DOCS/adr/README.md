@@ -7,7 +7,7 @@ Last updated: 13 Oct 2026. These record decisions Ashwani has made. Where no dec
 | [0001](0001-v1-domain-dsa.md) | v1 course is DSA, with a C++ basics track; own skill map, text + visuals, no videos | Accepted |
 | [0002](0002-exercise-language-cpp20.md) | Language-agnostic exercises; C++20 on clang 19 first | Accepted |
 | [0003](0003-sandbox-e2b-own-adapter.md) | E2B plus our own judge adapter, one sandbox per learner session | Accepted |
-| [0004](0004-grading-and-evidence-policy.md) | Verdicts (incl. SE), limits, evidence policy, mutation check | Accepted; formula sizes open |
+| [0004](0004-grading-and-evidence-policy.md) | Verdicts (incl. SE), limits, evidence policy, mutation check, M4 formula v1 | Accepted |
 | [0005](0005-deterministic-system-llm-content.md) | LLM content, deterministic system: generate, validate, freeze | Accepted |
 | [0006](0006-mvp-api-scope.md) | 22-API MVP | Accepted; M9 pause/resume open |
 | [0007](0007-per-skill-scaffolding-fade.md) | Help fades per skill; clearing a skill; code retention | Accepted |
@@ -20,7 +20,6 @@ Last updated: 13 Oct 2026. These record decisions Ashwani has made. Where no dec
 | - | The DSA skill list, edges and resources (C++ basics done: 20 skills, 14 Oct) | Seed data, recommender |
 | - | Visual format: Mermaid diagrams generated as text and frozen (recommended: cheap, deterministic, readable labels) or an image-generation model | Lesson content |
 | - | Source to cross-check the DSA skill list (university syllabi) | DSA seed |
-| - | M4 update formula: AC gain, WA penalty, weighting by rung, hints and time | Mastery engine (Phase 3) |
 | - | Prerequisite threshold (0.7 is a placeholder) | Recommender |
 | Q8 | Guide name (roll numbers and team rows are in the Phase 2 doc) | Phase-2 docs |
 | Q10c | Minimum template exercises per skill and rung for the MVP | M6 fallback |
