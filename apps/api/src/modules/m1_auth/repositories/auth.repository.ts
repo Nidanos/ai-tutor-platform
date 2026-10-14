@@ -1,7 +1,7 @@
 import { and, eq, isNull } from "drizzle-orm";
 import { v7 as uuidv7 } from "uuid";
 import { db } from "../../../infrastructure/database/index.js";
-import { organizations, refreshTokens, users } from "../../../infrastructure/database/schema/index.js";
+import { consents, organizations, refreshTokens, users } from "../../../infrastructure/database/schema/index.js";
 
 // What clients may see of a user. Never the password hash.
 const publicUser = {
@@ -10,15 +10,23 @@ const publicUser = {
   displayName: users.displayName,
   role: users.role,
   timezone: users.timezone,
+  dateOfBirth: users.dateOfBirth,
+  status: users.status,
   createdAt: users.createdAt,
 };
 
-// A learner always gets their own hidden personal organisation, in the same transaction.
-export const createLearner = (email: string, passwordHash: string, displayName: string) =>
+export type ConsentKind = (typeof consents.$inferInsert)["kind"];
+type NewLearner = Pick<typeof users.$inferInsert, "email" | "passwordHash" | "displayName" | "dateOfBirth" | "status">;
+
+// The user, their hidden personal organisation and their consents are saved together or not at all.
+export const createLearner = (learner: NewLearner, consentKinds: ConsentKind[], policyVersion: string) =>
   db.transaction(async (tx) => {
     const orgId = uuidv7();
-    await tx.insert(organizations).values({ id: orgId, name: displayName, slug: orgId });
-    const [user] = await tx.insert(users).values({ orgId, email, passwordHash, displayName }).returning(publicUser);
+    await tx.insert(organizations).values({ id: orgId, name: learner.displayName, slug: orgId });
+    const [user] = await tx.insert(users).values({ orgId, ...learner }).returning(publicUser);
+    if (consentKinds.length) {
+      await tx.insert(consents).values(consentKinds.map((kind) => ({ userId: user.id, kind, policyVersion })));
+    }
     return user;
   });
 

@@ -5,7 +5,8 @@ import { describe, expect, it } from "vitest";
 import { app } from "../src/app.js";
 import { env } from "../src/config/env.js";
 import { db } from "../src/infrastructure/database/index.js";
-import { refreshTokens } from "../src/infrastructure/database/schema/index.js";
+import { consents, refreshTokens } from "../src/infrastructure/database/schema/index.js";
+import { ageOn } from "../src/modules/m1_auth/services/age.js";
 import { sha256 } from "../src/shared/auth/tokens.js";
 import { uniq } from "./helpers.js";
 
@@ -16,7 +17,17 @@ const PASSWORD = "correct horse battery";
 const client = () =>
   request.agent(app).set("X-Forwarded-For", `10.0.${randomInt(256)}.${randomInt(256)}`).set("Origin", env.WEB_ORIGIN);
 
-const newAccount = () => ({ email: `${uniq()}@test.dev`, password: PASSWORD, displayName: "Tester" });
+const yearsAgo = (years: number) => `${new Date().getUTCFullYear() - years}-01-01`;
+const newAccount = (age = 30) => ({
+  email: `${uniq()}@test.dev`,
+  password: PASSWORD,
+  displayName: "Tester",
+  dateOfBirth: yearsAgo(age),
+  acceptTerms: true,
+  acceptPrivacy: true,
+});
+const consentKindsOf = async (userId: string) =>
+  (await db.select({ kind: consents.kind }).from(consents).where(eq(consents.userId, userId))).map((c) => c.kind).sort();
 
 async function registerAndLogin() {
   const c = client();
@@ -94,5 +105,42 @@ describe("auth", () => {
     const attempt = () => client().post(`${AUTH}/login`).send({ email: account.email, password: "wrong password" });
     for (let i = 0; i < 5; i++) await attempt().expect(401);
     await attempt().expect(429);
+  });
+});
+
+describe("consent at sign-up", () => {
+  const register = (body: object) => client().post(`${AUTH}/register`).send(body);
+
+  it("records the required consents plus only the opt-ins chosen", async () => {
+    const res = await register({ ...newAccount(), aiTraining: true }).expect(201);
+    expect(await consentKindsOf(res.body.data.user.id)).toEqual(["ai_training", "data_processing", "terms"]);
+  });
+
+  it("refuses sign-up without accepting the Terms", async () => {
+    const res = await register({ ...newAccount(), acceptTerms: false }).expect(400);
+    expect(res.body.error.code).toBe("VALIDATION_ERROR");
+  });
+
+  it("refuses a date of birth in the future", async () => {
+    await register({ ...newAccount(), dateOfBirth: yearsAgo(-1) }).expect(400);
+  });
+
+  it("holds a minor for parental approval, with no consent recorded", async () => {
+    const account = newAccount(12);
+    const res = await register(account).expect(201);
+    expect(res.body.data.user.status).toBe("pending_parent");
+    expect(await consentKindsOf(res.body.data.user.id)).toEqual([]);
+
+    const login = await client().post(`${AUTH}/login`).send({ email: account.email, password: PASSWORD }).expect(403);
+    expect(login.body.error.code).toBe("PARENT_APPROVAL_PENDING");
+  });
+
+  it("refuses AI-training or research opt-ins from a minor", async () => {
+    await register({ ...newAccount(12), research: true }).expect(400);
+  });
+
+  it("counts age in whole years, turning 18 on the birthday", () => {
+    expect(ageOn("2008-10-15", new Date("2026-10-14"))).toBe(17);
+    expect(ageOn("2008-10-15", new Date("2026-10-15"))).toBe(18);
   });
 });
