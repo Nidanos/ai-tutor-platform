@@ -6,8 +6,8 @@ import type { SkillSeed } from "./cpp-basics.js";
 // Placeholders until calibration: syntax fades in ~2 weeks, concepts in ~5 (half-life = ln 2 / λ).
 const DECAY_PER_DAY = { syntactic: 0.05, conceptual: 0.02 } as const;
 
-// Skills are upserted, so editing the data file and re-seeding updates them.
-// Edges and resources are only added; removing one from the data doesn't delete it.
+// Skills and resources are upserted, so editing the data file (names, titles, order) and re-seeding
+// updates them. Removing an edge or a resource from the data doesn't delete it.
 export async function seedSkills(courseSlug: string, sourceUrl: string, list: SkillSeed[]) {
   const [course] = await db.select({ id: courses.id }).from(courses).where(eq(courses.slug, courseSlug));
 
@@ -44,5 +44,13 @@ export async function seedSkills(courseSlug: string, sourceUrl: string, list: Sk
   if (edges.length) await db.insert(skillPrerequisites).values(edges).onConflictDoNothing();
 
   const resources = list.flatMap((s) => s.resources.map((r, position) => ({ skillId: idOf.get(s.slug)!, ...r, position })));
-  if (resources.length) await db.insert(skillResources).values(resources).onConflictDoNothing();
+  if (resources.length) {
+    await db
+      .insert(skillResources)
+      .values(resources)
+      .onConflictDoUpdate({
+        target: [skillResources.skillId, skillResources.url],
+        set: { title: sql`excluded.title`, kind: sql`excluded.kind`, position: sql`excluded.position` },
+      });
+  }
 }
