@@ -9,6 +9,8 @@ Reorganised 25 Sep 2026. Nothing was deleted; the old files were moved into the 
 | `api/` | Frontend API guide: live endpoints, how to call them, planned endpoints | **Live.** Updated as endpoints ship |
 | `phase-2/` | System design: DFD, ER, UML, schema, API design, traceability, implementation status | **Phase-2 deliverable** (15 Oct) |
 | `adr/` | Architecture Decision Records and the list of open decisions | **Live.** Phase-2 deliverable |
+| `legal/` | Privacy Policy, Terms, parental consent, DPDP compliance, breach plan | **Drafts.** Lawyer review before launch |
+| `business/` | Founders' agreement, setup checklist, college NOC letter | **Drafts.** Founders act on these |
 | `spec/` | Full API specification (~98 operations, the long-term plan) | Live; see the status note at the top |
 | `reference/` | `ai-tutor-mvp.ts`: a fake stub, endpoint shapes only | Reference only |
 | `background/` | Original 7 Aug project definition and the team narrative (.docx) | Historical |
@@ -23,4 +25,4 @@ Reorganised 25 Sep 2026. Nothing was deleted; the old files were moved into the 
 | 7 Oct | Phase 2 | System design (DFD, ER, UML), ADRs, partial implementation |
 | 23 Oct | Phase 3 | Implementation, testing, draft report |
 
-**Note:** `DOCS/` is tracked in git (audit item C1, resolved in commit `f4383b2`).
+**Note:** `DOCS/` is tracked in git (audit item C1, resolved).
