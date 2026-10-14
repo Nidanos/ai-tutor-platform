@@ -1757,12 +1757,14 @@ Rate limits: login 20 per IP and 5 failures per email per 15 minutes; register 5
 
 - pnpm monorepo: `apps/api` (Express 5 + TypeScript 6), `apps/web` (Next.js 16, React 19), `packages/types`, `packages/config`. Exact pinned versions, Node 22.
 - Local infrastructure via `docker compose`: PostgreSQL 16 with pgvector, Redis 7, with secrets in `.env`; settings validated with zod at startup.
-- **Database:** all 38 MVP tables (section 5) as Drizzle schema files with 10 versioned migrations, plus an idempotent seed.
+- **Database:** all 38 MVP tables (section 5) as Drizzle schema files with 13 versioned migrations, plus an idempotent seed: the C++ basics course (20 skills, 23 prerequisites, further-reading links) and one verified starter exercise.
 - **Auth (M1):** register, login, refresh, logout and me (section 7.3): argon2id passwords, 15-minute JWT, rotating refresh tokens with theft detection, httpOnly cookies for web and Bearer tokens for mobile, rate limits and a CSRF origin check.
+- **Consent at sign-up (DPDP):** date of birth, required Terms and Privacy consents, optional AI-training and research opt-ins (adults only); under-18 accounts wait for a parent.
+- **Execution (M7):** `POST /submissions` (202 + idempotency key) and `GET /submissions/:id/result` (polling); a BullMQ worker runs each submission in a fresh, offline E2B sandbox (clang 19), and a pure judge gives AC/WA/CE/RE/TLE/MLE/SE. Checked end to end on real E2B: about 6 s per submission.
 - **Shared layer:** one error type, one response envelope, one error handler.
-- **Tests:** 24 automated tests on a separate test database: 16 check the database rules (uniqueness, ranges, fade ceiling, evidence sources) and 8 check the auth flows (including stolen-token reuse and throttling).
+- **Tests:** 47 automated tests on a separate test database: database rules, auth and consent flows, the verdict judge, and submissions with a fake sandbox. `pnpm sandbox:smoke` checks all six verdicts on real E2B.
 
-**Next (Phase 3, 23 Oct):** skill graph and resources seed, enrollment and diagnostic, mastery engine, first E2B judge run (AC/WA/CE/TLE end to end), API contract frozen for the frontend.
+**Next (Phase 3, 23 Oct):** mastery engine (evidence from each verdict), exercises endpoint that starts attempts, enrollment and diagnostic, API contract frozen for the frontend.
 
 ---
 

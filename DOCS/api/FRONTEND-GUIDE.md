@@ -79,6 +79,49 @@ type User = {
 };
 ```
 
+## 4b. Submissions (live, 15 Oct)
+
+Base path: `/api/v1/submissions`. Logged in only. Max **10 submits per minute** per learner.
+
+| Method + path | Body | Success | Errors |
+| --- | --- | --- | --- |
+| `POST /` | `{ attemptId, answer, idempotencyKey }` | `202 { submissionId, status: "queued" }` | `400 VALIDATION_ERROR`, `404 ATTEMPT_NOT_FOUND`, `409 ATTEMPT_CLOSED`, `409 IDEMPOTENCY_KEY_REUSED`, `429 RATE_LIMITED` |
+| `GET /:id/result` | none | `200`: while running `{ submissionId, status: "queued" | "running" }`; when done, the full result below | `404 SUBMISSION_NOT_FOUND` |
+
+- **`answer`**: the code from the editor (max 64 KB). For rung 1 ("predict the output") it's the predicted text.
+- **`idempotencyKey`**: make one per press of Submit with `crypto.randomUUID()`. If the request is retried with the same key, you get the same submission back, so it never runs twice.
+- **`attemptId`**: comes from `GET /exercises/:id` once that's live. Until then, for testing: `pnpm dev:attempt you@example.com` (in `apps/api`) prints one.
+- **Polling**: call `GET /:id/result` every **1 second** until `status === "completed"`. A run usually takes **4–7 seconds**. Show a "Running tests…" spinner.
+
+Finished result:
+```ts
+type SubmissionResult = {
+  submissionId: string;
+  status: "completed";
+  verdict: "AC" | "WA" | "CE" | "RE" | "TLE" | "MLE" | "SE";
+  testsPassed: number;
+  testsTotal: number;
+  compileOutput?: string; // only for CE: show it in a monospace box
+  tests: Array<{
+    seq: number; name: string; visibility: "sample" | "hidden";
+    verdict: string; timeMs: number;
+    input?: string; expectedOutput?: string; output?: string; // sample tests only
+  }>; // only tests that ran: after a crash or time-out the rest are skipped
+};
+```
+
+| Verdict | Show the learner |
+| --- | --- |
+| AC | "All tests passed" 🎉 |
+| WA | "Wrong answer on test N": for a sample test show input, expected and their output side by side; for a hidden test only its name |
+| CE | "Doesn't compile" + `compileOutput` |
+| RE | "Your program crashed on test N" (e.g. divide by zero, bad memory access) |
+| TLE | "Too slow on test N": limit 2 s per test |
+| MLE | "Used too much memory on test N": limit 256 MB |
+| SE | "Our checker had a problem, not your code. Please submit again." It doesn't count against the learner |
+
+**Never show hidden tests' input or output.** The API doesn't send them, so don't try to fill them in.
+
 ## 5. Screens and flow
 
 | Moment | Do this |
@@ -152,7 +195,6 @@ Shapes will be published here when each one goes live. Use mock data until then.
 | Mastery | `GET /mastery`, `GET /mastery/:skillId` | Reading and writing scores per skill (always shown separately) |
 | Next step | `GET /recommendations/next` | "What to do next" card |
 | Exercises | `GET /exercises/:id`, `POST /exercises/generate`, `GET /exercises/generation/:jobId` | Exercise page with the Monaco editor |
-| Submissions | `POST /submissions`, `GET /submissions/:id/result` | Submit button, then poll for the verdict (AC, WA, CE, RE, TLE, MLE, SE) |
 | Hints | `POST /exercises/:id/hints` | "Get a hint" button. The server decides the level and returns one hint |
 | Sessions | `POST /sessions`, `GET /sessions/active` | Start or resume studying |
 | Progress | `GET /progress` | Progress page and skill graph |
@@ -171,5 +213,8 @@ Shapes will be published here when each one goes live. Use mock data until then.
 | `PARENT_APPROVAL_PENDING` | 403 | Under-18 account not yet approved by a parent | Show "Waiting for your parent or guardian to approve" |
 | `BAD_ORIGIN` | 403 | Request didn't come from our site | Bug: you called the API directly instead of through `/api` |
 | `EMAIL_TAKEN` | 409 | Email already registered | Link to login |
+| `ATTEMPT_NOT_FOUND` / `SUBMISSION_NOT_FOUND` | 404 | Not yours, or doesn't exist | Reload the exercise |
+| `ATTEMPT_CLOSED` | 409 | Exercise already solved | Show "Solved" and the next step |
+| `IDEMPOTENCY_KEY_REUSED` | 409 | Bug: a key was reused for different code | Make a new key per Submit |
 | `RATE_LIMITED` | 429 | Too many tries | Ask to wait |
 | `INTERNAL_ERROR` | 500 | Server bug | "Something went wrong", tell Ashwani |
