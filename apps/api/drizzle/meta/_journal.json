@@ -71,6 +71,13 @@
       "when": 1791899453632,
       "tag": "0009_research",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1791966806643,
+      "tag": "0010_skill_resources_unique_url",
+      "breakpoints": true
     }
   ]
 }

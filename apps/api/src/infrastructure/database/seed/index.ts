@@ -1,9 +1,11 @@
 import { eq } from "drizzle-orm";
 import { db } from "../index.js";
 import { courseLanguages, courses, fadeSchedules, fadeStages, languages } from "../schema/index.js";
+import { cppBasicsSkills, CPP_SOURCE_URL } from "./cpp-basics.js";
 import { courseRows, DEFAULT_LANGUAGE, defaultFadeStages, languageRows } from "./data.js";
+import { seedSkills } from "./seed-skills.js";
 
-// Safe to run any number of times: existing rows are left as they are.
+// Safe to run any number of times.
 await db.insert(languages).values(languageRows).onConflictDoNothing();
 await db.insert(courses).values(courseRows).onConflictDoNothing();
 
@@ -23,6 +25,8 @@ await db
   .insert(fadeStages)
   .values(schedules.flatMap((s) => defaultFadeStages.map((stage) => ({ scheduleId: s.id, ...stage }))))
   .onConflictDoNothing();
+
+await seedSkills("cpp-basics", CPP_SOURCE_URL, cppBasicsSkills);
 
 await db.$client.end();
 console.log("Seed complete");

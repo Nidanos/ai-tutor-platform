@@ -115,5 +115,5 @@ export const skillResources = pgTable(
     isActive: boolean().notNull().default(true),
     createdAt: createdAt(),
   },
-  (t) => [index().on(t.skillId)],
+  (t) => [unique("skill_resources_url_unique").on(t.skillId, t.url)],
 );
