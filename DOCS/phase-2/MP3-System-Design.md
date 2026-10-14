@@ -41,7 +41,7 @@ Core idea, unchanged from Phase 1: the system keeps a **separate reading and wri
 | --- | --- | --- |
 | First course | Data Structures & Algorithms, with a beginner C++ track. More courses (frontend, backend, full stack) follow | ADR-0001, 13 Oct |
 | Languages | Engine is language-agnostic. **C++20 (clang 19)** ships first; Java and Python follow | ADR-0002, 13 Oct |
-| Skill map and resources | Skills and edges authored by Ashwani. Each skill links to original resources; nothing is copied | ADR-0001, 13 Oct |
+| Skill map and resources | Skills and edges are our own, cross-checked against university syllabi. Each skill links to original text resources as further reading; nothing is copied. No third-party curricula and no videos (commercial licensing, 14 Oct) | ADR-0001, 13 Oct |
 | Code execution | E2B sandbox (network off) + our own judge adapter; one sandbox reused per learner session | ADR-0003, 13 Oct |
 | Verdicts | AC, WA, CE, RE, TLE, MLE, **SE** (sandbox error: not the learner's fault, no mastery effect) | ADR-0004, 13 Oct |
 | Content | LLM-generated, then **verified in the sandbox and frozen**. Grading and next-step selection never use an LLM | ADR-0005 |
@@ -500,7 +500,6 @@ erDiagram
     enum skill_type "syntactic or conceptual"
     double decay_lambda "per day"
     smallint difficulty "1 to 5"
-    text source_url "source page"
     enum status "active or retired"
     timestamptz updated_at
   }
@@ -518,7 +517,7 @@ erDiagram
     text language_code FK "null means any language"
     text title
     text url "original source"
-    enum kind "article video docs course"
+    enum kind "article docs"
     smallint position
     boolean is_active
   }
@@ -1141,7 +1140,6 @@ classDiagram
     +string slug
     +SkillType type
     +number decayLambda
-    +string sourceUrl
   }
   class MasteryRecord {
     +number readingScore

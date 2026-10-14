@@ -10,17 +10,16 @@ The 7 Sep drafts (now in `DOCS/archive/2026-09-07-js-react-drafts/`) set the v1 
 ## Decision
 - The v1 course is **Data Structures & Algorithms**. More courses follow (frontend, backend, full stack), phased over about a year. The engine is course-agnostic: a course is data, not code (NFR-M1).
 - **A full beginner C++ track** exists as its own course (`cpp-basics`). DSA skills on the C++ track depend on its skills, so learners who don't know C++ aren't lost. *(13 Oct; resolves the open question of 25 Sep.)*
-- **The skill map is authored by Ashwani.** Coverage is cross-checked against university syllabi.
-  - A typical DSA syllabus has about 100 entries. Language choices, practice platforms and section headers are not skill nodes, which leaves about **75–85 real skills**.
-  - All prerequisite edges are authored by us.
-- **Resources link out, never copy** *(13 Oct)*. Nidanos is commercial, so no third-party course text or images go into the product. Each skill links to the original articles and docs (`skill_resources`). Skill names, descriptions, edges and exercises are written by us.
+- **The skill map is authored by us.** Skill names, descriptions, prerequisite edges and exercises are our own work. Topic names ("pointers", "loops") are common facts, so coverage is cross-checked against university syllabi (e.g. GGSIPU MCA) and the C++ standard's structure.
+- **No third-party roadmaps or curricula** *(14 Oct)*. The product is commercial, so nothing from another learning site's course or roadmap is used.
+- **Resources link out, never copy** *(13 Oct)*. `skill_resources` holds "further reading" links to the original pages.
 
 ## Learning resources *(14 Oct)*
 | Kind | Source | Rule |
 |---|---|---|
 | Text | AI-written explanations, plus "further reading" links to public tutorial and reference sites | The AI writes its own explanations. It never copies, closely paraphrases or is fed text from linked sites (their licences don't allow it). Exact pages per skill are chosen by us and checked to resolve, so the AI never invents links |
 | Visual | AI-generated diagrams and flowcharts | Format still open (see `README.md`) |
-| Video | Curated by Ashwani | Stored as `skill_resources` with kind `video` |
+| Video | **None** *(14 Oct)* | Not offered: third-party video can't sit behind a paywall. Removed in migration 0011 |
 
 ## Consequences
 - The seed data in `DOCS/reference/ai-tutor-mvp.ts` (JS→React) is obsolete.
