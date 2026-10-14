@@ -85,6 +85,13 @@
       "when": 1791973374918,
       "tag": "0011_drop_video_resources",
       "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "7",
+      "when": 1791979455476,
+      "tag": "0012_consent_at_register",
+      "breakpoints": true
     }
   ]
 }
