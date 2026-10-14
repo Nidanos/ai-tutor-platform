@@ -11,5 +11,6 @@ export const env = z
     DATABASE_URL: z.url(),
     JWT_SECRET: z.string().min(32),
     WEB_ORIGIN: z.url(), // the only origin allowed to send cookie-authenticated writes
+    E2B_API_KEY: z.string().optional(), // only needed to run learner code (ADR-0003)
   })
   .parse(process.env);
