@@ -2,6 +2,7 @@ import cookieParser from "cookie-parser";
 import express from "express";
 import helmet from "helmet";
 import { authRouter } from "./modules/m1_auth/routes/auth.routes.js";
+import { submissionsRouter } from "./modules/m7_execution/routes/submissions.routes.js";
 import { errorHandler } from "./shared/errors/error-handler.js";
 import { checkOrigin } from "./shared/middlewares/check-origin.js";
 
@@ -19,5 +20,6 @@ app.get("/health", (_req, res) => {
 });
 
 app.use("/api/v1/auth", authRouter);
+app.use("/api/v1/submissions", submissionsRouter);
 
 app.use(errorHandler);

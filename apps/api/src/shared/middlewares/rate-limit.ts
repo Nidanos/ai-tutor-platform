@@ -23,3 +23,6 @@ export const loginFailuresByEmail = limiter(15 * MINUTE, 5, {
   keyGenerator: (req) => String(req.body?.email ?? "").toLowerCase(),
   skipSuccessfulRequests: true,
 });
+
+// Every run costs sandbox time: cap it per learner. Runs after authenticate, so req.auth is set.
+export const submissionsByUser = limiter(MINUTE, 10, { keyGenerator: (req) => req.auth!.userId });
