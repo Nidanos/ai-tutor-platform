@@ -117,7 +117,10 @@ export const cppBasicsSkills: SkillSeed[] = [
     type: "syntactic",
     difficulty: 2,
     needs: ["loops"],
-    resources: [learncpp("introduction-to-c-style-arrays", "C-style arrays"), cppref("language/array", "Arrays")],
+    resources: [
+      learncpp("introduction-to-c-style-arrays", "C-style arrays"),
+      cppref("language/array", "Arrays"),
+    ],
   },
   {
     slug: "strings",
@@ -126,7 +129,10 @@ export const cppBasicsSkills: SkillSeed[] = [
     type: "syntactic",
     difficulty: 2,
     needs: ["loops"],
-    resources: [learncpp("introduction-to-stdstring", "std::string"), cppref("string/basic_string", "std::basic_string")],
+    resources: [
+      learncpp("introduction-to-stdstring", "std::string"),
+      cppref("string/basic_string", "std::basic_string"),
+    ],
   },
   {
     slug: "vectors",
