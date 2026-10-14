@@ -41,7 +41,7 @@ export const e2bProvider: SandboxProvider = {
 // Compile and every test in ONE command: the network, not the work, is the slow part.
 // Every line is printed by us after the program has ended, with output in base64, so learner code
 // can't break the format. Line 1: "<compile exit> <output>". Then per test:
-// "<exit code> <peak KB> <stdout> <stderr>". Always exits 0, because commands.run throws otherwise.
+// "<exit code> <peak KB>,<seconds> <stdout> <stderr>". Always exits 0, because commands.run throws otherwise.
 // Tests stop after a crash or time-out: the first failing test decides the verdict anyway.
 function script({ compileCmd, runCmd, limits, tests }: RunRequest) {
   const addressSpace = (limits.memoryLimitMb + ADDRESS_SPACE_SLACK_MB) * 1024 * 1024;
@@ -52,7 +52,7 @@ function script({ compileCmd, runCmd, limits, tests }: RunRequest) {
     `echo "$code $(head -c ${OUTPUT_BYTES} compile.log | base64 -w0)"`,
     `[ $code -ne 0 ] && exit 0`,
     `for n in ${tests.join(" ")}; do`,
-    `  /usr/bin/time -f %M -o mem.$n ${run} < /dev/null > out.$n 2> err.$n; code=$?`,
+    `  /usr/bin/time -f %M,%e -o mem.$n ${run} < /dev/null > out.$n 2> err.$n; code=$?`,
     `  echo "$code $(tail -n 1 mem.$n) $(head -c ${OUTPUT_BYTES} out.$n | base64 -w0) $(head -c ${STDERR_BYTES} err.$n | base64 -w0)"`,
     `  [ $code -ne 0 ] && break`,
     `done; exit 0`,
@@ -62,12 +62,14 @@ function script({ compileCmd, runCmd, limits, tests }: RunRequest) {
 const fromBase64 = (text = "") => Buffer.from(text, "base64").toString("utf8");
 
 function parseTestLine(line: string): TestRun {
-  const [code, peakKb, stdout, stderr] = line.split(" ");
+  const [code, usage = "", stdout, stderr] = line.split(" ");
+  const [peakKb, seconds] = usage.split(",").map(Number);
   const exitCode = Number(code);
   return {
     exitCode,
     timedOut: TIMED_OUT.has(exitCode),
-    peakMemoryKb: Number(peakKb) || 0,
+    timeMs: Math.round((seconds || 0) * 1000),
+    peakMemoryKb: peakKb || 0,
     stdout: fromBase64(stdout),
     stderr: fromBase64(stderr),
   };

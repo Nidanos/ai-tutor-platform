@@ -3,7 +3,7 @@ import type { TestRun } from "../src/infrastructure/sandbox/sandbox-provider.js"
 import { excerpt, judgeTest, overallVerdict, sameOutput } from "../src/modules/m7_execution/services/judge.js";
 
 const LIMITS = { timeLimitMs: 2000, memoryLimitMb: 256 };
-const ok: TestRun = { exitCode: 0, timedOut: false, peakMemoryKb: 3_000, stdout: "42\n", stderr: "" };
+const ok: TestRun = { exitCode: 0, timedOut: false, timeMs: 5, peakMemoryKb: 3_000, stdout: "42\n", stderr: "" };
 const judge = (run: Partial<TestRun>, expected = "42") => judgeTest({ ...ok, ...run }, expected, LIMITS);
 
 describe("judge", () => {

@@ -10,7 +10,14 @@ export type RunRequest = {
   limits: Limits;
 };
 
-export type TestRun = { exitCode: number; timedOut: boolean; peakMemoryKb: number; stdout: string; stderr: string };
+export type TestRun = {
+  exitCode: number;
+  timedOut: boolean;
+  timeMs: number;
+  peakMemoryKb: number;
+  stdout: string;
+  stderr: string;
+};
 
 export type RunResult = {
   sandboxId: string;
