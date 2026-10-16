@@ -8,6 +8,7 @@ Reorganised 25 Sep 2026. Nothing was deleted; the old files were moved into the 
 | `phase-1-submitted/text/` | Plain-text extracts of those PDFs (tables lose their layout) | For searching and quoting only |
 | `api/` | Frontend API guide: live endpoints, how to call them, planned endpoints | **Live.** Updated as endpoints ship |
 | `phase-2/` | System design: DFD, ER, UML, schema, API design, traceability, implementation status | **Phase-2 deliverable** (15 Oct) |
+| `phase-3/` | Draft project report in the MCA-269 format (Markdown + PDF) | **Review 3 deliverable** (23 Oct) |
 | `adr/` | Architecture Decision Records and the list of open decisions | **Live.** Phase-2 deliverable |
 | `legal/` | Privacy Policy, Terms, parental consent, DPDP compliance, breach plan | **Drafts.** Lawyer review before launch |
 | `business/` | Founders' agreement, setup checklist, college NOC letter | **Drafts.** Founders act on these |
