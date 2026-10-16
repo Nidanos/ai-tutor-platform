@@ -42,7 +42,7 @@ Core idea, unchanged from Phase 1: the system keeps a **separate reading and wri
 | First course | Data Structures & Algorithms, with a beginner C++ track. More courses (frontend, backend, full stack) follow | ADR-0001, 13 Oct |
 | Languages | Engine is language-agnostic. **C++20 (clang 19)** ships first; Java and Python follow | ADR-0002, 13 Oct |
 | Skill map and resources | Skills and edges are our own, cross-checked against university syllabi. Each skill links to original text resources as further reading; nothing is copied. No third-party curricula and no videos (commercial licensing, 14 Oct) | ADR-0001, 13 Oct |
-| Code execution | E2B sandbox (network off) + our own judge adapter; one sandbox reused per learner session | ADR-0003, 13 Oct |
+| Code execution | E2B sandbox (network off) + our own judge adapter; a fresh sandbox per submission | ADR-0003, 15 Oct |
 | Verdicts | AC, WA, CE, RE, TLE, MLE, **SE** (sandbox error: not the learner's fault, no mastery effect) | ADR-0004, 13 Oct |
 | Content | LLM-generated, then **verified in the sandbox and frozen**. Grading and next-step selection never use an LLM | ADR-0005 |
 | Exercise delivery | Pre-generated in the background; async job with a status endpoint as fallback | 13 Oct |
