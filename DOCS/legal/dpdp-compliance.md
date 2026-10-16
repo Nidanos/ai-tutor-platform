@@ -72,9 +72,10 @@
 ## 6. Vendor (processor) register
 | Vendor | Data | Region | Contract or DPA | Status |
 |---|---|---|---|---|
-| Hosting / database `[TBD]` | Everything | India (Mumbai) | Provider's DPA | Choose by Nov |
+| Hosting + database: Oracle Cloud (fallback Azure), ADR-0010 | Everything | India region | Provider's DPA | To accept |
+| Web hosting: Vercel (college phase) | Requests and IP addresses; no database | Global edge | Vercel DPA | To accept |
 | E2B (code sandbox) | Code + tests, no identity | Outside India (check) | E2B terms + DPA | To accept |
-| AI provider: Gemini **paid tier** or OpenRouter with **zero data retention** | Code + exercise context, no identity | Outside India | Provider's paid terms (no training on our data) | To accept |
+| AI provider: Google Gemini **paid tier** (ADR-0010) | Code + exercise context, no identity | Outside India | Gemini API paid terms (no training on our data) | To accept |
 | Email delivery `[TBD]` | Email address | Check | DPA | Choose |
 | Payments `[TBD, later]` | Billing details | India | Gateway agreement | Later |
 

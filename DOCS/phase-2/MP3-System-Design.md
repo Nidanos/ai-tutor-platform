@@ -8,7 +8,7 @@
 | Phase     | 2: System design (DFD, ER, UML) and partial implementation                                                                                           |
 | Date      | 15 Oct 2026                                                                                                                                          |
 | Team      | Ashwani Kumar Puri (04914004425): backend, architecture, database · Aman Dogra (01614004425): frontend · Aditi Tanwar (01814004425): frontend, UI/UX |
-| Guide     | _to be filled_                                                                                                                                       |
+| Guide     | Dr. Chetna Laroia                                                                                                                                       |
 | Builds on | Phase 1 SRS (`../phase-1-submitted/MP3-SRS.pdf`), API spec (`../spec/`), ADRs (`../adr/`)                                                            |
 
 ## Contents
