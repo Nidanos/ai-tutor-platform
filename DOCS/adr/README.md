@@ -21,7 +21,6 @@ Last updated: 16 Oct 2026. These record decisions Ashwani has made. Where no dec
 | - | The DSA skill list, edges and resources (C++ basics done: 20 skills, 14 Oct) | Seed data, recommender |
 | - | Source to cross-check the DSA skill list (university syllabi) | DSA seed |
 | - | Prerequisite threshold (0.7 is a placeholder) | Recommender |
-| Q10c | Minimum template exercises per skill and rung for the MVP | M6 fallback |
 | Q13 | One sentence: why Node suits this backend (see the note below) | Synopsis §5.2 rewrite |
 | - | Whether a skill's fade stage can step back | M12 |
 | - | Session idle and timeout values | M9 |
