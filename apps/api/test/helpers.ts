@@ -1,3 +1,4 @@
+import { eq } from "drizzle-orm";
 import { db } from "../src/infrastructure/database/index.js";
 import {
   courseLanguages,
@@ -5,11 +6,15 @@ import {
   enrollments,
   exerciseAttempts,
   exercises,
+  fadeSchedules,
+  fadeStages,
   languages,
   organizations,
   skills,
   users,
 } from "../src/infrastructure/database/schema/index.js";
+import { defaultFadeStages } from "../src/infrastructure/database/seed/data.js";
+import { signAccessToken } from "../src/shared/auth/tokens.js";
 
 // Random suffix so tests never collide and never need cleanup.
 export const uniq = () => crypto.randomUUID().slice(0, 8);
@@ -88,4 +93,16 @@ export const exerciseRow =(skillId: string, rung = 3) => ({
 export async function createExercise(skillId: string) {
   const [exercise] = await db.insert(exercises).values(exerciseRow(skillId)).returning();
   return exercise;
+}
+
+// "Authorization" header value for a user, as the mobile app would send it.
+export async function bearerFor(userId: string) {
+  const [user] = await db.select().from(users).where(eq(users.id, userId));
+  return `Bearer ${await signAccessToken({ userId, role: user.role, orgId: user.orgId })}`;
+}
+
+// The seed gives every course this schedule; tests build courses themselves.
+export async function addDefaultFadeSchedule(courseId: string) {
+  const [schedule] = await db.insert(fadeSchedules).values({ courseId, name: "Default", isDefault: true }).returning();
+  await db.insert(fadeStages).values(defaultFadeStages.map((stage) => ({ scheduleId: schedule.id, ...stage })));
 }

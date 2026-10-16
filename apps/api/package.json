@@ -13,8 +13,7 @@
     "test": "vitest run",
     "db:seed": "tsx src/infrastructure/database/seed/index.ts",
     "sandbox:build": "tsx src/scripts/build-sandbox-template.ts",
-    "sandbox:smoke": "tsx src/scripts/sandbox-smoke.ts",
-    "dev:attempt": "tsx src/scripts/dev-attempt.ts"
+    "sandbox:smoke": "tsx src/scripts/sandbox-smoke.ts"
   },
   "dependencies": {
     "@ai-tutor/types": "workspace:*",
