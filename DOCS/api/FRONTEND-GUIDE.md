@@ -90,7 +90,7 @@ Base path: `/api/v1/submissions`. Logged in only. Max **10 submits per minute** 
 
 - **`answer`**: the code from the editor (max 64 KB). For rung 1 ("predict the output") it's the predicted text.
 - **`idempotencyKey`**: make one per press of Submit with `crypto.randomUUID()`. If the request is retried with the same key, you get the same submission back, so it never runs twice.
-- **`attemptId`**: comes from `GET /exercises/:id` once that's live. Until then, for testing: `pnpm dev:attempt you@example.com` (in `apps/api`) prints one.
+- **`attemptId`**: comes from `GET /exercises/:id` (section 4c).
 - **Polling**: call `GET /:id/result` every **1 second** until `status === "completed"`. A run usually takes **4–7 seconds**. Show a "Running tests…" spinner.
 
 Finished result:
@@ -121,6 +121,40 @@ type SubmissionResult = {
 | SE | "Our checker had a problem, not your code. Please submit again." It doesn't count against the learner |
 
 **Never show hidden tests' input or output.** The API doesn't send them, so don't try to fill them in.
+
+## 4c. Exercises and mastery (live, 16 Oct)
+
+Logged in only.
+
+| Method + path | Success | Errors |
+| --- | --- | --- |
+| `GET /api/v1/exercises/:id` | `200 { exercise, attempt }` | `404 EXERCISE_NOT_FOUND` |
+| `GET /api/v1/mastery?language=cpp` (`language` optional) | `200 { skills: SkillMastery[] }`: only skills the learner has evidence on | none |
+| `GET /api/v1/mastery/:skillId?language=cpp` (default `cpp`) | `200 SkillMastery & { history }`: zeros for a skill never practised | `404 SKILL_NOT_FOUND` |
+
+**Opening an exercise starts the attempt.** Call `GET /exercises/:id` when the exercise page loads and keep `attempt.id` for Submit. Calling it again returns the same attempt. If `attempt.status === "solved"`, show "Solved ✅" and the next step instead of the editor.
+
+```ts
+type Exercise = {
+  id: string; title: string; promptMd: string; // render as Markdown
+  starterCode: string; functionSignature: string | null; // put starterCode in the Monaco editor
+  rung: 1 | 2 | 3 | 4 | 5; languageCode: "cpp"; timeLimitMs: number; memoryLimitMb: number;
+  skill: { id: string; name: string; slug: string };
+  sampleTests: Array<{ seq: number; name: string; input: string | null; expectedOutput: string | null }>;
+};
+type Attempt = { id: string; status: "active" | "solved" | "abandoned"; hintLevel: number; hintCeiling: number; submissionCount: number };
+
+type Dimension = { score: number; effective: number; lastEvidenceAt: string | null }; // show `effective` (0–1)
+type SkillMastery = {
+  skill: { id: string; name: string; slug: string }; languageCode: string;
+  reading: Dimension; writing: Dimension; // ALWAYS two separate bars, never one combined number
+  clearedAt: string | null; attemptCount: number; successCount: number;
+  history?: Array<{ dimension: "reading" | "writing"; verdict: string; rung: number; hintsUsed: number; scoreBefore: number; scoreAfter: number; createdAt: string }>;
+};
+```
+
+- **`effective`** is the score after forgetting (it drops a little every day without practice). **`score`** is the stored one. Show `effective` as a percentage, and `clearedAt` as a "Cleared" badge.
+- Rung 1 (predict the output) is a text answer, not code: show a textbox instead of the editor.
 
 ## 5. Screens and flow
 
@@ -192,9 +226,8 @@ Shapes will be published here when each one goes live. Use mock data until then.
 | Area | Endpoint | For the screen |
 | --- | --- | --- |
 | Diagnostic | `POST /diagnostic/start`, `POST /diagnostic/:id/answers`, `POST /diagnostic/:id/complete` | Placement test |
-| Mastery | `GET /mastery`, `GET /mastery/:skillId` | Reading and writing scores per skill (always shown separately) |
 | Next step | `GET /recommendations/next` | "What to do next" card |
-| Exercises | `GET /exercises/:id`, `POST /exercises/generate`, `GET /exercises/generation/:jobId` | Exercise page with the Monaco editor |
+| Exercise generation | `POST /exercises/generate`, `GET /exercises/generation/:jobId` | Shown while a new exercise is prepared |
 | Hints | `POST /exercises/:id/hints` | "Get a hint" button. The server decides the level and returns one hint |
 | Sessions | `POST /sessions`, `GET /sessions/active` | Start or resume studying |
 | Progress | `GET /progress` | Progress page and skill graph |
@@ -213,6 +246,7 @@ Shapes will be published here when each one goes live. Use mock data until then.
 | `PARENT_APPROVAL_PENDING` | 403 | Under-18 account not yet approved by a parent | Show "Waiting for your parent or guardian to approve" |
 | `BAD_ORIGIN` | 403 | Request didn't come from our site | Bug: you called the API directly instead of through `/api` |
 | `EMAIL_TAKEN` | 409 | Email already registered | Link to login |
+| `EXERCISE_NOT_FOUND` / `SKILL_NOT_FOUND` | 404 | Doesn't exist, or isn't ready | Show "Not found" and a link back |
 | `ATTEMPT_NOT_FOUND` / `SUBMISSION_NOT_FOUND` | 404 | Not yours, or doesn't exist | Reload the exercise |
 | `ATTEMPT_CLOSED` | 409 | Exercise already solved | Show "Solved" and the next step |
 | `IDEMPOTENCY_KEY_REUSED` | 409 | Bug: a key was reused for different code | Make a new key per Submit |
