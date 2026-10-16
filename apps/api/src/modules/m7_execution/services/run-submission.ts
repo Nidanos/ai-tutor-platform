@@ -2,6 +2,7 @@ import { e2bProvider } from "../../../infrastructure/sandbox/e2b-provider.js";
 import type { SandboxProvider } from "../../../infrastructure/sandbox/sandbox-provider.js";
 import { recordEvidence } from "../../m4_mastery/services/mastery.service.js";
 import { getRunnableExercise } from "../../m6_exercises/services/exercises.service.js";
+import { advanceOnSolve } from "../../m12_scaffolding/services/scaffolding.service.js";
 import * as repo from "../repositories/submissions.repository.js";
 import { excerpt, judgeTest, overallVerdict, sameOutput, type Verdict } from "./judge.js";
 import { TOOLCHAINS } from "./toolchains.js";
@@ -22,7 +23,7 @@ export async function runSubmission(submissionId: string, isLastTry: boolean, pr
   const answer = submission.answer ?? "";
   await repo.setSubmissionStatus(submissionId, "running");
 
-  // Verdict, run details and mastery change are saved in one transaction.
+  // Verdict, run details, mastery change and fade advance are saved in one transaction (design §6.5).
   const finish = async (outcome: Finish) => {
     const evidence =
       outcome.countsAsAttempt && EVIDENCE_CONTEXTS.has(attempt.context)
@@ -39,7 +40,15 @@ export async function runSubmission(submissionId: string, isLastTry: boolean, pr
           }
         : undefined;
     const outcomeRow = { ...outcome, submissionId, attemptId: submission.attemptId, testsTotal: exercise.tests.length };
-    await repo.saveOutcome(outcomeRow, evidence && ((tx) => recordEvidence(tx, evidence)));
+    await repo.saveOutcome(
+      outcomeRow,
+      evidence &&
+        (async (tx) => {
+          await recordEvidence(tx, evidence);
+          const { userId, skillId, languageCode, rung, hintsUsed } = evidence;
+          if (evidence.verdict === "AC") await advanceOnSolve(tx, { userId, skillId, languageCode, rung, hintsUsed, submissionId });
+        }),
+    );
   };
 
   // Rung 1 is "predict the output": the answer is text, so no code runs (ADR-0002).
