@@ -53,3 +53,9 @@ function timeFactor({ rung, activeMs }: Evidence) {
   const usualMs = USUAL_MINUTES[rung - 1] * 60_000;
   return Math.min(1, Math.max(SLOWEST_TIME_FACTOR, usualMs / activeMs));
 }
+
+const DAY_MS = 86_400_000;
+
+// FR-M4-03: what the learner can still do today. Stored scores never decay; this is computed on read.
+export const effectiveScore = (score: number, decayLambda: number, evidenceAt: Date | null, now = new Date()) =>
+  evidenceAt ? score * Math.exp((-decayLambda * (now.getTime() - evidenceAt.getTime())) / DAY_MS) : score;

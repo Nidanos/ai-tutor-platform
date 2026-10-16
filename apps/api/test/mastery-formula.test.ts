@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { applyEvidence, dimensionOf, type Evidence } from "../src/modules/m4_mastery/services/mastery-formula.js";
+import { applyEvidence, dimensionOf, effectiveScore, type Evidence } from "../src/modules/m4_mastery/services/mastery-formula.js";
 
 const e = (verdict: Evidence["verdict"], rung: number, extra: Partial<Evidence> = {}): Evidence => ({
   verdict,
@@ -58,5 +58,12 @@ describe("mastery formula v1", () => {
   it("counts rung 1 as reading and rungs 2–5 as writing", () => {
     expect(dimensionOf(1)).toBe("reading");
     expect(dimensionOf(4)).toBe("writing");
+  });
+
+  it("halves effective mastery after ln 2 / λ days, and never decays without evidence", () => {
+    const now = new Date("2026-10-16T00:00:00Z");
+    const halfLife = new Date(now.getTime() - (Math.LN2 / 0.05) * 86_400_000);
+    expect(effectiveScore(0.8, 0.05, halfLife, now)).toBeCloseTo(0.4);
+    expect(effectiveScore(0, 0.05, null, now)).toBe(0);
   });
 });

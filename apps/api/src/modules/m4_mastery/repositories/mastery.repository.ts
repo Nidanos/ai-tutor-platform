@@ -1,5 +1,5 @@
-import { and, eq } from "drizzle-orm";
-import type { Tx } from "../../../infrastructure/database/index.js";
+import { and, desc, eq } from "drizzle-orm";
+import { db, type Tx } from "../../../infrastructure/database/index.js";
 import { evidenceEvents, masteryRecords } from "../../../infrastructure/database/schema/index.js";
 
 export type LearnerSkill = { userId: string; skillId: string; languageCode: string };
@@ -18,3 +18,30 @@ export const updateRecord = (tx: Tx, key: LearnerSkill, values: Partial<typeof m
   tx.update(masteryRecords).set(values).where(whereKey(key));
 
 export const insertEvidence = (tx: Tx, values: typeof evidenceEvents.$inferInsert) => tx.insert(evidenceEvents).values(values);
+
+const HISTORY_ROWS = 20;
+
+export const listRecords = (userId: string, languageCode?: string) =>
+  db
+    .select()
+    .from(masteryRecords)
+    .where(and(eq(masteryRecords.userId, userId), languageCode ? eq(masteryRecords.languageCode, languageCode) : undefined));
+
+export const findRecord = async (key: LearnerSkill) => (await db.select().from(masteryRecords).where(whereKey(key)))[0];
+
+// The newest evidence first: why the numbers are what they are.
+export const listEvidence = (k: LearnerSkill) =>
+  db
+    .select({
+      dimension: evidenceEvents.dimension,
+      verdict: evidenceEvents.verdict,
+      rung: evidenceEvents.rung,
+      hintsUsed: evidenceEvents.hintsUsed,
+      scoreBefore: evidenceEvents.scoreBefore,
+      scoreAfter: evidenceEvents.scoreAfter,
+      createdAt: evidenceEvents.createdAt,
+    })
+    .from(evidenceEvents)
+    .where(and(eq(evidenceEvents.userId, k.userId), eq(evidenceEvents.skillId, k.skillId), eq(evidenceEvents.languageCode, k.languageCode)))
+    .orderBy(desc(evidenceEvents.id))
+    .limit(HISTORY_ROWS);
