@@ -5,6 +5,7 @@ import { authRouter } from "./modules/m1_auth/routes/auth.routes.js";
 import { masteryRouter } from "./modules/m4_mastery/routes/mastery.routes.js";
 import { exercisesRouter } from "./modules/m6_exercises/routes/exercises.routes.js";
 import { submissionsRouter } from "./modules/m7_execution/routes/submissions.routes.js";
+import { scaffoldingRouter } from "./modules/m12_scaffolding/routes/scaffolding.routes.js";
 import { errorHandler } from "./shared/errors/error-handler.js";
 import { checkOrigin } from "./shared/middlewares/check-origin.js";
 
@@ -25,5 +26,6 @@ app.use("/api/v1/auth", authRouter);
 app.use("/api/v1/mastery", masteryRouter);
 app.use("/api/v1/exercises", exercisesRouter);
 app.use("/api/v1/submissions", submissionsRouter);
+app.use("/api/v1/scaffolding", scaffoldingRouter);
 
 app.use(errorHandler);
