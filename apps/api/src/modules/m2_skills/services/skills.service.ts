@@ -6,3 +6,5 @@ export async function getSkill(id: string) {
   if (!skill) throw new AppError(404, "SKILL_NOT_FOUND", "No such skill");
   return skill;
 }
+
+export const getSkills = (ids: string[]) => repo.findSkills(ids);
