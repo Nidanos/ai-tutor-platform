@@ -174,6 +174,25 @@ type FadeState = {
 - Stages only go **up**, after an AC on `advanceRung` (or harder) with at most `advanceMaxHints` hints. Show the learner the next goal, e.g. "Solve a level 3 exercise with ≤1 hint to unlock less help".
 - An attempt keeps the hint ceiling it started with (`attempt.hintCeiling`); the next exercise uses the new stage.
 
+## 4e. What to do next (live, 17 Oct)
+
+`GET /api/v1/recommendations/next?course=cpp-basics&language=cpp` (both optional; those are the defaults) → `200 { recommendation }`
+
+```ts
+type Recommendation = {
+  id: string;
+  skill: { id: string; slug: string; name: string };
+  rung: 1 | 2 | 3 | 4 | 5;
+  reason: "new_skill" | "review";   // show "Review" for reviews
+  exerciseId: string | null;         // null: no exercise ready for this skill yet
+} | null;                            // null: the course is done
+```
+
+- **Dashboard "What next" card:** call this, show the skill name, the rung ("Level 2 of 5") and, for reviews, a "Review" badge. The button opens `/exercise/{exerciseId}`, which calls `GET /exercises/:id` (that starts the attempt).
+- If the learner has an unfinished attempt, this returns **the same exercise** again, so it doubles as "continue where you left off".
+- `exerciseId: null`: show "New exercises for this skill are being prepared". `recommendation: null`: show "Course complete".
+- `404 COURSE_NOT_FOUND` for an unknown course.
+
 ## 5. Screens and flow
 
 | Moment | Do this |
@@ -244,7 +263,6 @@ Shapes will be published here when each one goes live. Use mock data until then.
 | Area | Endpoint | For the screen |
 | --- | --- | --- |
 | Diagnostic | `POST /diagnostic/start`, `POST /diagnostic/:id/answers`, `POST /diagnostic/:id/complete` | Placement test |
-| Next step | `GET /recommendations/next` | "What to do next" card |
 | Exercise generation | `POST /exercises/generate`, `GET /exercises/generation/:jobId` | Shown while a new exercise is prepared |
 | Hints | `POST /exercises/:id/hints` | "Get a hint" button. The server decides the level and returns one hint |
 | Sessions | `POST /sessions`, `GET /sessions/active` | Start or resume studying |

@@ -1764,11 +1764,12 @@ Rate limits: login 20 per IP and 5 failures per email per 15 minutes; register 5
 - **Mastery (M4):** formula v1 (ADR-0004) turns each counted verdict into reading or writing evidence; the verdict, the evidence row and the mastery snapshot are saved in one transaction with the mastery row locked. `GET /mastery` and `GET /mastery/:skillId` show reading and writing apart, decayed on read.
 - **Exercises (M6):** `GET /exercises/:id` shows a verified exercise with its sample tests only, and starts the attempt: it enrolls the learner and starts the skill at fade stage 1 (M12), copying that stage's hint ceiling.
 - **Exercise bank and verification (M6):** 25 hand-written template exercises (first 5 C++ skills × rungs 1–5); each is served only after its reference passes every test and its starter code fails at least one, checked in the real sandbox (25/25 verified).
+- **Recommender (M5):** `GET /recommendations/next` picks the next skill, rung and exercise with fixed rules (ADR-0011): unlocked skills and due reviews, finish-what-you-started first, rung from writing clamped to the fade stage, unseen exercises; every pick is saved with its reasons.
 - **Fade (M12):** an AC on the stage's rung (or harder) with at most 1 hint moves the skill one stage on, inside the grading transaction, logged in `fade_stage_changes`. `GET /scaffolding/state` shows each skill's stage.
 - **Shared layer:** one error type, one response envelope, one error handler.
-- **Tests:** 76 automated tests on a separate test database: database rules, auth and consent flows, the verdict judge, the mastery formula, and submissions with a fake sandbox. `pnpm sandbox:smoke` checks all six verdicts on real E2B.
+- **Tests:** 87 automated tests on a separate test database: database rules, auth and consent flows, the verdict judge, the mastery formula, the recommender rules, and submissions with a fake sandbox. `pnpm sandbox:smoke` checks all six verdicts on real E2B.
 
-**Next (Phase 3, 23 Oct):** recommender, hints (LLM adapter), diagnostic; frontend binding. 12 of 22 MVP endpoints are live.
+**Next (Phase 3, 23 Oct):** hints (LLM adapter), diagnostic; frontend binding. 13 of 22 MVP endpoints are live.
 
 ---
 
@@ -1777,7 +1778,6 @@ Rate limits: login 20 per IP and 5 failures per email per 15 minutes; register 5
 | Item | Needed by |
 | --- | --- |
 | DSA and C++ skill list and edges, with further-reading links | Seed data (Phase 3) |
-| Prerequisite threshold (0.7 is a placeholder) | Recommender |
 | Whether a skill's fade stage can step back after repeated bottom-outs | M12 |
 | Session idle and timeout values | M9 |
 | Hosting provider within budget | Deployment |
