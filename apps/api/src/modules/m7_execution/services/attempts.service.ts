@@ -13,8 +13,13 @@ export async function openAttempt(userId: string, exercise: Exercise) {
   if (latest && latest.status !== "abandoned") return latest;
 
   const skill = await getSkill(exercise.skillId);
-  const enrollmentId = await ensureEnrollment(userId, skill.courseId, exercise.languageCode);
+  const { id: enrollmentId } = await ensureEnrollment(userId, skill.courseId, exercise.languageCode);
   const stage = await getStage({ userId, skillId: skill.id, languageCode: exercise.languageCode }, skill.courseId);
   await repo.insertAttempt({ userId, enrollmentId, exerciseId: exercise.id, hintCeiling: stage.maxHintLevel });
   return (await repo.findLatestAttempt(userId, exercise.id))!;
+}
+
+// For M5: each exercise this learner has touched, and whether it's still open.
+export async function attemptStatuses(userId: string) {
+  return new Map((await repo.listAttempts(userId)).map((a) => [a.exerciseId, a.status === "active" ? "active" : "done"] as const));
 }

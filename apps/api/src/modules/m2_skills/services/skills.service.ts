@@ -8,3 +8,11 @@ export async function getSkill(id: string) {
 }
 
 export const getSkills = (ids: string[]) => repo.findSkills(ids);
+
+export async function getCourse(slug: string) {
+  const course = await repo.findCourseBySlug(slug);
+  if (!course) throw new AppError(404, "COURSE_NOT_FOUND", "No such course");
+  return course;
+}
+
+export const getSkillGraph = repo.listSkillGraph;

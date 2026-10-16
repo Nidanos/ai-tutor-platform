@@ -1,4 +1,4 @@
-import { and, asc, eq } from "drizzle-orm";
+import { and, asc, eq, inArray } from "drizzle-orm";
 import { db } from "../../../infrastructure/database/index.js";
 import { exercises, exerciseSecrets, exerciseTests } from "../../../infrastructure/database/schema/index.js";
 
@@ -76,3 +76,18 @@ export const setStatus = (id: string, status: "verified" | "rejected") =>
     .update(exercises)
     .set({ status, verifiedAt: status === "verified" ? new Date() : null })
     .where(eq(exercises.id, id));
+
+export const listServable = (skillIds: string[], languageCode: string) =>
+  skillIds.length
+    ? db
+        .select({ id: exercises.id, skillId: exercises.skillId, rung: exercises.rung })
+        .from(exercises)
+        .where(
+          and(
+            inArray(exercises.skillId, skillIds),
+            eq(exercises.languageCode, languageCode),
+            eq(exercises.status, "verified"),
+            eq(exercises.purpose, "practice"),
+          ),
+        )
+    : Promise.resolve([]);

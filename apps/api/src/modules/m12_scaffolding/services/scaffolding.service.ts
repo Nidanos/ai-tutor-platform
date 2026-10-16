@@ -26,3 +26,8 @@ export async function listState(userId: string, languageCode?: string) {
     return { skill: { id, slug, name }, stage: stageNo, totalStages, ...rest };
   });
 }
+
+// For M5: the easiest rung each opened skill currently allows. Unopened skills start at rung 1.
+export async function minRungs(userId: string, languageCode: string) {
+  return new Map((await repo.listStates(userId, languageCode)).map((s) => [s.skillId, s.minRung]));
+}

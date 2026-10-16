@@ -6,8 +6,8 @@ import { enrollments } from "../../../infrastructure/database/schema/index.js";
 export async function ensureEnrollment(userId: string, courseId: string, languageCode: string) {
   await db.insert(enrollments).values({ userId, courseId, languageCode }).onConflictDoNothing();
   const [enrollment] = await db
-    .select({ id: enrollments.id })
+    .select({ id: enrollments.id, goalSkillId: enrollments.goalSkillId })
     .from(enrollments)
     .where(and(eq(enrollments.userId, userId), eq(enrollments.courseId, courseId), eq(enrollments.languageCode, languageCode)));
-  return enrollment.id;
+  return enrollment;
 }

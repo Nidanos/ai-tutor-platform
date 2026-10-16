@@ -23,3 +23,6 @@ export const findLatestAttempt = async (userId: string, exerciseId: string) =>
 // Two tabs opening the same exercise at once still get one active attempt (partial unique index).
 export const insertAttempt = (values: typeof exerciseAttempts.$inferInsert) =>
   db.insert(exerciseAttempts).values(values).onConflictDoNothing();
+
+export const listAttempts = (userId: string) =>
+  db.select({ exerciseId: exerciseAttempts.exerciseId, status: exerciseAttempts.status }).from(exerciseAttempts).where(eq(exerciseAttempts.userId, userId));

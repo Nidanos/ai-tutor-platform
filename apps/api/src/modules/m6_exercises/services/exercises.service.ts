@@ -24,3 +24,6 @@ export async function getServableExercise(id: string) {
   const { name, slug } = await getSkill(exercise.skillId);
   return { ...exercise, skill: { id: exercise.skillId, name, slug } };
 }
+
+// For M5: every exercise a learner could be served for these skills.
+export const listServable = repo.listServable;

@@ -44,3 +44,20 @@ export async function getSkillMastery(userId: string, skillId: string, languageC
     history: record ? await repo.listEvidence(key) : [],
   };
 }
+
+// For M5: today's effective scores per skill, keyed by skill id.
+export async function effectiveStates(userId: string, languageCode: string) {
+  const now = new Date();
+  const records = await repo.listRecords(userId, languageCode);
+  return new Map(
+    records.map((r) => [
+      r.skillId,
+      {
+        reading: effectiveScore(r.readingScore, r.decayLambda, r.readingEvidenceAt, now),
+        writing: effectiveScore(r.writingScore, r.decayLambda, r.writingEvidenceAt, now),
+        cleared: r.clearedAt !== null,
+        attempts: r.attemptCount,
+      },
+    ]),
+  );
+}
