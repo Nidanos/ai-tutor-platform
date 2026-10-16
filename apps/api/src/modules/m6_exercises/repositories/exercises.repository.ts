@@ -55,3 +55,24 @@ export async function findServable(id: string) {
     .orderBy(asc(exerciseTests.seq));
   return { ...exercise, sampleTests };
 }
+
+// Everything the verifier needs: the reference and starter code, the harness, every test.
+export async function findForVerification(id: string) {
+  const runnable = await findRunnable(id);
+  if (!runnable) return undefined;
+  const [extra] = await db
+    .select({ starterCode: exercises.starterCode, referenceSolution: exerciseSecrets.referenceSolution })
+    .from(exercises)
+    .innerJoin(exerciseSecrets, eq(exerciseSecrets.exerciseId, exercises.id))
+    .where(eq(exercises.id, id));
+  return extra && { ...runnable, ...extra };
+}
+
+export const listByStatus = (status: (typeof exercises.$inferSelect)["status"]) =>
+  db.select({ id: exercises.id, title: exercises.title, rung: exercises.rung }).from(exercises).where(eq(exercises.status, status));
+
+export const setStatus = (id: string, status: "verified" | "rejected") =>
+  db
+    .update(exercises)
+    .set({ status, verifiedAt: status === "verified" ? new Date() : null })
+    .where(eq(exercises.id, id));
