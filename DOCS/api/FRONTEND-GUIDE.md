@@ -156,6 +156,24 @@ type SkillMastery = {
 - **`effective`** is the score after forgetting (it drops a little every day without practice). **`score`** is the stored one. Show `effective` as a percentage, and `clearedAt` as a "Cleared" badge.
 - Rung 1 (predict the output) is a text answer, not code: show a textbox instead of the editor.
 
+## 4d. Help fading (live, 16 Oct)
+
+`GET /api/v1/scaffolding/state?language=cpp` (`language` optional) → `200 { skills: FadeState[] }`, for skills the learner has opened.
+
+```ts
+type FadeState = {
+  skill: { id: string; name: string; slug: string }; languageCode: string;
+  stage: number; totalStages: number;   // show "Stage 2 of 4"
+  description: string | null;           // e.g. "Complete code"
+  minRung: number;                      // easiest exercise level at this stage
+  maxHintLevel: number;                 // most hints allowed now (5 = solution can be shown)
+  advanceRung: number; advanceMaxHints: number; // "Solve a level-3 exercise with at most 1 hint to move on"
+  stageEnteredAt: string;
+};
+```
+- Stages only go **up**, after an AC on `advanceRung` (or harder) with at most `advanceMaxHints` hints. Show the learner the next goal, e.g. "Solve a level 3 exercise with ≤1 hint to unlock less help".
+- An attempt keeps the hint ceiling it started with (`attempt.hintCeiling`); the next exercise uses the new stage.
+
 ## 5. Screens and flow
 
 | Moment | Do this |
@@ -231,7 +249,6 @@ Shapes will be published here when each one goes live. Use mock data until then.
 | Hints | `POST /exercises/:id/hints` | "Get a hint" button. The server decides the level and returns one hint |
 | Sessions | `POST /sessions`, `GET /sessions/active` | Start or resume studying |
 | Progress | `GET /progress` | Progress page and skill graph |
-| Fade | `GET /scaffolding/state` | Show how much help each skill currently allows |
 | Analytics | `GET /analytics/overview` | Admin-only analytics page |
 
 ## 8. Error codes

@@ -25,6 +25,13 @@ The project's core idea is deliberate scaffolding withdrawal: help is reduced on
 - **The ceiling is enforced by the database:** an attempt copies its hint ceiling from the stage, and a CHECK keeps `hint_level ≤ hint_ceiling` (FR-M12-02).
 - **Code retention:** a learner's submitted answers are kept until they clear that skill, then emptied by a worker job (`answer_purged_at`). Verdicts, test results and evidence are kept, because they are the learning record and the research data.
 
+## Built (16 Oct)
+- The advance runs inside the grading transaction, on an AC in a practice or review attempt, with the skill's stage row locked.
+- **Solving a harder rung than the stage asks also counts**, but a skill moves only **one stage per solve**. A rung-5 AC at stage 1 moves it to stage 2, not straight to the end.
+- The last stage has no next stage; solving its rung clears the skill (M4 sets `cleared_at`).
+- An open attempt keeps the hint ceiling it started with; the new stage applies from the next exercise.
+- `GET /scaffolding/state` returns each opened skill's stage, its limits and what moves it on.
+
 ## Consequences
 - M12 is driven by grading results rather than by session ends.
 - The fade has one client endpoint, `GET /scaffolding/state` (ADR-0006); the rules run inside grading.
