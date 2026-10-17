@@ -16,7 +16,6 @@ ai-tutor-platform/
 │   └── config/       # Shared tooling configurations
 ├── docker-compose.yml# Local PostgreSQL (+pgvector) and Redis infrastructure
 └── pnpm-workspace.yaml
-
 ```
 
 ---
@@ -36,7 +35,7 @@ ai-tutor-platform/
 
 ### Prerequisites
 
-- Node.js v20+ LTS
+- Node.js v22+ (see `.nvmrc`)
 - `pnpm` (`npm install -g pnpm`)
 - Docker Desktop (for local PostgreSQL & Redis)
 
@@ -53,6 +52,10 @@ pnpm install
 # 2. Spin up local PostgreSQL and Redis containers
 pnpm db:up   # = docker compose up -d
 
-# 3. Start development servers across apps
+# 3. Create the tables, then load the starter data (seed is safe to re-run)
+pnpm --filter @ai-tutor/api db:migrate
+pnpm --filter @ai-tutor/api db:seed
+
+# 4. Start development servers across apps (API :3001, web :3000)
 pnpm dev
 ```
