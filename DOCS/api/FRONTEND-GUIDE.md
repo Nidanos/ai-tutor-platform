@@ -1,8 +1,8 @@
 # Frontend API Guide
 
-For Aman and Aditi. How the web app talks to the backend. Last updated 13 Oct 2026.
+For Aman and Aditi. How the web app talks to the backend. Last updated 19 Oct 2026.
 
-**Status:** the 5 auth endpoints are live. Everything in section 7 is planned: build those screens with mock data until each endpoint is marked live.
+**Status:** all 25 endpoints are live (section 7).
 
 ## 1. Run the backend locally (once)
 
@@ -52,6 +52,8 @@ Base path: `/api/v1/auth`
 | `POST /refresh` | none (uses the cookie) | `204` + new cookies | `401 UNAUTHENTICATED` → go to login |
 | `POST /logout` | none | `204`, cookies cleared | none |
 | `GET /me` | none | `200 { user }` | `401` → try refresh once (section 6) |
+| `POST /forgot-password` | `{ email }` | `202 { message }`, the same for every email: show it as is | `400 VALIDATION_ERROR`, `429 RATE_LIMITED` |
+| `POST /reset-password` | `{ token, password }` | `204`: password changed, logged out everywhere | `400 RESET_LINK_INVALID`, `400 VALIDATION_ERROR`, `429 RATE_LIMITED` |
 
 Form rules (same as the server, so show errors before submitting):
 
@@ -63,6 +65,8 @@ Form rules (same as the server, so show errors before submitting):
 | dateOfBirth | `"YYYY-MM-DD"`, not in the future (use a date picker) |
 | acceptTerms, acceptPrivacy | must be `true`: two **separate** required tick boxes, each linking to its page (`/terms`, `/privacy`) |
 | aiTraining, research | optional, **unticked by default**. **Show them only if the date of birth makes the user 18+**; the server rejects them for under-18s |
+
+**Password reset (19 Oct, ADR-0017).** Both pages are built: `/forgot-password` (Aman's form, now calling the API) and `/reset-password` (`ResetPasswordForm`). The email links to `/reset-password#token=…`; the page reads the token from `location.hash` (a `#fragment` never reaches a server). A link works once, for 30 minutes, and only the newest one works. Each account gets at most one email every 5 minutes: asking again sooner sends nothing, and the first link still works. The new password follows the same rule as sign-up. A reset logs out every session, so send the user to `/login`.
 
 `user` object:
 
@@ -373,6 +377,7 @@ type GenerationJob = {
 | App starts | `GET /me` → `200` logged in; `401` (after one refresh try) logged out |
 | Any call returns `401` | Call `POST /refresh` **once**, then retry the call. If refresh fails, clear the user and go to `/login` |
 | Logout | `POST /logout`, clear the user, go to `/login` |
+| Forgot password | `POST /forgot-password` → show `message`. The emailed link opens `/reset-password`; on `204` go to `/login`, on `RESET_LINK_INVALID` link to `/forgot-password` (both pages built) |
 | `429` | Show the message and disable the button for a few seconds |
 | Admin pages | Hide them unless `user.role === "ADMIN"`. The server checks roles too; hiding is only for UX |
 
@@ -429,7 +434,7 @@ await api("/auth/logout", { method: "POST" });
 
 ## 7. Planned endpoints
 
-All 23 MVP endpoints are live. Live AI (hints and generation) switches on once Gemini billing is active (7 November).
+All 25 MVP endpoints are live. Live AI (hints and generation) switches on once Gemini billing is active (7 November).
 
 ## 8. Error codes
 
@@ -444,6 +449,7 @@ All 23 MVP endpoints are live. Live AI (hints and generation) switches on once G
 | `PARENT_APPROVAL_PENDING` | 403 | Under-18 account not yet approved by a parent | Show "Waiting for your parent or guardian to approve" |
 | `BAD_ORIGIN` | 403 | Request didn't come from our site | Bug: you called the API directly instead of through `/api` |
 | `EMAIL_TAKEN` | 409 | Email already registered | Link to login |
+| `RESET_LINK_INVALID` | 400 | The reset link was used, expired, replaced by a newer one, or is wrong | Show the message and a link to `/forgot-password` |
 | `EXERCISE_NOT_FOUND` / `SKILL_NOT_FOUND` | 404 | Doesn't exist, or isn't ready | Show "Not found" and a link back |
 | `COURSE_NOT_FOUND` | 404 | No such course in that language | Bug: check the course slug and language |
 | `DIAGNOSTIC_NOT_FOUND` | 404 | Not your placement test | Call `/diagnostic/start` |

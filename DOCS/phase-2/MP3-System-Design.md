@@ -392,7 +392,7 @@ erDiagram
 
 | Group | Tables | Modules | Built |
 | --- | --- | --- | --- |
-| Identity, access and consent | organizations, users, refresh_tokens, consents, password_reset_tokens | M1 | Phase 2 (first 4), later |
+| Identity, access and consent | organizations, users, refresh_tokens, consents, password_reset_tokens | M1 | Phase 2 (first 4), password_reset_tokens 19 Oct |
 | Courses and skill graph | languages, courses, course_languages, skills, skill_prerequisites, skill_resources, skill_graph_changes, concept_chunks | M2 | MVP (first 6), later |
 | Enrollment and diagnostic | enrollments, diagnostic_items, diagnostic_attempts, diagnostic_responses, diagnostic_results | M1, M3 | MVP |
 | Mastery and reviews | mastery_records, evidence_events, review_items | M4, M10 | MVP |
@@ -450,6 +450,7 @@ erDiagram
     text token_hash UK
     timestamptz expires_at
     timestamptz used_at
+    timestamptz created_at
   }
 ```
 
@@ -1065,9 +1066,10 @@ A table is created only after the tables it points to. Each step is one versione
 | 0010_skill_resources_unique_url | UNIQUE(skill_id, url) on skill_resources | **Built** |
 | 0011_drop_video_resources | resource kinds cut to article, docs; unused skills column dropped | **Built** |
 | 0012_consent_at_register | users.date_of_birth, user status pending_parent, consent kinds terms, parental, ai_training | **Built** |
-| Later | analytics views; password_reset_tokens, skill_graph_changes, concept_chunks (+ `vector`), audit_log | With their features |
+| 0013_password_reset_tokens | password_reset_tokens (ADR-0017) | **Built** |
+| Later | analytics views; skill_graph_changes, concept_chunks (+ `vector`), audit_log | With their features |
 
-Totals: 38 tables built for the MVP, 4 later (42). Enums are created in the migration of the first table that uses them. The seed (`pnpm db:seed`) loads the C++ language, the `dsa` and `cpp-basics` courses, and the default 4-stage fade schedule; it is safe to run repeatedly.
+Totals: 39 tables built (the 38 of the MVP plus password_reset_tokens), 3 later (42). Enums are created in the migration of the first table that uses them. The seed (`pnpm db:seed`) loads the C++ language, the `dsa` and `cpp-basics` courses, and the default 4-stage fade schedule; it is safe to run repeatedly.
 
 ### 5.14 Data lifecycle
 
@@ -1634,7 +1636,7 @@ In development, Postgres and Redis run locally through `docker compose`.
 
 | Module | Endpoints |
 | --- | --- |
-| M1 Auth | `POST /auth/register` · `POST /auth/login` · `POST /auth/refresh` · `POST /auth/logout` · `GET /auth/me` |
+| M1 Auth | `POST /auth/register` · `POST /auth/login` · `POST /auth/refresh` · `POST /auth/logout` · `GET /auth/me` · `POST /auth/forgot-password` · `POST /auth/reset-password` |
 | M3 Diagnostic | `POST /diagnostic/start` · `POST /diagnostic/:id/answers` · `POST /diagnostic/:id/complete` |
 | M4 Mastery | `GET /mastery` · `GET /mastery/:skillId` · evidence recording is internal only |
 | M5 Recommender | `GET /recommendations/next` |
@@ -1646,7 +1648,7 @@ In development, Postgres and Redis run locally through `docker compose`.
 | M12 Fade | `GET /scaffolding/state` (fade stage and limits per skill) |
 | M13 Analytics | `GET /analytics/overview` (admin) |
 
-22 client-facing endpoints, plus internal evidence recording. `POST /auth/refresh` is added to M1 because short-lived access tokens need it. The full plan has ~98 operations; every one maps onto the tables in section 5:
+25 client-facing endpoints, plus internal evidence recording. `POST /auth/refresh` is added to M1 because short-lived access tokens need it; forgot and reset password were added on 19 Oct (ADR-0017). The full plan has ~98 operations; every one maps onto the tables in section 5:
 
 | Module | Ops | Tables |
 | --- | --- | --- |
@@ -1710,7 +1712,7 @@ Rate limits: login 20 per IP and 5 failures per email per 15 minutes; register 5
 | FR-M1-02 Sessions per user type | JWT + rotating `refresh_tokens`, `users.role` |
 | FR-M1-03 Record goal | `enrollments.goal_skill_id`, `goal_text` |
 | FR-M1-04 Role-based access | RBAC middleware, route groups in web |
-| FR-M1-05 Password reset (Should) | `password_reset_tokens` (after MVP) |
+| FR-M1-05 Password reset (Should) | `password_reset_tokens`, `POST /auth/forgot-password` and `/reset-password` (ADR-0017) |
 | FR-M2-01 Skills as DAG | `skills`, `skill_prerequisites` |
 | FR-M2-02 Reject cycles | Cycle check in M2 service + self-loop CHECK |
 | FR-M2-03 Editing screen | **MVP: seeded by script.** Screen after MVP; APIs designed (M2, 12 ops) |
@@ -1758,8 +1760,8 @@ Rate limits: login 20 per IP and 5 failures per email per 15 minutes; register 5
 
 - pnpm monorepo: `apps/api` (Express 5 + TypeScript 6), `apps/web` (Next.js 16, React 19), `packages/types`, `packages/config`. Exact pinned versions, Node 22.
 - Local infrastructure via `docker compose`: PostgreSQL 16 with pgvector, Redis 7, with secrets in `.env`; settings validated with zod at startup.
-- **Database:** all 38 MVP tables (section 5) as Drizzle schema files with 13 versioned migrations, plus an idempotent seed: the C++ basics course (20 skills, 23 prerequisites, further-reading links), 25 practice exercises and 40 placement items.
-- **Auth (M1):** register, login, refresh, logout and me (section 7.3): argon2id passwords, 15-minute JWT, rotating refresh tokens with theft detection, httpOnly cookies for web and Bearer tokens for mobile, rate limits and a CSRF origin check.
+- **Database:** all 38 MVP tables (section 5) plus `password_reset_tokens`, as Drizzle schema files with 14 versioned migrations, plus an idempotent seed: the C++ basics course (20 skills, 23 prerequisites, further-reading links), 25 practice exercises and 40 placement items.
+- **Auth (M1):** register, login, refresh, logout and me (section 7.3): argon2id passwords, 15-minute JWT, rotating refresh tokens with theft detection, httpOnly cookies for web and Bearer tokens for mobile, rate limits and a CSRF origin check. Forgot and reset password (ADR-0017): a one-use, 30-minute link emailed through Brevo and stored only as a hash; a reset logs the account out everywhere.
 - **Consent at sign-up (DPDP):** date of birth, required Terms and Privacy consents, optional AI-training and research opt-ins (adults only); under-18 accounts wait for a parent.
 - **Execution (M7):** `POST /submissions` (202 + idempotency key) and `GET /submissions/:id/result` (polling); a BullMQ worker runs each submission in a fresh, offline E2B sandbox (clang 19), and a pure judge gives AC/WA/CE/RE/TLE/MLE/SE. Checked end to end on real E2B: about 6 s per submission.
 - **Mastery (M4):** formula v1 (ADR-0004) turns each counted verdict into reading or writing evidence; the verdict, the evidence row and the mastery snapshot are saved in one transaction with the mastery row locked. `GET /mastery` and `GET /mastery/:skillId` show reading and writing apart, decayed on read.
@@ -1774,9 +1776,9 @@ Rate limits: login 20 per IP and 5 failures per email per 15 minutes; register 5
 - **Analytics (M13):** `GET /analytics/overview?days=30` for admins only (ADR-0014): aggregate counts per window, each gathered by the module that owns the data. `pnpm user:admin <email>` makes the first admin.
 - **Hints (M8):** `POST /exercises/:id/hints` (ADR-0015). Live Gemini 3.5 Flash Lite hint about the learner's own code first, frozen hint as the fallback; one level per request within the fade ceiling; level 5 is the answer (bottom-out logged, no credit); a leak filter blocks solution-like replies; 20 live hints per learner per day and ₹500 per month, each call logged with its cost. Live calls stay off until billing is active (`GEMINI_PAID`).
 - **Exercise generation (M6):** `POST /exercises/generate` and `GET /exercises/generation/:jobId` for admins and authors, plus automatic jobs queued by the recommender (ADR-0016). Up to 3 tries (Gemini 3.8 Flash twice, then 3.1 Pro); a draft is stored only after the sandbox proves it: the reference passes, the starter fails, and 3 model-written wrong solutions fail. Every failed try is logged; after 3 it falls back to the hand-written bank. Separate ₹300/month cap.
-- **Tests:** 171 automated tests on a separate test database: database rules, auth and consent flows, the verdict judge, the mastery formula, the recommender rules, the placement rules (all 711 possible learners), session time rules, analytics (admin-only, counts only), hints (fake LLM: live, blocked, caps, ceiling, answer), the leak filter, and exercise generation (fake LLM and sandbox: retries, weak tests, fallback, budget), and submissions with a fake sandbox. `pnpm sandbox:smoke` checks all six verdicts on real E2B.
+- **Tests:** 180 automated tests on a separate test database: database rules, auth and consent flows, the verdict judge, the mastery formula, the recommender rules, the placement rules (all 711 possible learners), session time rules, analytics (admin-only, counts only), hints (fake LLM: live, blocked, caps, ceiling, answer), the leak filter, and exercise generation (fake LLM and sandbox: retries, weak tests, fallback, budget), password reset (fake email: one use, expiry, only the newest link, one email per 5 minutes, logged out everywhere), and submissions with a fake sandbox. `pnpm sandbox:smoke` checks all six verdicts on real E2B.
 
-**Next (Phase 3, 23 Oct):** frontend binding, deployment, then live AI once billing is active (7 Nov). All 23 MVP endpoints are live.
+**Next (Phase 3, 23 Oct):** frontend binding, deployment, then live AI once billing is active (7 Nov). All 25 MVP endpoints are live.
 
 ---
 
