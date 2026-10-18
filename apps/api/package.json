@@ -14,7 +14,8 @@
     "db:seed": "tsx src/infrastructure/database/seed/index.ts",
     "sandbox:build": "tsx src/scripts/build-sandbox-template.ts",
     "sandbox:smoke": "tsx src/scripts/sandbox-smoke.ts",
-    "exercises:verify": "tsx src/scripts/verify-exercises.ts"
+    "exercises:verify": "tsx src/scripts/verify-exercises.ts",
+    "user:admin": "tsx src/scripts/make-admin.ts"
   },
   "dependencies": {
     "@ai-tutor/types": "workspace:*",

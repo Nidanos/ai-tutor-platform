@@ -27,3 +27,11 @@ export const authenticate: RequestHandler = async (req, _res, next) => {
   }
   next();
 };
+
+// Runs after authenticate. Hiding admin pages in the UI is not enough: the server checks the role too.
+export const requireRole =
+  (...roles: AuthUser["role"][]): RequestHandler =>
+  (req, _res, next) => {
+    if (!roles.includes(req.auth!.role)) throw new AppError(403, "FORBIDDEN", "You don't have access to this");
+    next();
+  };

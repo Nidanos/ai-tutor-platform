@@ -10,6 +10,7 @@ import { submissionsRouter } from "./modules/m7_execution/routes/submissions.rou
 import { sessionsRouter } from "./modules/m9_sessions/routes/sessions.routes.js";
 import { progressRouter } from "./modules/m11_progress/routes/progress.routes.js";
 import { scaffoldingRouter } from "./modules/m12_scaffolding/routes/scaffolding.routes.js";
+import { analyticsRouter } from "./modules/m13_analytics/routes/analytics.routes.js";
 import { errorHandler } from "./shared/errors/error-handler.js";
 import { checkOrigin } from "./shared/middlewares/check-origin.js";
 
@@ -35,5 +36,6 @@ app.use("/api/v1/submissions", submissionsRouter);
 app.use("/api/v1/scaffolding", scaffoldingRouter);
 app.use("/api/v1/sessions", sessionsRouter);
 app.use("/api/v1/progress", progressRouter);
+app.use("/api/v1/analytics", analyticsRouter);
 
 app.use(errorHandler);
