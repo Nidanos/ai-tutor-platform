@@ -3,8 +3,10 @@ import { getCourse, getSkillGraph, getSkills } from "../../m2_skills/services/sk
 import { placementStats } from "../../m3_diagnostic/services/diagnostic.service.js";
 import { clearedSince, skillStats } from "../../m4_mastery/services/mastery-read.service.js";
 import { countServable, listTitles } from "../../m6_exercises/services/exercises.service.js";
+import { spentThisMonthInr } from "../../../infrastructure/llm/llm-log.js";
 import { hardestExercises } from "../../m7_execution/services/attempts.service.js";
 import { runStats } from "../../m7_execution/services/submissions.service.js";
+import { hintStats, MONTHLY_BUDGET_INR } from "../../m8_socratic/services/hints.service.js";
 import { sessionStats } from "../../m9_sessions/services/sessions.service.js";
 import { stageMoves } from "../../m12_scaffolding/services/scaffolding.service.js";
 
@@ -19,7 +21,7 @@ export async function overview(days: number, courseSlug: string, languageCode: s
   const course = await getCourse(courseSlug, languageCode);
   const graph = await getSkillGraph(course.id, languageCode);
   const skillIds = graph.map((s) => s.id);
-  const [learners, placement, sessions, runs, hardest, outcomes, cleared, moves, content] = await Promise.all([
+  const [learners, placement, sessions, runs, hardest, outcomes, cleared, moves, content, hints, spent] = await Promise.all([
     learnerStats(since),
     placementStats(since),
     sessionStats(since),
@@ -29,6 +31,8 @@ export async function overview(days: number, courseSlug: string, languageCode: s
     clearedSince(since),
     stageMoves(since),
     countServable(skillIds),
+    hintStats(since),
+    spentThisMonthInr(),
   ]);
   const titles = await listTitles(hardest.map((h) => h.exerciseId));
   const skillOf = new Map((await getSkills([...skillIds, ...titles.map((t) => t.skillId)])).map((s) => [s.id, { slug: s.slug, name: s.name }]));
@@ -58,6 +62,8 @@ export async function overview(days: number, courseSlug: string, languageCode: s
       }),
     },
     content: { skills: contentSkills, skillsWithoutExercises: contentSkills.filter((s) => s.total === 0).length },
+    hints: { ...hints, generic: hints.delivered - hints.live - hints.frozen },
+    ai: { spentThisMonthInr: spent, monthlyBudgetInr: MONTHLY_BUDGET_INR }, // this calendar month (IST), not the window
     hardest: hardest.map((h) => {
       const t = titles.find((x) => x.id === h.exerciseId)!;
       return { exerciseId: h.exerciseId, title: t.title, skill: skillOf.get(t.skillId), rung: t.rung, attempts: h.attempts, solveRate: h.solved / h.attempts };

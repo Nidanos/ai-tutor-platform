@@ -9,6 +9,7 @@ import {
   enrollments,
   exerciseAttempts,
   exercises,
+  hintEvents,
   learningSessions,
   masteryRecords,
   submissions,
@@ -52,6 +53,7 @@ describe("GET /analytics/overview", () => {
     await db.insert(submissions).values([submission("AC"), submission("SE")]);
     await db.insert(learningSessions).values({ userId: learner.id, enrollmentId: enrollment.id, activeMs: 10 * 60_000, status: "ended" });
     await db.insert(masteryRecords).values({ userId: learner.id, skillId: skill.id, languageCode: "cpp", decayLambda: 0.05, clearedAt: new Date() });
+    await db.insert(hintEvents).values([{ attemptId: attempt.id, level: 1, kind: "delivered" }, { attemptId: attempt.id, level: 5, kind: "bottomed_out" }]);
 
     const after = (await overviewFor(auth, inCourse)).data;
     expect(after.window.days).toBe(30);
@@ -62,6 +64,9 @@ describe("GET /analytics/overview", () => {
     expect(after.runs.sandboxErrorRate).toBeGreaterThan(0);
     expect(after.study.studyMinutes - before.study.studyMinutes).toBeGreaterThanOrEqual(10);
     expect(after.outcomes.skillsCleared - before.outcomes.skillsCleared).toBeGreaterThanOrEqual(1);
+    expect(after.hints.delivered - before.hints.delivered).toBeGreaterThanOrEqual(1);
+    expect(after.hints.bottomedOut - before.hints.bottomedOut).toBeGreaterThanOrEqual(1);
+    expect(after.ai).toMatchObject({ monthlyBudgetInr: 500 });
     expect(JSON.stringify(after)).not.toContain(learner.email); // counts only, never who
   });
 
