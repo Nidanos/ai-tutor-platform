@@ -59,6 +59,20 @@ export const refreshTokens = pgTable(
   (t) => [index().on(t.userId), index().on(t.familyId)],
 );
 
+// A "forgot password" link (ADR-0017): only its hash is stored; one use, 30 minutes, gone with the user.
+export const passwordResetTokens = pgTable(
+  "password_reset_tokens",
+  {
+    id: id(),
+    userId: uuid().notNull().references(() => users.id, { onDelete: "cascade" }),
+    tokenHash: text().notNull().unique("password_reset_tokens_token_hash_unique"),
+    expiresAt: tz().notNull(),
+    usedAt: tz(),
+    createdAt: createdAt(),
+  },
+  (t) => [index().on(t.userId)],
+);
+
 // Proof of what each user agreed to, and to which policy version. Kept after account deletion (DPDP).
 export const consents = pgTable(
   "consents",

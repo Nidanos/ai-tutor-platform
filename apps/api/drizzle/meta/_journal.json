@@ -92,6 +92,13 @@
       "when": 1791979455476,
       "tag": "0012_consent_at_register",
       "breakpoints": true
+    },
+    {
+      "idx": 13,
+      "version": "7",
+      "when": 1792352791032,
+      "tag": "0013_password_reset_tokens",
+      "breakpoints": true
     }
   ]
 }
