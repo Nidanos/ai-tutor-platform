@@ -232,7 +232,7 @@ The budget is a student budget, so every running cost was measured or quoted, no
 | Content generation (lessons, exercises) | Gemini Flash through the Batch API, once per item, then frozen | about ₹300–400 per 300-exercise course |
 | Live tutor hints | Gemini 3.5 Flash Lite, capped at 20 per learner per day and ₹500 per month in total | about ₹0.08 per hint (₹0.01 measured on short test prompts) |
 
-One cost was found only when paying: a new Google Cloud billing account in India must prepay **₹2,500** before the paid Gemini tier activates. Until then the key stays on the free tier, where prompts may be used by Google, so live hints are switched off by a setting until billing is active (7 November 2026, section 4.5).
+One cost was found only when paying: a new Google Cloud billing account in India must prepay **₹3,000** in total before the paid Gemini tier activates (₹500 paid on 18 October, ₹2,500 due on 7 November). Until then the key stays on the free tier, where prompts may be used by Google, so live hints are switched off by a setting until billing is active (7 November 2026, section 4.5).
 
 One design decision is a direct result of this study. The first design kept one sandbox alive for a whole learner session. Because E2B bills every second a sandbox is alive, that would cost about **₹4.60** for a 30-minute session. Creating a fresh sandbox per submission costs about **₹0.25** for the same session, roughly 18 times less, so the design was changed (ADR-0003).
 
@@ -295,7 +295,7 @@ Every increment ended with automated tests and a real end-to-end run before the 
 | J. Template bank, recommender, placement test | G | 17–18 Oct | Done |
 | L. Sessions, progress, analytics | J | 19 Oct | Done |
 | I1. LLM adapter and hints | G | 19 Oct | Done (live calls wait for billing) |
-| M. Gemini billing activation | – | 7 Nov | Planned (₹2,500 prepayment) |
+| M. Gemini billing activation | – | 7 Nov | Planned (₹2,500 of the ₹3,000 prepayment left) |
 | I2. Exercise generation; frozen hints | I1, M | 7–8 Nov | Planned |
 | K. Deployment, pilot, final report | H, I2, L | 5–10 Nov | Planned |
 
@@ -1426,7 +1426,7 @@ Around that core, the rest of the learner's journey now works too: an adaptive *
 
 - **No web interface yet.** The frontend is in progress; this draft's sample outputs are API responses, and screen snapshots will be added in the final report.
 - **Practice content covers 5 of 20 skills.** The 26 practice exercises cover the first five skills (plus one); skills 6–20 get theirs from exercise generation. The placement test covers all 20.
-- **Live AI waits for billing.** Live hints are built and tested with a fake model, but stay off until the ₹2,500 prepayment activates the paid tier (7 November); until then learners get frozen hints or a general nudge. Lessons and exercise generation are not built yet.
+- **Live AI waits for billing.** Live hints are built and tested with a fake model, but stay off until the ₹3,000 prepayment is complete and activates the paid tier (the remaining ₹2,500 on 7 November); until then learners get frozen hints or a general nudge. Lessons and exercise generation are not built yet.
 - **The judge sees only output.** A determined learner can sometimes avoid a prerequisite (for example by rewriting a struct to use a vector); the tasks are designed so the natural solution uses it.
 - **Placement length.** An expert answers 26 questions (about 28 minutes); a placement seed unlocks the next skills for about 4 days (syntactic skills) before one Build per skill confirms them.
 - **Latency:** about 6 s per submission, mostly network round trips to the sandbox provider, whose servers are outside India.
