@@ -56,6 +56,7 @@ pnpm db:up   # = docker compose up -d
 pnpm --filter @ai-tutor/api db:migrate
 pnpm --filter @ai-tutor/api db:seed
 pnpm --filter @ai-tutor/api exercises:verify   # runs the seeded exercises in the E2B sandbox (needs E2B_API_KEY)
+pnpm --filter @ai-tutor/api hints:generate     # writes the frozen hints once (needs GEMINI_API_KEY and GEMINI_PAID=true)
 
 # 4. Start development servers across apps (API :3001, web :3000)
 pnpm dev

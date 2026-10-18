@@ -18,6 +18,7 @@ Last updated: 19 Oct 2026. These record decisions Ashwani has made. Where no dec
 | [0012](0012-diagnostic-v1.md) | Placement test v1: reading walk with a slip check, frontier code tasks, fast-track seeding, retakes | Accepted, built |
 | [0013](0013-sessions-and-progress-v1.md) | Sessions (one PATCH for pause/resume/end, 15 min idle, 24 h end) and the progress view | Accepted, built |
 | [0014](0014-analytics-overview-v1.md) | Admin analytics overview: aggregate counts per window, each from its owning module | Accepted, built |
+| [0015](0015-hints-v1.md) | Hints: live tutor first (3.5 Flash Lite), frozen fallback, leak filter, caps, paid-tier safety switch | Accepted, built |
 
 ## Open decisions (Ashwani's to make)
 | # | Question | Blocks |

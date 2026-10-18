@@ -305,11 +305,32 @@ type Overview = {
   };
   content: { skills: Array<{ skill: SkillRef; byRung: Record<"1" | "2" | "3" | "4" | "5", number>; total: number }>; skillsWithoutExercises: number };
   hardest: Array<{ exerciseId: string; title: string; skill: SkillRef; rung: number; attempts: number; solveRate: number }>;
+  hints: { delivered: number; live: number; frozen: number; generic: number; blocked: number; deniedCeiling: number; bottomedOut: number };
+  ai: { spentThisMonthInr: number; monthlyBudgetInr: number };   // this calendar month, not the window
 };
 ```
 
 - One page, five cards: Learners, Code runs (a verdict bar chart; warn if `sandboxErrorRate > 0.05`), Outcomes (reading vs writing bars per skill), Content (a skill × rung grid, empty cells highlighted), Hardest exercises.
 - A window selector (7 / 30 / 90 days) sets `days`.
+
+## 4j. Hints (live, 19 Oct)
+
+`POST /api/v1/exercises/:id/hints` with `{ code?: string }` (the editor's current code, or the rung-1 prediction) → `200 { hint: Hint }`
+
+```ts
+type Hint = {
+  level: 1 | 2 | 3 | 4 | 5;   // 1 idea · 2 where · 3 how · 4 worked example · 5 the answer
+  ceiling: number;            // the most this attempt allows (from the fade stage)
+  bodyMd: string;             // render as Markdown
+  source: "live" | "frozen" | "generic" | "answer";
+};
+```
+
+- **"Get a hint" button:** always send the current code, so the tutor talks about *their* work. Each press gives the **next** level only. Show the text under the editor and keep earlier hints visible.
+- Disable the button while waiting (a second press gets `409 HINT_CHANGED`), and when `level === ceiling` ("No more hints at this stage").
+- **Before level 5,** ask "Show the answer? This exercise won't count towards your progress." Level 5 is the full answer.
+- After a compile error, show the button more prominently: the tutor explains the compiler's message.
+- `409 HINT_LIMIT`: the stage's ceiling is reached. `404 ATTEMPT_NOT_FOUND`: open the exercise first (`GET /exercises/:id`).
 
 ## 5. Screens and flow
 
@@ -381,7 +402,6 @@ Shapes will be published here when each one goes live. Use mock data until then.
 | Area | Endpoint | For the screen |
 | --- | --- | --- |
 | Exercise generation | `POST /exercises/generate`, `GET /exercises/generation/:jobId` | Shown while a new exercise is prepared |
-| Hints | `POST /exercises/:id/hints` | "Get a hint" button. The server decides the level and returns one hint |
 
 ## 8. Error codes
 
@@ -403,6 +423,8 @@ Shapes will be published here when each one goes live. Use mock data until then.
 | `ITEM_NOT_CURRENT` | 409 | Answered an old question | Call `/diagnostic/start` and show its question |
 | `DIAGNOSTIC_LIMIT` | 409 | No placement retakes left | Hide the "Retake" button |
 | `DIAGNOSTIC_UNAVAILABLE` | 503 | The placement test isn't ready yet | Skip it and go to the dashboard |
+| `HINT_LIMIT` | 409 | No more hints at this fade stage | Disable "Get a hint", suggest another run |
+| `HINT_CHANGED` | 409 | A hint was just given (double press) | Ignore; keep the hint already shown |
 | `FORBIDDEN` | 403 | Not allowed for this role (e.g. analytics for a learner) | Hide the page; it's admin-only |
 | `SESSION_NOT_FOUND` | 404 | Not your session | Call `GET /sessions/active` |
 | `SESSION_ENDED` | 409 | The session already ended | Call `POST /sessions` |

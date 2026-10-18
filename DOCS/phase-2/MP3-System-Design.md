@@ -1772,9 +1772,10 @@ Rate limits: login 20 per IP and 5 failures per email per 15 minutes; register 5
 - **Sessions (M9):** `POST /sessions`, `GET /sessions/active` and `PATCH /sessions/:id` (ADR-0013). One open session per learner; each step comes from the recommender and advances when its exercise is solved; 15 minutes idle pauses it, 24 hours paused ends it, worked out when read.
 - **Progress (M11):** `GET /progress` lists every skill with reading and writing apart (stored and today's effective), its fade stage, prerequisites for the graph, and a status (locked, ready, in progress, cleared, review due) from the recommender's own unlock rule.
 - **Analytics (M13):** `GET /analytics/overview?days=30` for admins only (ADR-0014): aggregate counts per window, each gathered by the module that owns the data. `pnpm user:admin <email>` makes the first admin.
-- **Tests:** 140 automated tests on a separate test database: database rules, auth and consent flows, the verdict judge, the mastery formula, the recommender rules, the placement rules (all 711 possible learners), session time rules, analytics (admin-only, counts only), and submissions with a fake sandbox. `pnpm sandbox:smoke` checks all six verdicts on real E2B.
+- **Hints (M8):** `POST /exercises/:id/hints` (ADR-0015). Live Gemini 3.5 Flash Lite hint about the learner's own code first, frozen hint as the fallback; one level per request within the fade ceiling; level 5 is the answer (bottom-out logged, no credit); a leak filter blocks solution-like replies; 20 live hints per learner per day and ₹500 per month, each call logged with its cost. Live calls stay off until billing is active (`GEMINI_PAID`).
+- **Tests:** 155 automated tests on a separate test database: database rules, auth and consent flows, the verdict judge, the mastery formula, the recommender rules, the placement rules (all 711 possible learners), session time rules, analytics (admin-only, counts only), hints (fake LLM: live, blocked, caps, ceiling, answer) and the leak filter, and submissions with a fake sandbox. `pnpm sandbox:smoke` checks all six verdicts on real E2B.
 
-**Next (Phase 3, 23 Oct):** hints (LLM adapter) and exercise generation; frontend binding. 20 of 23 MVP endpoints are live.
+**Next (Phase 3, 23 Oct):** exercise generation (2 endpoints); frontend binding. 21 of 23 MVP endpoints are live.
 
 ---
 

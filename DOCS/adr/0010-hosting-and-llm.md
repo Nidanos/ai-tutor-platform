@@ -26,7 +26,7 @@ Everything ships as Docker Compose plus a database dump, so moving between these
 ## LLM
 - **Provider: Google Gemini, paid tier, called directly**: cheapest good models, one data processor, no training on our data. It sits behind one adapter (`infrastructure/llm`), and model names live in `.env`, so switching model, or to OpenRouter later, is configuration, not code.
 - **Generation model: Gemini Flash through the Batch API** (half price; generation runs offline). An exercise that fails sandbox verification twice is retried once with Pro. Budget: about ₹300–400 for a 300-exercise course, paid once.
-- **Live tutor model: Flash-Lite**, for Socratic hints about the learner's own code and "explain my compile error". About ₹0.03 per hint.
+- **Live tutor model: Flash-Lite**, for Socratic hints about the learner's own code and "explain my compile error". About ₹0.03 per hint. *(Built 19 Oct with Gemini 3.5 Flash Lite, about ₹0.08 per hint; ADR-0015.)*
 - **Spend caps:** live calls are capped at **20 per learner per day** and **₹500 per month** in total. When a cap is hit, the frozen hint for that level is served instead, so learners are never blocked and the bill can't surprise us. Every call is logged in `llm_calls` with its estimated cost.
 
 ## How teaching content is made (extends ADR-0005)

@@ -18,7 +18,7 @@
 - **Generate → validate → freeze.** Generate once, verify in the sandbox (ADR-0004), store with a version, and serve from the database. A verified exercise is never edited; a change is a new row with a new `content_version`.
 - **Content key:** `(skill_id, language_code, rung, variant_seed, content_version)`, unique in the database.
 - **Structured output only:** Gemini fills a fixed JSON schema, validated with zod before anything is stored. Anything that fails validation is rejected and logged in `generation_failures`.
-- **Hints are pre-generated** for all 5 levels when an exercise is frozen, so the same exercise always gives the same hints. Level 5 is the reference solution. Live generation, through the output filter, is only a fallback when a stored hint is missing.
+- **Hints are pre-generated** for all 5 levels when an exercise is frozen. Level 5 is the reference solution. *(Changed 19 Oct, ADR-0015: the live tutor comes first and the frozen hints are the fallback. Hints never affect grading or selection.)*
 - **Exercises are pre-generated** in the background, so the learner never waits. When nothing is ready, the recommender serves a template exercise and queues generation; an async job with a status endpoint is the fallback path.
 - **Mastery maths is versioned:** every evidence row stores the `formula_version` that produced it.
 

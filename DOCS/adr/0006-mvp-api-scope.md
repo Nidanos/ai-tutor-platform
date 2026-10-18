@@ -15,7 +15,7 @@ Base path: `/api/v1`. Live endpoints are documented for the frontend in `DOCS/ap
 | Recommender | GET /recommendations/next | **Live** |
 | Exercises | GET /exercises/:id · POST /exercises/generate · **GET /exercises/generation/:jobId** | GET /exercises/:id **Live**; generation planned |
 | Submissions | POST /submissions · GET /submissions/:id/result | **Live** |
-| Hints | POST /exercises/:id/hints | Planned |
+| Hints | POST /exercises/:id/hints | **Live** (19 Oct; live AI once billing is on, ADR-0015) |
 | Sessions | POST /sessions · GET /sessions/active · **PATCH /sessions/:id** | **Live** (19 Oct) |
 | Progress | GET /progress | **Live** (19 Oct) |
 | Fade | **GET /scaffolding/state** | **Live** |
