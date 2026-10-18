@@ -23,3 +23,6 @@ export async function openAttempt(userId: string, exercise: Exercise) {
 export async function attemptStatuses(userId: string) {
   return new Map((await repo.listAttempts(userId)).map((a) => [a.exerciseId, a.status === "active" ? "active" : "done"] as const));
 }
+
+// For M13: practice exercises with the lowest solve rate.
+export const hardestExercises = repo.hardestExercises;

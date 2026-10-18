@@ -1,4 +1,5 @@
-import { and, desc, eq, ne } from "drizzle-orm";
+import { and, count, desc, eq, gte, ne } from "drizzle-orm";
+import { sumOf } from "../../../infrastructure/database/aggregates.js";
 import { db } from "../../../infrastructure/database/index.js";
 import { learningSessions, sessionSteps } from "../../../infrastructure/database/schema/index.js";
 
@@ -38,3 +39,11 @@ export async function addStep(sessionId: string, values: Pick<Step, "kind" | "re
     .onConflictDoNothing();
   return findActiveStep(sessionId);
 }
+
+export const sessionStats = async (since: Date) =>
+  (
+    await db
+      .select({ started: count(), activeMs: sumOf(learningSessions.activeMs) })
+      .from(learningSessions)
+      .where(gte(learningSessions.startedAt, since))
+  )[0];

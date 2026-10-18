@@ -1,4 +1,4 @@
-import { and, desc, eq, inArray, ne, sql } from "drizzle-orm";
+import { and, count, countDistinct, desc, eq, gte, inArray, ne, sql } from "drizzle-orm";
 import { db, type Tx } from "../../../infrastructure/database/index.js";
 import {
   exerciseAttempts,
@@ -146,4 +146,16 @@ export async function findLatestRun(submissionId: string) {
   if (!run) return undefined;
   const results = await db.select().from(runTestResults).where(eq(runTestResults.runId, run.id));
   return { ...run, results };
+}
+
+// For M13: how code runs went in the window. The median run time is over learner runs that finished.
+export async function runStats(since: Date) {
+  const inWindow = gte(submissions.createdAt, since);
+  const [totals] = await db.select({ submissions: count(), learners: countDistinct(submissions.userId) }).from(submissions).where(inWindow);
+  const byVerdict = await db.select({ verdict: submissions.verdict, n: count() }).from(submissions).where(inWindow).groupBy(submissions.verdict);
+  const [timing] = await db
+    .select({ medianMs: sql<string | null>`percentile_cont(0.5) within group (order by ${sandboxRuns.wallMs})` })
+    .from(sandboxRuns)
+    .where(and(eq(sandboxRuns.purpose, "submission"), eq(sandboxRuns.status, "completed"), gte(sandboxRuns.finishedAt, since)));
+  return { ...totals, byVerdict, medianRunMs: timing.medianMs === null ? null : Math.round(Number(timing.medianMs)) };
 }

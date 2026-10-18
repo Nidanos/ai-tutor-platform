@@ -30,3 +30,7 @@ export const listServable = repo.listServable;
 
 // For M3: which of these exercises passed sandbox verification, so only those are ever asked.
 export const verifiedIds = async (ids: string[]) => new Set((await repo.listVerified(ids)).map((e) => e.id));
+
+// For M13: content coverage, and titles for the hardest-exercises list.
+export const countServable = repo.countServable;
+export const listTitles = repo.listTitles;

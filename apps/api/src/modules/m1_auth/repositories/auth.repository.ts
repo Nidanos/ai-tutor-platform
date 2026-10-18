@@ -1,4 +1,5 @@
-import { and, eq, isNull } from "drizzle-orm";
+import { and, eq, gte, isNull, sql } from "drizzle-orm";
+import { countWhere } from "../../../infrastructure/database/aggregates.js";
 import { v7 as uuidv7 } from "uuid";
 import { db } from "../../../infrastructure/database/index.js";
 import { consents, organizations, refreshTokens, users } from "../../../infrastructure/database/schema/index.js";
@@ -64,3 +65,16 @@ export const revokeFamily = (familyId: string) =>
     .update(refreshTokens)
     .set({ revokedAt: new Date() })
     .where(and(eq(refreshTokens.familyId, familyId), isNull(refreshTokens.revokedAt)));
+
+// For M13: learner counts and live research opt-ins. Counts only, never who.
+export async function learnerStats(since: Date) {
+  const [counts] = await db
+    .select({ total: countWhere(sql`true`), joined: countWhere(gte(users.createdAt, since)), pendingParent: countWhere(eq(users.status, "pending_parent")) })
+    .from(users)
+    .where(eq(users.role, "LEARNER"));
+  const [consented] = await db
+    .select({ researchStudy: countWhere(eq(consents.kind, "research_study")), aiTraining: countWhere(eq(consents.kind, "ai_training")) })
+    .from(consents)
+    .where(isNull(consents.revokedAt));
+  return { ...counts, consented };
+}

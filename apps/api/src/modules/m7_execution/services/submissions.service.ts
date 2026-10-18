@@ -70,3 +70,6 @@ export async function getResult(userId: string, submissionId: string) {
     }),
   };
 }
+
+// For M13: submissions by verdict, learners who ran code, median run time.
+export const runStats = repo.runStats;

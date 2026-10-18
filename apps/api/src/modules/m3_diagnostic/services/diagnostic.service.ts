@@ -155,3 +155,6 @@ export async function complete(userId: string, diagnosticId: string) {
   });
   return completedView((await repo.findOwn(diagnosticId, userId))!);
 }
+
+// For M13: placement tests started and completed.
+export const placementStats = repo.placementStats;

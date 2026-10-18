@@ -82,3 +82,6 @@ export async function setStatus(userId: string, id: string, to: "active" | "paus
   const updated = Object.keys(changes).length ? await repo.updateSession(id, changes) : session;
   return updated.status === "ended" ? view({ session: updated }) : view(await current(userId, updated));
 }
+
+// For M13: sessions started and study time.
+export const sessionStats = repo.sessionStats;

@@ -41,3 +41,6 @@ export async function listState(userId: string, languageCode?: string) {
 export async function minRungs(userId: string, languageCode: string) {
   return new Map((await repo.listStates(userId, languageCode)).map((s) => [s.skillId, s.minRung]));
 }
+
+// For M13: stage moves by cause.
+export const stageMoves = repo.stageMoves;

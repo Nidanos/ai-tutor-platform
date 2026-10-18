@@ -1,4 +1,4 @@
-import { and, eq, max, sql } from "drizzle-orm";
+import { and, count, eq, gte, isNotNull, max, sql } from "drizzle-orm";
 import { db, type Tx } from "../../../infrastructure/database/index.js";
 import { fadeSchedules, fadeStageChanges, fadeStages, skillScaffolding } from "../../../infrastructure/database/schema/index.js";
 
@@ -96,3 +96,11 @@ export const listStates = (userId: string, languageCode?: string) =>
     .from(skillScaffolding)
     .innerJoin(fadeStages, currentStageJoin)
     .where(and(eq(skillScaffolding.userId, userId), languageCode ? eq(skillScaffolding.languageCode, languageCode) : undefined));
+
+// For M13: stage moves in the window, by cause (solved in practice, or the placement test).
+export const stageMoves = (since: Date) =>
+  db
+    .select({ reason: fadeStageChanges.reason, n: count() })
+    .from(fadeStageChanges)
+    .where(and(isNotNull(fadeStageChanges.fromStage), gte(fadeStageChanges.createdAt, since)))
+    .groupBy(fadeStageChanges.reason);

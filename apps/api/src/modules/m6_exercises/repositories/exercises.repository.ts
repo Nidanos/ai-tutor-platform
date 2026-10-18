@@ -1,4 +1,4 @@
-import { and, asc, eq, inArray } from "drizzle-orm";
+import { and, asc, count, eq, inArray } from "drizzle-orm";
 import { db } from "../../../infrastructure/database/index.js";
 import { exercises, exerciseSecrets, exerciseTests } from "../../../infrastructure/database/schema/index.js";
 
@@ -96,4 +96,19 @@ export const listServable = (skillIds: string[], languageCode: string) =>
 export const listVerified = (ids: string[]) =>
   ids.length
     ? db.select({ id: exercises.id }).from(exercises).where(and(inArray(exercises.id, ids), eq(exercises.status, "verified")))
+    : Promise.resolve([]);
+
+// For M13: verified practice exercises per skill and rung.
+export const countServable = (skillIds: string[]) =>
+  skillIds.length
+    ? db
+        .select({ skillId: exercises.skillId, rung: exercises.rung, n: count() })
+        .from(exercises)
+        .where(and(inArray(exercises.skillId, skillIds), eq(exercises.status, "verified"), eq(exercises.purpose, "practice")))
+        .groupBy(exercises.skillId, exercises.rung)
+    : Promise.resolve([]);
+
+export const listTitles = (ids: string[]) =>
+  ids.length
+    ? db.select({ id: exercises.id, title: exercises.title, skillId: exercises.skillId, rung: exercises.rung }).from(exercises).where(inArray(exercises.id, ids))
     : Promise.resolve([]);

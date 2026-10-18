@@ -1,4 +1,5 @@
-import { and, desc, eq } from "drizzle-orm";
+import { type AnyColumn, and, avg, count, desc, eq, gte, inArray, isNotNull, sql } from "drizzle-orm";
+import { countWhere } from "../../../infrastructure/database/aggregates.js";
 import { db, type Tx } from "../../../infrastructure/database/index.js";
 import { evidenceEvents, masteryRecords } from "../../../infrastructure/database/schema/index.js";
 
@@ -45,3 +46,26 @@ export const listEvidence = (k: LearnerSkill) =>
     .where(and(eq(evidenceEvents.userId, k.userId), eq(evidenceEvents.skillId, k.skillId), eq(evidenceEvents.languageCode, k.languageCode)))
     .orderBy(desc(evidenceEvents.id))
     .limit(HISTORY_ROWS);
+
+// The effective score in SQL, the same formula as effectiveScore(): stored × e^(−λ × days since evidence).
+const effective = (score: AnyColumn, at: AnyColumn) =>
+  sql`${score} * exp(-${masteryRecords.decayLambda} * coalesce(extract(epoch from now() - ${at}) / 86400, 0))`;
+
+// For M13: per skill, learners with evidence, their average effective scores, and clears.
+export const skillStats = (skillIds: string[]) =>
+  skillIds.length
+    ? db
+        .select({
+          skillId: masteryRecords.skillId,
+          learners: count(),
+          avgReading: avg(effective(masteryRecords.readingScore, masteryRecords.readingEvidenceAt)).mapWith(Number),
+          avgWriting: avg(effective(masteryRecords.writingScore, masteryRecords.writingEvidenceAt)).mapWith(Number),
+          cleared: countWhere(isNotNull(masteryRecords.clearedAt)),
+        })
+        .from(masteryRecords)
+        .where(inArray(masteryRecords.skillId, skillIds))
+        .groupBy(masteryRecords.skillId)
+    : Promise.resolve([]);
+
+export const clearedSince = async (since: Date) =>
+  (await db.select({ n: count() }).from(masteryRecords).where(gte(masteryRecords.clearedAt, since)))[0].n;

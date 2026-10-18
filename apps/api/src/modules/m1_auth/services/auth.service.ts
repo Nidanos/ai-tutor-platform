@@ -96,3 +96,6 @@ async function issueSession(user: AuthUser, familyId: string, client: Client, de
   });
   return { accessToken: await signAccessToken(user), refreshToken, refreshTokenId, client };
 }
+
+// For M13: learner counts and research opt-ins.
+export const learnerStats = repo.learnerStats;

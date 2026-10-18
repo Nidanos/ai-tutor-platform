@@ -1,4 +1,5 @@
-import { and, asc, desc, eq, inArray, isNotNull } from "drizzle-orm";
+import { and, asc, desc, eq, gte, inArray, isNotNull } from "drizzle-orm";
+import { countWhere } from "../../../infrastructure/database/aggregates.js";
 import { db, type Tx } from "../../../infrastructure/database/index.js";
 import {
   diagnosticAttempts,
@@ -85,3 +86,10 @@ export const finish = (id: string, results: (typeof diagnosticResults.$inferInse
 
 export const listResults = (diagnosticId: string) =>
   db.select().from(diagnosticResults).where(eq(diagnosticResults.diagnosticId, diagnosticId));
+
+export const placementStats = async (since: Date) =>
+  (
+    await db
+      .select({ started: countWhere(gte(diagnosticAttempts.startedAt, since)), completed: countWhere(gte(diagnosticAttempts.completedAt, since)) })
+      .from(diagnosticAttempts)
+  )[0];
