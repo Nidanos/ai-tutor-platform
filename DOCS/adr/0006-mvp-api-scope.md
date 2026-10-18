@@ -13,7 +13,7 @@ Base path: `/api/v1`. Live endpoints are documented for the frontend in `DOCS/ap
 | Diagnostic | POST /diagnostic/start · POST /diagnostic/:id/answers · POST /diagnostic/:id/complete | **Live** (18 Oct) |
 | Mastery | GET /mastery · GET /mastery/:skillId | **Live** |
 | Recommender | GET /recommendations/next | **Live** |
-| Exercises | GET /exercises/:id · POST /exercises/generate · **GET /exercises/generation/:jobId** | GET /exercises/:id **Live**; generation planned |
+| Exercises | GET /exercises/:id · POST /exercises/generate · **GET /exercises/generation/:jobId** | **Live** (generation 19 Oct; live runs once billing is on, ADR-0016) |
 | Submissions | POST /submissions · GET /submissions/:id/result | **Live** |
 | Hints | POST /exercises/:id/hints | **Live** (19 Oct; live AI once billing is on, ADR-0015) |
 | Sessions | POST /sessions · GET /sessions/active · **PATCH /sessions/:id** | **Live** (19 Oct) |

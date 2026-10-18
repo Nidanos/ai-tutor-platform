@@ -23,4 +23,4 @@
 ## Not in v1 (added with the features they measure)
 - **Calibration** (FR-M13-01): needs held-out exercises.
 - ~~Hint trends (FR-M13-02) and AI spend vs the ₹500/month cap~~: added with hints on 19 Oct (ADR-0015).
-- **Generation success by skill and rung** (FR-M13-03): needs M6 generation.
+- ~~Generation success by skill and rung (FR-M13-03)~~: added with generation on 19 Oct (ADR-0016).

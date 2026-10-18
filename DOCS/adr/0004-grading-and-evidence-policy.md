@@ -59,4 +59,5 @@ About five good solves (rungs 2→5) take a new skill from 0 to 0.72, just past 
 - **Verification** (`m6_exercises/services/verify-exercise.ts`, run with `pnpm exercises:verify`): an exercise is served only if, in the real sandbox, the **reference passes every test** and the **starter code fails at least one** (the tests can tell a solution from a non-solution). Rung 1 runs the program and checks its output. Passing exercises are marked `verified`, failing ones `rejected`.
 - **Seeded content is frozen:** to change an exercise, add a new variant.
 - First run: **25 of 25 verified** on real E2B.
-- The brute-force/TLE mutation check above applies to LLM-generated exercises with large tests; the hand-written bank has small tests only.
+- The brute-force/TLE mutation check above applies to LLM-generated exercises with large tests (the DSA course); the hand-written bank has small tests only.
+- *(19 Oct, ADR-0016)* Generated exercises for the beginner course use a **wrong-answer check** instead: 3 common wrong solutions written by the model must each compile and fail at least one test, and the starter must compile.

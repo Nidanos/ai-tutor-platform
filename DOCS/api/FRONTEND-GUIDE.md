@@ -191,7 +191,7 @@ type Recommendation = {
 
 - **Dashboard "What next" card:** call this, show the skill name, the rung ("Level 2 of 5") and, for reviews, a "Review" badge. The button opens `/exercise/{exerciseId}`, which calls `GET /exercises/:id` (that starts the attempt).
 - If the learner has an unfinished attempt, this returns **the same exercise** again, so it doubles as "continue where you left off".
-- `exerciseId: null`: show "New exercises for this skill are being prepared". `recommendation: null`: show "Course complete".
+- `exerciseId: null`: show "New exercises for this skill are being prepared" (the server has queued one; ask again in a minute). `recommendation: null`: show "Course complete".
 - `404 COURSE_NOT_FOUND` for an unknown course.
 
 ## 4f. Placement test (live, 18 Oct)
@@ -306,7 +306,15 @@ type Overview = {
   content: { skills: Array<{ skill: SkillRef; byRung: Record<"1" | "2" | "3" | "4" | "5", number>; total: number }>; skillsWithoutExercises: number };
   hardest: Array<{ exerciseId: string; title: string; skill: SkillRef; rung: number; attempts: number; solveRate: number }>;
   hints: { delivered: number; live: number; frozen: number; generic: number; blocked: number; deniedCeiling: number; bottomedOut: number };
-  ai: { spentThisMonthInr: number; monthlyBudgetInr: number };   // this calendar month, not the window
+  generation: {
+    succeeded: number; fellBack: number; pending: number;
+    failuresByStage: Record<string, number>;          // llm, schema, compile, reference, tests_too_weak, sandbox
+    bySkill: Array<{ skill: SkillRef; rung: number; succeeded: number; fellBack: number; pending: number }>;
+  };
+  ai: {                                               // this calendar month, not the window
+    spentThisMonthInr: { hints: number; generation: number };
+    monthlyBudgetInr: { hints: number; generation: number };   // 500 and 300
+  };
 };
 ```
 
@@ -331,6 +339,30 @@ type Hint = {
 - **Before level 5,** ask "Show the answer? This exercise won't count towards your progress." Level 5 is the full answer.
 - After a compile error, show the button more prominently: the tutor explains the compiler's message.
 - `409 HINT_LIMIT`: the stage's ceiling is reached. `404 ATTEMPT_NOT_FOUND`: open the exercise first (`GET /exercises/:id`).
+
+## 4k. Exercise generation (live, 19 Oct; admins and authors)
+
+| Call | Body | Success |
+| --- | --- | --- |
+| `POST /api/v1/exercises/generate` | `{ skill: "vectors", rung: 1–5, course?, language? }` | `202 { job: GenerationJob }` |
+| `GET /api/v1/exercises/generation/:jobId` | none | `200 { job: GenerationJob }` |
+
+```ts
+type GenerationJob = {
+  id: string; skill: { slug: string; name: string }; rung: number;
+  status: "queued" | "generating" | "verifying" | "succeeded" | "fell_back";
+  trigger: "pregen" | "on_demand";          // pregen = an admin asked; on_demand = queued by the recommender
+  tries: number; model: string;
+  exerciseId: string | null;                // set when succeeded: the new, verified exercise
+  fallbackExerciseId: string | null;        // set when it fell back to a hand-written one
+  failures: Array<{ tryNo: number; stage: string; reason: string | null }>;
+  createdAt: string; finishedAt: string | null;
+};
+```
+
+- **Admin "Content" page:** pick a skill and rung, press "Generate", then poll the job every few seconds until `succeeded` or `fell_back`. A job takes about a minute (writing, then about 5 sandbox runs). Asking again while one runs returns the same job.
+- `503 GENERATION_UNAVAILABLE` until billing is on; `503 GENERATION_BUDGET_REACHED` when this month's ₹300 is spent.
+- Learners never call these: the recommender queues missing exercises by itself.
 
 ## 5. Screens and flow
 
@@ -395,13 +427,9 @@ const { user } = await api<{ user: User }>("/auth/me");
 await api("/auth/logout", { method: "POST" });
 ```
 
-## 7. Planned endpoints (not live yet)
+## 7. Planned endpoints
 
-Shapes will be published here when each one goes live. Use mock data until then.
-
-| Area | Endpoint | For the screen |
-| --- | --- | --- |
-| Exercise generation | `POST /exercises/generate`, `GET /exercises/generation/:jobId` | Shown while a new exercise is prepared |
+All 23 MVP endpoints are live. Live AI (hints and generation) switches on once Gemini billing is active (7 November).
 
 ## 8. Error codes
 
@@ -426,6 +454,8 @@ Shapes will be published here when each one goes live. Use mock data until then.
 | `HINT_LIMIT` | 409 | No more hints at this fade stage | Disable "Get a hint", suggest another run |
 | `HINT_CHANGED` | 409 | A hint was just given (double press) | Ignore; keep the hint already shown |
 | `FORBIDDEN` | 403 | Not allowed for this role (e.g. analytics for a learner) | Hide the page; it's admin-only |
+| `GENERATION_UNAVAILABLE` / `GENERATION_BUDGET_REACHED` | 503 | Live AI is off, or this month's generation budget is spent | Show the message on the admin page |
+| `GENERATION_JOB_NOT_FOUND` | 404 | No such generation job | Reload the admin page |
 | `SESSION_NOT_FOUND` | 404 | Not your session | Call `GET /sessions/active` |
 | `SESSION_ENDED` | 409 | The session already ended | Call `POST /sessions` |
 | `ATTEMPT_NOT_FOUND` / `SUBMISSION_NOT_FOUND` | 404 | Not yours, or doesn't exist | Reload the exercise |
