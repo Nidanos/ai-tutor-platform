@@ -26,7 +26,7 @@ Drafts tailored to Nidanos. **They are not legal advice.** A lawyer should revie
 **Why AI training is opt-in, not automatic:** under DPDP, consent must be specific and can't be bundled. Making training a condition of using the product would put the core consent at risk, so it gets its own tick box.
 
 ## Placeholders to fill before launch
-`[PRODUCT]` · `[DOMAIN]` · `[ADDRESS]` · `[ENTITY]` (legal form and registration number) · hosting, email and payment vendors
+`[PRODUCT]` · `[DOMAIN]` · `[ADDRESS]` · `[ENTITY]` (legal form and registration number) · hosting and payment vendors (email: Brevo, ADR-0017)
 
 ## Key dates
 - **Now → 10 Nov 2026 (MVP):** consent at register, rights endpoints, no analytics

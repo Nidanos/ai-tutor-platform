@@ -24,7 +24,7 @@ You can read this notice on its own; it doesn't depend on any other document.
 | Data | Examples | Why we need it |
 |---|---|---|
 | **Account** | Email, display name, password (stored only as a one-way hash), date of birth, time zone | To create your account, sign you in, check whether you need parental consent, and show times correctly |
-| **Sign-in security** | Device type (browser or app), IP address, sign-in times | To keep your account safe and detect stolen sessions |
+| **Sign-in security** | Device type (browser or app), IP address, sign-in and password-reset times | To keep your account safe and detect stolen sessions |
 | **Learning activity** | Courses you join, the code you submit, test results, hints used, time spent, quiz answers, your self-ratings | To grade your work, measure what you know, and choose your next lesson |
 | **Progress** | Mastery scores per skill, review schedule | To adapt lessons and remind you to review before you forget |
 | **Messages to us** | Support or grievance emails | To answer you |
@@ -64,7 +64,7 @@ We **never sell** personal data. We share it only with service providers (data p
 The current list of named providers is at `[DOMAIN]/privacy/providers`. We may also disclose data when Indian law or a court order requires it.
 
 ## 6. Where your data is stored
-Our database is hosted **in India**. Some providers in section 5, like the code sandbox and AI model provider, may process data **outside India**. The DPDP Act allows this, except to countries the Government of India restricts, and we never send data to those countries. We send only what each task needs, and never your name or email.
+Our database is hosted **in India**. Some providers in section 5, like the code sandbox, the AI model provider and the email delivery service, may process data **outside India**. The DPDP Act allows this, except to countries the Government of India restricts, and we never send data to those countries. We send only what each task needs: the code sandbox and AI model provider never get your name or email, and the email delivery service gets only your email address.
 
 ## 7. Children (under 18)
 Anyone can learn on [PRODUCT], but **if you are under 18, a parent or legal guardian must approve your account first**. Until then we don't process your learning data.

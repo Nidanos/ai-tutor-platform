@@ -29,6 +29,7 @@
 |---|---|---|---|---|
 | `users` | email, display name, password hash, timezone, DOB, last login | Account, sign-in, age check | core | Until deleted, or 3 years inactive |
 | `refresh_tokens` | IP, user agent, client, times | Security, theft detection | core | Expired rows kept 1 year, then deleted |
+| `password_reset_tokens` | token hash (never the token), request and use times | Password reset, security | core | Each new request replaces unused links; rows deleted 1 year after expiry |
 | `enrollments` | courses, language, goal text | Teaching | core | With the account |
 | `exercise_attempts`, `submissions`, `sandbox_runs`, `run_test_results`, `hint_events` | code, verdicts, timings, hint use | Grading, mastery | core | Code purged when the skill is cleared; the rest stays with the account |
 | `learning_sessions`, `session_steps`, `recommendations`, `skill_scaffolding`, `fade_stage_changes` | activity times, recommendation scores | Adapting lessons | core | With the account |
@@ -54,7 +55,7 @@
 | Inactivity | 3 years without sign-in → email 48 hours before → anonymise. Signing in cancels it. |
 | Code purge | Already in the design: `answer` emptied when the skill is cleared |
 | Pending child sign-ups | Not approved in 7 days → delete |
-| Security logs | Delete `refresh_tokens` rows 1 year after expiry |
+| Security logs | Delete `refresh_tokens` and `password_reset_tokens` rows 1 year after expiry |
 | **Account delete (anonymise)** | Erase email, name, password hash, DOB and all code. Delete tokens. Keep progress numbers only if the user opted in to research or training, otherwise delete them. Keep consent rows under the anonymous user ID |
 
 ## 5. Rights procedure
@@ -76,7 +77,7 @@
 | Web hosting: Vercel (college phase) | Requests and IP addresses; no database | Global edge | Vercel DPA | To accept |
 | E2B (code sandbox) | Code + tests, no identity | Outside India (check) | E2B terms + DPA | To accept |
 | AI provider: Google Gemini **paid tier** (ADR-0010) | Code + exercise context, no identity | Outside India | Gemini API paid terms (no training on our data) | To accept |
-| Email delivery `[TBD]` | Email address | Check | DPA | Choose |
+| Email delivery: Brevo (ADR-0017) | Email address and the email itself (a reset link), no name | EU (France, Belgium, Germany) | DPA in Brevo's terms (Appendix 3) | To accept |
 | Payments `[TBD, later]` | Billing details | India | Gateway agreement | Later |
 
 **Before adding any vendor:** check it isn't in a restricted country, accept its DPA, and add it here and to the public providers page.
