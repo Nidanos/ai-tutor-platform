@@ -1,6 +1,6 @@
 # Architecture Decision Records: AI Tutor
 
-Last updated: 18 Oct 2026. These record decisions Ashwani has made. Where no decision has been made yet, the item is marked **Open** and stays open until he decides it.
+Last updated: 19 Oct 2026. These record decisions Ashwani has made. Where no decision has been made yet, the item is marked **Open** and stays open until he decides it.
 
 | ADR | Title | Status |
 |---|---|---|
@@ -9,13 +9,14 @@ Last updated: 18 Oct 2026. These record decisions Ashwani has made. Where no dec
 | [0003](0003-sandbox-e2b-own-adapter.md) | E2B plus our own judge adapter, a fresh sandbox per submission | Accepted, built |
 | [0004](0004-grading-and-evidence-policy.md) | Verdicts (incl. SE), limits, evidence policy, mutation check, M4 formula v1 | Accepted |
 | [0005](0005-deterministic-system-llm-content.md) | LLM content, deterministic system: generate, validate, freeze | Accepted |
-| [0006](0006-mvp-api-scope.md) | 22-API MVP | Accepted; M9 pause/resume open |
+| [0006](0006-mvp-api-scope.md) | 23-API MVP | Accepted |
 | [0007](0007-per-skill-scaffolding-fade.md) | Help fades per skill; clearing a skill; code retention | Accepted |
 | [0008](0008-auth-tokens-and-sessions.md) | Short JWTs, rotating refresh tokens, cookies and Bearer | Accepted, built |
 | [0009](0009-tech-stack-and-data.md) | Tech stack, versions and data choices | Accepted |
 | [0010](0010-hosting-and-llm.md) | Oracle Always Free + Vercel hosting (with fallbacks); Gemini direct; frozen lessons + live tutor with spend caps | Accepted |
 | [0011](0011-recommender-v1.md) | Recommender v1: candidates, score, rung from writing clamped to fade, exercise choice | Accepted, built |
 | [0012](0012-diagnostic-v1.md) | Placement test v1: reading walk with a slip check, frontier code tasks, fast-track seeding, retakes | Accepted, built |
+| [0013](0013-sessions-and-progress-v1.md) | Sessions (one PATCH for pause/resume/end, 15 min idle, 24 h end) and the progress view | Accepted, built |
 
 ## Open decisions (Ashwani's to make)
 | # | Question | Blocks |
@@ -25,8 +26,6 @@ Last updated: 18 Oct 2026. These record decisions Ashwani has made. Where no dec
 | Q13 | One sentence: why Node suits this backend (see the note below) | Synopsis §5.2 rewrite |
 | - | Whether a skill's fade stage can step back (also for diagnostic fast-tracks) | M12 |
 | - | A cooldown between placement retakes (v1: 3 attempts, none) | M3 |
-| - | Session idle and timeout values | M9 |
-| - | M9 pause, resume and end endpoints in the MVP list | ADR-0006 |
 
 ## Resolved on 13 Oct
 | # | Question | Answer | Where |

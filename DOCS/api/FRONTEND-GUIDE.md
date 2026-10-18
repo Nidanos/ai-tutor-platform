@@ -230,6 +230,61 @@ type Grading = { diagnosticId: string; status: "grading"; retryAfterMs: number }
 - **`/start` is also "where am I".** It resumes a test in progress, or returns the last result. It starts a new test only the first time, or with `retake: true` (3 attempts per course). Use the result to choose "Take the placement test" or "Retake".
 - **`409 ITEM_NOT_CURRENT`** (two tabs, or a double click on an old question): call `/start` and show the question it returns.
 
+## 4g. Study sessions (live, 19 Oct)
+
+Logged in only.
+
+| Call | Body | Success |
+| --- | --- | --- |
+| `POST /api/v1/sessions` | `{ course?: "cpp-basics", language?: "cpp" }` (optional) | `200 { session: Session }`: resumes the open session, or starts one |
+| `GET /api/v1/sessions/active` | none | `200 { session: Session \| null }` |
+| `PATCH /api/v1/sessions/:id` | `{ status: "paused" \| "active" \| "ended" }` | `200 { session: Session }` |
+
+```ts
+type Session = {
+  id: string;
+  status: "active" | "paused" | "ended";
+  startedAt: string; lastActiveAt: string;
+  activeMs: number;                  // study time; idle gaps don't count
+  endedAt: string | null; endReason: "user" | "idle" | "completed" | null;
+  step: {
+    id: string; seq: number; kind: "exercise" | "review";
+    skill: { id: string; slug: string; name: string };
+    rung: 1 | 2 | 3 | 4 | 5;
+    exerciseId: string;              // open /exercise/{exerciseId}
+  } | null;                          // null: the next exercise is being prepared, or the session ended
+};
+```
+
+- **"Start studying" button:** `POST /sessions`, then open `step.exerciseId`. After a solve (or when the learn page loads), call `GET /sessions/active`: it moves to the next step by itself once the current exercise is solved.
+- **Pause/Resume/End buttons:** `PATCH` with the status. Resuming returns the **same step**. Show `activeMs` as study time.
+- **Idle:** 15 minutes without a call pauses the session (show "Resume"); after 24 hours paused it ends, and `GET /sessions/active` returns `null` → show "Start studying".
+- `status: "ended"` with `endReason: "completed"`: show "Course complete".
+- `409 SESSION_ENDED` on PATCH: the session already ended; call `POST /sessions` for a new one.
+
+## 4h. Progress (live, 19 Oct)
+
+`GET /api/v1/progress?course=cpp-basics&language=cpp` (both optional) → `200 Progress`
+
+```ts
+type Progress = {
+  course: { slug: string };
+  summary: { total: number; locked: number; ready: number; in_progress: number; cleared: number; review_due: number };
+  skills: Array<{
+    skill: { id: string; slug: string; name: string; difficulty: number };
+    prerequisites: string[];                        // skill ids: draw the graph edges from these
+    reading: { score: number; effective: number };  // effective = today, after forgetting (show this)
+    writing: { score: number; effective: number };
+    stage: number | null;                           // fade stage, null if never opened
+    status: "locked" | "ready" | "in_progress" | "cleared" | "review_due";
+  }>;
+};
+```
+
+- **Skill graph:** one node per skill, edges from `prerequisites`, coloured by `status`. Always print the label and the numbers too, never colour alone (accessibility).
+- **Two bars per skill, Reading and Writing, never combined** (FR-M11-02). Show `effective` as a percentage, honestly: no rounding up.
+- `review_due`: "Review" badge. `locked`: "Finish its prerequisites first".
+
 ## 5. Screens and flow
 
 | Moment | Do this |
@@ -301,8 +356,6 @@ Shapes will be published here when each one goes live. Use mock data until then.
 | --- | --- | --- |
 | Exercise generation | `POST /exercises/generate`, `GET /exercises/generation/:jobId` | Shown while a new exercise is prepared |
 | Hints | `POST /exercises/:id/hints` | "Get a hint" button. The server decides the level and returns one hint |
-| Sessions | `POST /sessions`, `GET /sessions/active` | Start or resume studying |
-| Progress | `GET /progress` | Progress page and skill graph |
 | Analytics | `GET /analytics/overview` | Admin-only analytics page |
 
 ## 8. Error codes
@@ -325,6 +378,8 @@ Shapes will be published here when each one goes live. Use mock data until then.
 | `ITEM_NOT_CURRENT` | 409 | Answered an old question | Call `/diagnostic/start` and show its question |
 | `DIAGNOSTIC_LIMIT` | 409 | No placement retakes left | Hide the "Retake" button |
 | `DIAGNOSTIC_UNAVAILABLE` | 503 | The placement test isn't ready yet | Skip it and go to the dashboard |
+| `SESSION_NOT_FOUND` | 404 | Not your session | Call `GET /sessions/active` |
+| `SESSION_ENDED` | 409 | The session already ended | Call `POST /sessions` |
 | `ATTEMPT_NOT_FOUND` / `SUBMISSION_NOT_FOUND` | 404 | Not yours, or doesn't exist | Reload the exercise |
 | `ATTEMPT_CLOSED` | 409 | Exercise already solved | Show "Solved" and the next step |
 | `IDEMPOTENCY_KEY_REUSED` | 409 | Bug: a key was reused for different code | Make a new key per Submit |

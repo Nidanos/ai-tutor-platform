@@ -1641,7 +1641,7 @@ In development, Postgres and Redis run locally through `docker compose`.
 | M6 Exercises | `GET /exercises/:id` · `POST /exercises/generate` · `GET /exercises/generation/:jobId` |
 | M7 Submissions | `POST /submissions` · `GET /submissions/:id/result` |
 | M8 Hints | `POST /exercises/:id/hints` |
-| M9 Sessions | `POST /sessions` · `GET /sessions/active` |
+| M9 Sessions | `POST /sessions` · `GET /sessions/active` · `PATCH /sessions/:id` |
 | M11 Progress | `GET /progress` |
 | M12 Fade | `GET /scaffolding/state` (fade stage and limits per skill) |
 | M13 Analytics | `GET /analytics/overview` (admin) |
@@ -1769,9 +1769,11 @@ Rate limits: login 20 per IP and 5 failures per email per 15 minutes; register 5
 - **Fade (M12):** an AC on the stage's rung (or harder) with at most 1 hint moves the skill one stage on, inside the grading transaction, logged in `fade_stage_changes`. `GET /scaffolding/state` shows each skill's stage.
 - **Shared layer:** one error type, one response envelope, one error handler.
 - **Placement test (M3):** `POST /diagnostic/start`, `/:id/answers` and `/:id/complete` (ADR-0012). The test walks all 20 skills easiest-first with predict-the-output questions, with a check question after a possible slip, then asks code tasks (run on E2B in the background) only on the frontier. Completion seeds mastery raise-only (M4) and starts proven skills on the last fade stage (M12) in one transaction. Retakes are allowed (3). The 40 items are verified in the real sandbox (40/40). On the real graph: 1–27 questions, about 28 min for an expert.
-- **Tests:** 122 automated tests on a separate test database: database rules, auth and consent flows, the verdict judge, the mastery formula, the recommender rules, the placement rules (all 711 possible learners), and submissions with a fake sandbox. `pnpm sandbox:smoke` checks all six verdicts on real E2B.
+- **Sessions (M9):** `POST /sessions`, `GET /sessions/active` and `PATCH /sessions/:id` (ADR-0013). One open session per learner; each step comes from the recommender and advances when its exercise is solved; 15 minutes idle pauses it, 24 hours paused ends it, worked out when read.
+- **Progress (M11):** `GET /progress` lists every skill with reading and writing apart (stored and today's effective), its fade stage, prerequisites for the graph, and a status (locked, ready, in progress, cleared, review due) from the recommender's own unlock rule.
+- **Tests:** 135 automated tests on a separate test database: database rules, auth and consent flows, the verdict judge, the mastery formula, the recommender rules, the placement rules (all 711 possible learners), session time rules, and submissions with a fake sandbox. `pnpm sandbox:smoke` checks all six verdicts on real E2B.
 
-**Next (Phase 3, 23 Oct):** sessions and progress, hints (LLM adapter); frontend binding. 15 of 22 MVP endpoints are live.
+**Next (Phase 3, 23 Oct):** hints (LLM adapter) and exercise generation, analytics; frontend binding. 19 of 23 MVP endpoints are live.
 
 ---
 
@@ -1781,6 +1783,5 @@ Rate limits: login 20 per IP and 5 failures per email per 15 minutes; register 5
 | --- | --- |
 | DSA and C++ skill list and edges, with further-reading links | Seed data (Phase 3) |
 | Whether a skill's fade stage can step back after repeated bottom-outs | M12 |
-| Session idle and timeout values | M9 |
 | Hosting provider within budget | Deployment |
 | First ADMIN account (seed from environment variables) | Analytics page |

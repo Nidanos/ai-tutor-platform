@@ -1,7 +1,7 @@
-# ADR-0006: The MVP builds 22 REST APIs; the ~98-operation spec stays the long-term plan
+# ADR-0006: The MVP builds 23 REST APIs; the ~98-operation spec stays the long-term plan
 
 - **Status:** Accepted
-- **Date:** Sep 2026, updated 13 Oct 2026 (was 18 APIs); status column updated 18 Oct
+- **Date:** Sep 2026, updated 13 Oct 2026 (was 18 APIs); status column updated 18 Oct; PATCH /sessions/:id added 19 Oct (23 APIs)
 - **Decided by:** Ashwani Kumar Puri
 
 ## Decision
@@ -16,8 +16,8 @@ Base path: `/api/v1`. Live endpoints are documented for the frontend in `DOCS/ap
 | Exercises | GET /exercises/:id · POST /exercises/generate · **GET /exercises/generation/:jobId** | GET /exercises/:id **Live**; generation planned |
 | Submissions | POST /submissions · GET /submissions/:id/result | **Live** |
 | Hints | POST /exercises/:id/hints | Planned |
-| Sessions | POST /sessions · GET /sessions/active | Planned |
-| Progress | GET /progress | Planned |
+| Sessions | POST /sessions · GET /sessions/active · **PATCH /sessions/:id** | **Live** (19 Oct) |
+| Progress | GET /progress | **Live** (19 Oct) |
 | Fade | **GET /scaffolding/state** | **Live** |
 | Analytics | **GET /analytics/overview** (admin only) | Planned |
 
@@ -35,5 +35,5 @@ Base path: `/api/v1`. Live endpoints are documented for the frontend in `DOCS/ap
 - **M10 (review queue):** internal in the MVP. The recommender reads due reviews; no client endpoint.
 - **M12 (fade):** one read endpoint; the rules run inside grading (ADR-0007).
 
-## Open
-- **M9 (FR-M9-01, FR-M9-03):** pause, resume and end-session endpoints. The database already supports them (session states, the single active step); the endpoints still need adding to the MVP list.
+## Resolved 19 Oct
+- **M9 pause, resume and end (FR-M9-01):** one endpoint, `PATCH /sessions/:id { status }` (ADR-0013).
