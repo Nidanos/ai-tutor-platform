@@ -1,6 +1,6 @@
 # AI Tutor: An Evidence-Based Adaptive Learning System with Deliberate Scaffolding Withdrawal
 
-> **Draft report for Review 3 (Implementation, Testing and Draft Report), 23 October 2026.**
+> **Draft report for Review 3 (Implementation, Testing and Draft Report), 23 October 2026.** Status as of 19 October 2026.
 > Prepared to the MCA-269 "Format of Project Report" and the Annexure-IV chapter scheme. Typesetting rules (Times New Roman 12, 1.5 spacing, margins 3.0/2.0/2.54/2.54 cm, blank page before each chapter) are applied in the final printed copy.
 
 ---
@@ -78,6 +78,8 @@ Page numbers are added in the printed copy.
 | 8 | Automated test suites and results |
 | 9 | Defects found and fixed during testing |
 | 10 | Data dictionary (key tables) |
+| 11 | Placement test rules |
+| 12 | Hint ladder and where each hint comes from |
 
 ## List of Figures
 
@@ -96,6 +98,8 @@ Page numbers are added in the printed copy.
 | 11 | System planning (PERT/Gantt) |
 | 12 | Deployment diagram |
 | 13 | Menu flow diagram |
+| 14 | Sequence diagram: request a hint |
+| 15 | Activity diagram: placement test |
 
 ## List of Symbols and Abbreviations
 
@@ -179,13 +183,15 @@ The "manual" way (a learner, a playlist and an unrestricted AI chat) cannot do w
 ## 1.5 Proposed Software / Project
 
 A web application in which the learner:
-1. opens an exercise matched to their level (five rungs, from *predict the output* to *build from a blank page*);
-2. writes code in an in-browser editor and submits it;
-3. has it compiled and run in an isolated sandbox against hidden tests, getting one of seven verdicts;
-4. sees their reading and writing mastery change from that evidence;
-5. gets less help over time as they succeed with few hints.
+1. takes a short adaptive placement test, so that skills they already know are fast-tracked;
+2. is given the next step (skill, level and exercise) by fixed rules, in study sessions they can pause and resume;
+3. opens an exercise matched to their level (five rungs, from *predict the output* to *build from a blank page*);
+4. writes code in an in-browser editor and submits it;
+5. has it compiled and run in an isolated sandbox against hidden tests, getting one of seven verdicts;
+6. sees their reading and writing mastery change from that evidence;
+7. asks for hints one level at a time, and gets less help over time as they succeed with few hints.
 
-The system is **deterministic where it matters**: grading, mastery and next-step choice are fixed rules in code, while the LLM is used only to produce content (lessons, exercises, hints), which is verified in the sandbox and frozen before any learner sees it.
+The system is **deterministic where it matters**: grading, mastery, placement and next-step choice are fixed rules in code. The LLM only produces content: exercises and stored hints are verified and frozen before any learner sees them, and live hints about the learner's own code pass a filter that blocks anything resembling the solution.
 
 ## 1.6 Importance of the Work
 
@@ -209,7 +215,9 @@ The hard technical parts were proven early by building them, not just by plannin
 | Running untrusted C++ safely | E2B cloud sandboxes (Firecracker micro-VMs), **one fresh offline sandbox per submission**, killed after use | All six verdict types reproduced on the real service (section 4.3) |
 | Judging memory and time limits | Our own judge: `timeout` for time, `prlimit` for address space, GNU `time` for peak memory | MLE, TLE and RE detected correctly |
 | Speed | Measured each step and cut the network round trips from 2 per test to 3 per submission | 5–15 s down to about 6 s per submission |
-| Data integrity | PostgreSQL constraints: CHECK ranges, partial unique indexes, foreign keys | 18 database-rule tests |
+| Data integrity | PostgreSQL constraints: CHECK ranges, partial unique indexes, foreign keys | 16 database-rule tests |
+| Placing learners fairly | A placement walk over the skill graph with a check question after a possible slip | All 711 possible knowledge states placed exactly in simulation (section 4.2) |
+| Keeping the AI from giving answers | A filter compares every hint with the reference solution; caps per learner and per month | Unit tests with real leak attempts (section 4.2) |
 | Team skills | The stack (TypeScript, React, Node, SQL) matches the semester courses | Working code in the repository |
 
 ### 2.1.2 Economic Feasibility
@@ -222,9 +230,11 @@ The budget is a student budget, so every running cost was measured or quoted, no
 | Web hosting | Vercel free plan during the college phase | ₹0 |
 | Code execution | E2B, billed per second while a sandbox runs; $100 starting credit | about ₹0.01 per submission |
 | Content generation (lessons, exercises) | Gemini Flash through the Batch API, once per item, then frozen | about ₹300–400 per 300-exercise course |
-| Live tutor hints | Gemini Flash-Lite, capped at 20 per learner per day and ₹500 per month in total | about ₹0.03 per hint |
+| Live tutor hints | Gemini 3.5 Flash Lite, capped at 20 per learner per day and ₹500 per month in total | about ₹0.08 per hint (₹0.01 measured on short test prompts) |
 
-One decision is a direct result of this study. The first design kept one sandbox alive for a whole learner session. Because E2B bills every second a sandbox is alive, that would cost about **₹4.60** for a 30-minute session. Creating a fresh sandbox per submission costs about **₹0.25** for the same session, roughly 18 times less, so the design was changed (ADR-0003).
+One cost was found only when paying: a new Google Cloud billing account in India must prepay **₹2,500** before the paid Gemini tier activates. Until then the key stays on the free tier, where prompts may be used by Google, so live hints are switched off by a setting until billing is active (7 November 2026, section 4.5).
+
+One design decision is a direct result of this study. The first design kept one sandbox alive for a whole learner session. Because E2B bills every second a sandbox is alive, that would cost about **₹4.60** for a 30-minute session. Creating a fresh sandbox per submission costs about **₹0.25** for the same session, roughly 18 times less, so the design was changed (ADR-0003).
 
 ### 2.1.3 Operational Feasibility
 
@@ -241,7 +251,7 @@ One decision is a direct result of this study. The first design kept one sandbox
   - learner code is never sent to the AI with a name or email;
   - data is stored in India.
 - **Licensing.** No third-party course content is copied. Skill names and descriptions are our own, and external tutorials appear only as links.
-- **Schedule.** The backend core was ready by Review 3 (section 4.5); the remaining MVP work is planned up to 10 November 2026.
+- **Schedule.** 21 of the 23 MVP endpoints were live by Review 3 (section 4.5); exercise generation, the frontend, deployment and the pilot are planned up to 10 November 2026.
 
 ## 2.2 Analysis Methodology
 
@@ -254,12 +264,18 @@ One decision is a direct result of this study. The first design kept one sandbox
 5. Mastery engine.
 6. Exercises and attempts.
 7. Help fading.
+8. Template exercise bank, verified in the sandbox.
+9. Next-step recommender.
+10. Placement test.
+11. Study sessions and the progress view.
+12. Admin analytics.
+13. LLM adapter and hints.
 
-Every increment ended with automated tests and a real end-to-end run before the next one began.
+Every increment ended with automated tests and a real end-to-end run before the next one began. Larger designs (the placement test, hints) were also reviewed by adversarial checks that tried to break them, and the holes they found were fixed before the code was committed (Table 9).
 
 **Analysis tools used:**
 - **Requirements:** the SRS from Phase 1, numbered as FR-Mx-yy and NFR-xx.
-- **Decisions:** each one recorded as an Architecture Decision Record (ADR-0001 to ADR-0010), with the options compared and the reason for the choice. For example, ADR-0003 compares Judge0, Piston and E2B on compiler version, memory-limit support, network isolation and cost.
+- **Decisions:** each one recorded as an Architecture Decision Record (ADR-0001 to ADR-0015), with the options compared and the reason for the choice. For example, ADR-0003 compares Judge0, Piston and E2B on compiler version, memory-limit support, network isolation and cost.
 - **Measurement before optimisation:** timings were measured step by step before anything was changed.
 
 **Pilot baseline.** The planned "Phase 0" (running the whole loop on paper with a learner before coding) was **not carried out**. It was replaced by a measured baseline of one anonymised pilot learner (Learner A: reading 10/11, writing 0/4), which confirmed the central design choice of separate reading and writing scores. A pilot with real learners on the finished system is planned before the final report.
@@ -276,11 +292,14 @@ Every increment ended with automated tests and a real end-to-end run before the 
 | F. Submissions, queue, mastery | D, E | 15 Oct | Done |
 | G. Exercises, attempts, help fading | F | 16 Oct | Done |
 | H. Frontend screens | D | 16 Oct–5 Nov | In progress |
-| I. LLM adapter, hints, lesson and exercise generation | G | 24 Oct–3 Nov | Planned |
-| J. Recommender, diagnostic, progress | G | 24 Oct–5 Nov | Planned |
-| K. Deployment, pilot, final report | H, I, J | 5–10 Nov | Planned |
+| J. Template bank, recommender, placement test | G | 17–18 Oct | Done |
+| L. Sessions, progress, analytics | J | 19 Oct | Done |
+| I1. LLM adapter and hints | G | 19 Oct | Done (live calls wait for billing) |
+| M. Gemini billing activation | – | 7 Nov | Planned (₹2,500 prepayment) |
+| I2. Exercise generation; frozen hints | I1, M | 7–8 Nov | Planned |
+| K. Deployment, pilot, final report | H, I2, L | 5–10 Nov | Planned |
 
-**Critical path:** A → B → C → E → F → G → I → K. The sandbox and grading chain was the riskiest part, so it was built first.
+**Critical path:** A → B → C → E → F → G → J → I1 → M → I2 → K. The sandbox and grading chain was the riskiest part, so it was built first. The billing activation (M) is now the one outside dependency on the path.
 
 ```mermaid
 gantt
@@ -294,9 +313,10 @@ gantt
   Schema, auth, consent                :done, c, 2026-10-13, 2026-10-14
   Sandbox, judge, submissions, mastery :done, e, 2026-10-15, 2026-10-16
   Exercises, attempts, fade            :done, g, 2026-10-16, 1d
+  Templates, recommender, placement    :done, j, 2026-10-17, 2026-10-18
+  Sessions, progress, analytics, hints :done, l, 2026-10-19, 1d
   Frontend screens                     :active, h, 2026-10-16, 2026-11-05
-  LLM, hints, generation               :i, 2026-10-24, 2026-11-03
-  Recommender, diagnostic, progress    :j, 2026-10-24, 2026-11-05
+  Billing active, generation           :i, 2026-11-07, 2026-11-08
   section Delivery
   Review 3 draft report                :milestone, 2026-10-23, 0d
   Deployment, pilot, final report      :k, 2026-11-05, 2026-11-10
@@ -510,26 +530,67 @@ stateDiagram-v2
   completed --> [*]
 ```
 
-**Figure 8: Activity diagram, next-step selection (recommender, planned).**
+**Figure 8: Activity diagram, next-step selection, as built (recommender m5-v1, ADR-0011).** No LLM is involved; every pick is saved with its reasons.
+
+```mermaid
+flowchart LR
+  A["Candidates: prerequisites met and not cleared, plus cleared skills due for review"] --> F{"Any?"}
+  F -->|no| G(["Course complete"])
+  F -->|yes| H["Score and sort: in progress, review urgency, goal"]
+  H --> J["Rung from writing, at least the fade stage's easiest"]
+  J --> K{"Exercise to serve?"}
+  K -->|yes| O(["Serve it; save the pick and its reasons"])
+  K -->|no| N["Next candidate"]
+  N --> J
+```
+
+**Figure 14: Request a hint, as built (ADR-0015).** One level per request, never above the fade stage's ceiling. The live tutor comes first; the frozen hint is the fallback.
+
+```mermaid
+sequenceDiagram
+  autonumber
+  actor L as Learner
+  participant A as API (M8 hints)
+  participant DB as Postgres
+  participant G as Gemini 3.5 Flash Lite
+  L->>A: POST /exercises/id/hints with the current code
+  A->>DB: Latest attempt: hint level and ceiling
+  alt next level is above the ceiling
+    A->>DB: hint_event denied_ceiling
+    A-->>L: 409 HINT_LIMIT
+  else level 5
+    A-->>L: The answer, logged as a bottom-out (no mastery credit)
+  else levels 1 to 4
+    A->>DB: Under 20 live hints today and 500 rupees this month?
+    A->>G: Task, learner code, last result, private reference, level
+    G-->>A: Hint text (cost logged in llm_calls)
+    A->>A: Leak filter against the reference solution
+    opt blocked, capped or failed
+      A->>DB: Frozen hint for this level, or a general nudge
+    end
+    A->>DB: Level + 1 only if unchanged, hint_event delivered
+    A-->>L: This one level only
+  end
+```
+
+**Figure 15: Placement test, as built (ADR-0012).** Reading questions walk the skill graph easiest-first; code tasks are asked only on the frontier of what was read correctly.
 
 ```mermaid
 flowchart TD
-  S0([Start]) --> A["Load mastery, reviews, graph, fade stages"]
-  A --> B["Compute effective mastery for each skill"]
-  B --> C{"Any reviews due?"}
-  C -->|yes| D["Add due reviews to candidates"]
-  C -->|no| E
-  D --> E["Add skills whose prerequisites are all above threshold"]
-  E --> F{"Any candidates?"}
-  F -->|no| G(["Course complete, or diagnostic needed"])
-  F -->|yes| H["Score: readiness, goal, urgency, recency"]
-  H --> I["Pick the highest, ties broken by skill slug"]
-  I --> J["Rung from writing score, clamped to the skill's fade stage"]
-  J --> K{"Verified exercise ready?"}
-  K -->|yes| M["Serve it"]
-  K -->|no| N["Serve a template, queue generation"]
-  M --> O(["Save recommendation with score breakdown"])
-  N --> O
+  S([Start or resume the test]) --> W["Next skill: fewest prerequisites first"]
+  W --> B{"Was a prerequisite missed?"}
+  B -->|yes| W
+  B -->|no| R["Ask: what does this program print?"]
+  R --> A{"Answer"}
+  A -->|right| P["Pass it and all its prerequisites"]
+  A -->|I don't know| X["Miss: skip everything built on it"]
+  A -->|typed wrong| SU["Suspect: its next dependent is the check question"]
+  P --> W
+  X --> W
+  SU --> W
+  W -->|no skill left to ask| F["Code tasks on the frontier, run in the sandbox in the background"]
+  F --> C["Complete: wait for the last runs, at most 120 s"]
+  C --> E(["Seed reading and writing at 0.85, raise-only; skills proven in code start on the last fade stage"])
 ```
 
 ### 3.2.4 Class Diagrams
@@ -622,7 +683,7 @@ classDiagram
   SkillScaffolding "*" --> "1" Skill : for
 ```
 
-**Figure 4: Services and adapters, as built.** The `SandboxProvider` interface keeps E2B replaceable: the rest of the code calls `run()`, and only one class knows about E2B. The LLM classes are planned (M8 hints, M6 generation).
+**Figure 4: Services and adapters, as built.** Two interfaces keep the outside services replaceable: `SandboxProvider` (only one class knows about E2B) and `LlmProvider` (only one class knows about Gemini). Tests replace both with fakes. Modules call each other's services, never each other's tables.
 
 ```mermaid
 classDiagram
@@ -659,11 +720,29 @@ classDiagram
   }
   class LlmProvider {
     <<interface>>
-    +generateText(prompt) string
+    +generate(request) LlmResult
   }
-  class GeminiLlm
+  class GeminiProvider
+  class HintsService {
+    +requestHint(userId, exerciseId, code) Hint
+  }
+  class SolutionFilter {
+    +checkHint(reply, context) FilterResult
+  }
+  class DiagnosticService {
+    +start() +answer() +complete()
+  }
+  class Placement {
+    +nextItem(placement) Item
+    +estimate(placement) Results
+  }
   E2BProvider ..|> SandboxProvider
-  GeminiLlm ..|> LlmProvider
+  GeminiProvider ..|> LlmProvider
+  HintsService --> LlmProvider
+  HintsService --> SolutionFilter
+  DiagnosticService --> Placement
+  DiagnosticService --> MasteryService
+  DiagnosticService --> ScaffoldingService
   RunSubmission --> SandboxProvider
   RunSubmission --> Judge
   RunSubmission --> ExercisesService
@@ -977,7 +1056,11 @@ All input enters through the REST API, and **every request body is validated by 
 | Register | email, password, displayName, dateOfBirth, acceptTerms, acceptPrivacy, aiTraining?, research? | Email ≤ 254 characters, case-insensitive; password 8–128 characters (NIST: no forced symbols); name 1–80; date of birth a real date, not in the future; both acceptances must be `true`; opt-ins refused for under-18s; unknown fields such as `role` are stripped |
 | Login | email, password, client (web or mobile) | Same email rules; failed logins throttled per email and per IP |
 | Submit code | attemptId, answer, idempotencyKey | attemptId must be a UUID of *your own* active attempt; answer ≤ 64 KB; key 8–100 characters; 10 submits per minute per learner |
-| Read mastery / fade state | `language` query parameter | Optional, 1–20 characters |
+| Read mastery / fade state / progress | `language` (and `course`) query parameters | Optional, 1–20 (60) characters; the course must be offered in that language |
+| Placement answer | itemId, then answer or dontKnow | Only the current question is accepted (`409 ITEM_NOT_CURRENT` otherwise); answer ≤ 64 KB with no NUL character; 30 calls per minute |
+| Session change | status: active, paused or ended | An ended session refuses changes |
+| Hint request | code (optional) | ≤ 64 KB; the level is decided by the server, never the client; 10 per minute |
+| Analytics | days (1–365), course, language | Admin role only (`403 FORBIDDEN` otherwise) |
 
 **Screen input (frontend, in progress):** sign-up form with a date picker and two separate required tick boxes, with the optional opt-ins shown only when the date of birth makes the user 18+; login form; exercise page with the Monaco editor (a plain text box for rung-1 "predict the output"). The same rules are applied in the browser to show errors before submitting, but the server is always the authority.
 
@@ -1002,6 +1085,19 @@ The client branches on `error.code` and shows `error.message`.
     { "seq": 2, "name": "Zero", "visibility": "hidden", "verdict": "AC", "timeMs": 0 } ] }
 ```
 
+**A placement question** carries the program or the task, never its answer key, its tests or whether earlier answers were right:
+
+```json
+{ "itemId": "…", "dimension": "reading", "skill": { "slug": "operators", "name": "Operators" },
+  "promptMd": "Read the program carefully. **What does it print?**", "code": "#include <iostream>\n…" }
+```
+
+**A hint** is one level only, with where it came from:
+
+```json
+{ "level": 2, "ceiling": 5, "source": "live", "bodyMd": "Look at the line that returns the result: which variable does it use?" }
+```
+
 **Mastery output** always shows reading and writing **separately**, each as a stored `score` and an `effective` score after forgetting. They are never blended into one number, because a 10/11 versus 0/4 profile averages into a misleading 65%.
 
 ## 3.6 Code Design and Development
@@ -1012,17 +1108,23 @@ apps/api/src/
   infrastructure/
     database/  schema/ seed/    Drizzle tables, migrations, seed data
     sandbox/                    SandboxProvider interface, E2B adapter, template
+    llm/                        LlmProvider interface, Gemini adapter, cost log
     queue/                      BullMQ queue and worker
-  shared/                       errors, response envelope, auth helpers, middlewares
-  modules/
-    m1_auth  m2_skills  m3_diagnostic  m4_mastery  m6_exercises
-    m7_execution  m12_scaffolding   (others follow the same layout)
+  shared/                       errors, response envelope, auth helpers, middlewares, India time
+  modules/                      each: routes → controllers → services → repositories
+    m1_auth  m2_skills  m3_diagnostic  m4_mastery  m5_recommender  m6_exercises
+    m7_execution  m8_socratic  m9_sessions  m11_progress  m12_scaffolding  m13_analytics
+  scripts/                      sandbox build and smoke test, exercise verification, hint generation, make-admin
 ```
 
 **Key pieces of logic are pure functions**, which means no database and no network, so they are fully unit-tested:
 - `judge.ts`: turns sandbox readings into a verdict (Table 5).
 - `mastery-formula.ts`: the M4 formula and decay (Table 6).
 - `age.ts`: whole-year age, used for the under-18 rule.
+- `recommend.ts`: the next-step rules (Figure 8).
+- `placement.ts`: the placement walk and estimates (Table 11, Figure 15).
+- `session-clock.ts`: idle pause after 15 minutes, end after 24 hours paused, study time.
+- `solution-filter.ts`: blocks hints that resemble the solution (Table 12).
 
 **Table 5: Verdict rules.** These are checked in this order for each test; the first failing test decides.
 
@@ -1056,6 +1158,31 @@ About five good solves (rungs 2 → 5) take a new skill from 0 to 0.72, just pas
 | 2 | 3 | 4 | rung 3 with ≤ 1 hint |
 | 3 | 4 | 3 | rung 4 with ≤ 1 hint |
 | 4 | 5 | 2 | rung 5 with ≤ 1 hint → skill cleared |
+
+**Table 11: Placement test rules (ADR-0012).** All 20 skills are covered by 40 frozen, sandbox-verified items: one predict-the-output reading item and one small function per skill.
+
+| Rule | Detail |
+|---|---|
+| Order | Fewest transitive prerequisites first, then difficulty, then name |
+| Reading walk | A skill is asked only if no prerequisite was missed. A right answer passes the skill and all its prerequisites |
+| Slip check | "I don't know" is a miss. A typed wrong answer is only *suspect* until its first dependent is answered: right rescues it, wrong confirms both |
+| Code tasks | Only on the frontier (passed skills nothing else passed builds on); an AC vouches for everything below. Run in the background |
+| Estimate | Passed → 0.85 for reading; proven in code → 0.85 for writing; confidence 0, 0.5 or 1 by what was observed |
+| Seeding | One transaction: mastery raised only if higher than today's value; skills proven in code start on the last fade stage; skills cleared in practice untouched |
+| Length | 1 question for a novice, 6 for a beginner, 18 for a mid learner, 26 (about 28 minutes) for an expert, instead of 40 |
+| Retakes | Up to 3 per course; a retake can lift a placement but never lowers it |
+
+**Table 12: Hint ladder and where each hint comes from (ADR-0015).**
+
+| Level | Content | Source |
+|---|---|---|
+| 1 Concept | The idea or C++ feature needed, in words | Live tutor first; frozen hint if capped, failed or blocked |
+| 2 Location | Where in the learner's own code the problem is | Same |
+| 3 Mechanism | How to fix it, in words | Same |
+| 4 Worked example | A different, smaller problem using the same technique | Same |
+| 5 Answer | The reference solution, or the program's output for rung 1 | Always frozen; logged as a bottom-out; the attempt earns no credit |
+
+A live hint is blocked if it holds 25 % or more of the code only the solution has (5-token fingerprints, not counting the starter or the learner's own code), shows a code block longer than 6 lines, or gives away a rung-1 output.
 
 **Figure 12: Deployment**, as decided for the MVP (ADR-0010)
 
@@ -1091,7 +1218,11 @@ Pure functions are tested with constructed inputs:
 - **judge:** each verdict rule, rule order (TLE wins over a crash exit code), output normalisation, and an empty test list giving SE, never AC;
 - **mastery formula:** the approved learner journey to the exact numbers, the hint and solution-shown rules, TLE doubling and its cap, and decay to half after ln 2 / λ days;
 - **age:** turning 18 exactly on the birthday;
-- **skill graph:** cycle detection, plus a check that the seeded C++ course has unique names, only known prerequisites and no cycles.
+- **skill graph:** cycle detection, plus a check that the seeded C++ course has unique names, only known prerequisites and no cycles;
+- **recommender:** candidates, review urgency, rung bands clamped to the fade stage, and the journey from rung 1 to rung 5;
+- **placement:** every one of the **711 knowledge states** the 20-skill graph allows, answered with "I don't know" and with wrong guesses, is placed exactly, in at most 20 reading and 7 code questions; slips, missing items and cleared skills;
+- **session clock:** the idle pause, the 24-hour end, and study time that never counts idle gaps;
+- **leak filter:** prose and fragments pass; the solution, whole or in its key lines, fenced or not, is blocked; the learner's own code is not counted; a rung-1 output is never given away.
 
 ### 4.1.2 Module Testing
 **Database-rule tests**, one per schema group, try to break each constraint on purpose and expect the database to refuse. Examples: a duplicate email in different letter case, a hint level above the ceiling, a second active attempt, a second open session, a duplicate idempotency key, evidence with no source.
@@ -1101,14 +1232,21 @@ HTTP-level tests call the real Express app with real requests:
 - **auth:** register, login, refresh, logout, theft detection, throttling, CSRF and consent;
 - **submissions:** submit, idempotency, ownership, judging, retries;
 - **exercises:** secrets never leak; attempts, enrollment and fade start;
-- **mastery and fade:** read views, the decay maths, stage advance.
+- **mastery and fade:** read views, the decay maths, stage advance;
+- **recommender:** first step, moving up rungs, skipping skills without content, course complete;
+- **placement test:** no answer key in any response, only the current question accepted, replays, code tasks queued once, the 202 grading wait, seeding, fast-track to the last stage, retakes, and a cheat attempt with a borrowed idempotency key;
+- **sessions and progress:** steps from the recommender, pause/resume at the same step, idle and timeout, statuses that match the recommender's unlock rule;
+- **analytics:** admin only, counts only, never a learner's email;
+- **hints:** live hint, a leaky reply replaced by the frozen hint, a failed call, the fade ceiling, the answer at level 5, the daily and monthly caps.
 
-The sandbox is replaced by a **fake provider** in these tests: same interface, fixed results. That makes them fast, free and repeatable.
+The sandbox and Gemini are replaced by **fake providers** in these tests: same interfaces, fixed results. That makes them fast, free and repeatable.
 
 ### 4.1.4 System Testing
 1. **Sandbox smoke test** (`pnpm sandbox:smoke`): six real C++ programs run on the real E2B service, and each must produce its intended verdict (AC, WA, CE, RE, TLE, MLE).
-2. **End-to-end learner loop** on a running server: register → log in → open exercise → submit → poll → read mastery → reopen the exercise.
-3. **Manual API tests** with curl, for authentication and consent, by a team member.
+2. **Content verification** (`pnpm exercises:verify`): every seeded exercise runs in the real sandbox; the reference must pass and the starter must fail. **66 of 66 verified** (26 practice exercises, 40 placement items).
+3. **End-to-end learner loop** on a running server: register → log in → open exercise → submit → poll → read mastery → reopen the exercise.
+4. **End-to-end placement test** on real E2B, then the first recommendation and the fade stages; **sessions** (start, pause, resume, end); **progress**; **hints** (the whole ladder); **analytics** with a promoted admin.
+5. **Manual API tests** with curl, for authentication and consent, by a team member.
 
 ### 4.1.5 White-Box and Black-Box Testing
 - **White box:** unit tests cover every branch of the judge and formula, and database-rule tests target specific constraints.
@@ -1117,26 +1255,46 @@ The sandbox is replaced by a **fake provider** in these tests: same interface, f
 ### 4.1.6 Acceptance Testing
 The acceptance criteria are the SRS requirements, traced in the Phase 2 design document (section 9). For example:
 - **FR-M4-02**, "mastery changes only from executed evidence": tested by "records no evidence for SE or an early compile error".
-- **FR-M12-02**, "the help limit is enforced on the server": tested by "never lets the hint level pass the fade ceiling".
+- **FR-M12-02**, "the help limit is enforced on the server": tested by "never lets the hint level pass the fade ceiling" and "refuses a level above the fade stage's ceiling, and logs it".
+- **FR-M8-04**, "block any reply that looks like the solution": tested by "blocks a reply that gives the solution away and serves the frozen hint instead".
+- **FR-M3-01**, "an adaptive test estimates reading and writing": tested by "places all 711 possible learners exactly".
 
 Learner acceptance testing is planned for the pilot before the final report.
 
 ## 4.2 Test Data and Test Cases
 
-**Table 8: Automated test suites (69 tests, all passing on 16 Oct 2026)**
+**Table 8: Automated test suites (155 tests in 31 files, all passing on 19 Oct 2026)**
 
 | Level | Suite | Tests | What it proves |
 |---|---|---|---|
 | Unit | judge | 7 | Each verdict rule, order, normalisation, excerpts |
 | Unit | mastery formula v1 | 8 | Approved journey 0 → 0.16 → 0.33 → 0.53 → 0.72; hints; TLE doubling; decay |
 | Unit | skill graph | 4 | Cycle detection; seeded C++ graph is valid |
+| Unit | recommender rules | 7 | Candidates, reviews, rung bands, journey from rung 1 to 5 |
+| Unit | placement rules | 11 | All 711 knowledge states placed exactly; slip check; frontier code tasks |
+| Unit | session clock | 5 | Idle pause, timeout end, study time |
+| Unit | leak filter | 5 | Solution-like hints blocked, learner's own code ignored |
+| Unit | exercise banks | 6 | Practice and placement banks complete and well-formed |
 | Module | 9 schema suites | 16 | Every key constraint refuses bad data |
 | Integration | auth + consent | 14 | Login flows, token theft, throttling, CSRF; DPDP consent and under-18 hold |
-| Integration | submissions | 9 | 202 + polling, idempotency, privacy of hidden tests, CE/SE rules, mastery evidence |
-| Integration | exercises API | 4 | No secrets in responses; one attempt; enrollment; fade stage 1 |
-| Integration | mastery API | 3 | Reading and writing apart; decay on read; 404 for unknown skills |
-| Integration | scaffolding fade | 4 | Advance rules, logging, last stage, state endpoint |
+| Integration | submissions | 10 | 202 + polling, idempotency tied to its attempt, hidden tests private, CE/SE rules |
+| Integration | exercises API + verification | 10 | No secrets or rung-1 answers in responses; verification marks bad content rejected |
+| Integration | mastery API, scaffolding fade | 7 | Reading and writing apart; decay on read; stage advance |
+| Integration | recommendations API | 4 | First step, rung up, skip skills without content, course done |
+| Integration | placement test API | 18 | No answer key, current question only, background grading, seeding, retakes, cheat refused |
+| Integration | sessions, progress | 8 | Steps advance, pause/resume, idle, statuses |
+| Integration | analytics | 5 | Admin only, counts only |
+| Integration | hints, budget, frozen hints | 10 | Live, blocked, failed, ceiling, answer, daily and monthly caps |
 | System | sandbox smoke (real E2B) | 6 | All six execution verdicts on real infrastructure |
+| System | content verification (real E2B) | 66 | Every seeded exercise: reference passes, starter fails |
+
+**Sample test case: a hint never gives the solution away**
+
+| Field | Value |
+|---|---|
+| Input | A learner at hint level 1 asks for level 2; the (fake) tutor replies with the whole reference solution in a code block |
+| Expected | The reply is blocked and logged as `blocked`; the learner gets the frozen level-2 hint instead (`source: "frozen"`); the level moves to 2 |
+| Result | Pass |
 
 **Sample test case: judging hides hidden tests**
 
@@ -1157,7 +1315,7 @@ Learner acceptance testing is planned for the pilot before the final report.
 
 ## 4.3 Test Reports and Debugging
 
-**Results:** 69 of 69 automated tests pass, the 6 of 6 real-sandbox verdicts are correct, and the end-to-end loop passes (A-8, A-10).
+**Results:** 155 of 155 automated tests pass, the 6 of 6 real-sandbox verdicts are correct, 66 of 66 seeded exercises verify on the real sandbox, and the end-to-end runs pass (A-8, A-10).
 
 Debugging followed one rule: **measure, find the cause, fix the cause, add a test.** These are the defects found:
 
@@ -1173,6 +1331,12 @@ Debugging followed one rule: **measure, find the cause, fix the cause, add a tes
 | 6 | Migration 0011 **failed** on existing data | Shrinking an enum fails while rows still use a removed value | The migration deletes those rows first (it had never been applied anywhere, so editing it was safe) |
 | 7 | Register returned **400** in manual tests | The JSON was quoted for PowerShell but run in Git Bash; one field was called `name` instead of `displayName` | Shell-specific commands in the guide; field names checked against the API |
 | 8 | New tests failed with "`expect` is not a function" | An `async` helper returning a Supertest request was awaited automatically | The helper now takes the expected status itself |
+| 9 | **Cheating hole:** a learner could be placed without writing code | A practice submission sent under the placement task's predictable idempotency key was returned as the placement answer | A key now returns only a submission made on the same attempt, otherwise `409` (this also protects practice) |
+| 10 | A learner who had practised **once** lost their placement, and the skills built on it stayed locked | Seeding skipped any skill with a counted attempt | Only cleared skills are skipped; seeding is raise-only, so practice gains are never lowered |
+| 11 | Risk of the API **freezing** under load | Inside the completion transaction, a skill lookup asked the pool for a second connection; with 10 such transactions at once, all would wait forever | The lookup now runs on the transaction's own connection (also fixed in grading) |
+| 12 | The answer to a **rung-1** exercise was visible | Its only test was marked "sample", and sample tests are shown with the exercise | Rung-1 exercises never show sample tests |
+| 13 | Git showed a source file as **binary** | A script wrote a raw NUL byte instead of the `\0` escape | Replaced with the escape; every changed file is now scanned for NUL bytes |
+| 14 | Live hints would have sent learner code to Google's **free tier** | The Gemini key's project had not activated billing | A `GEMINI_PAID` setting must be `true` before any live call; until then hints fall back to frozen ones |
 
 ## 4.4 Implementation Manual
 
@@ -1180,35 +1344,47 @@ Debugging followed one rule: **measure, find the cause, fix the cause, add a tes
 ```bash
 docker compose up -d                  # PostgreSQL 16 + Redis 7
 pnpm install
-cd apps/api && cp .env.example .env   # fill DATABASE_URL, JWT_SECRET, WEB_ORIGIN, E2B_API_KEY
-pnpm db:migrate && pnpm db:seed       # 13 migrations; C++ course, 20 skills, starter exercise
+cd apps/api && cp .env.example .env   # fill DATABASE_URL, JWT_SECRET, WEB_ORIGIN, E2B_API_KEY, GEMINI_API_KEY
+pnpm db:migrate && pnpm db:seed       # 13 migrations; C++ course, 20 skills, 26 practice exercises, 40 placement items
+pnpm exercises:verify                 # runs every new exercise in the real sandbox before it can be served
 pnpm dev                              # API + queue worker on http://localhost:3001
-pnpm test                             # 69 automated tests
+pnpm test                             # 155 automated tests
 pnpm sandbox:smoke                    # real-sandbox check of all six verdicts
+pnpm user:admin <email>               # make the first admin (for analytics)
+pnpm hints:generate                   # once billing is active (GEMINI_PAID=true): freeze hints 1–4
 ```
 **Build the sandbox template once:** `pnpm sandbox:build` creates the `ai-tutor-cpp` machine (Debian 13, clang 19) on E2B.
 
 ## 4.5 Implementation
 
-**Status at Review 3 (16 October 2026):**
+**Status at Review 3 (19 October 2026):**
 
 | Module | Built | Endpoints live |
 |---|---|---|
 | M1 Accounts and DPDP consent | Register, login, refresh, logout, me; date of birth; consent kinds; under-18 hold | 5 |
 | M2 Skill graph | C++ basics course: 20 skills, 23 prerequisites, further-reading links (seed) | – |
-| M4 Mastery | Formula v1 inside the grading transaction; read views with decay | 2 |
-| M6 Exercises | Learner-facing exercise view; one verified starter exercise | 1 |
+| M3 Placement test | Adaptive reading walk with a slip check, frontier code tasks, seeding, retakes; 40 verified items | 3 |
+| M4 Mastery | Formula v1 inside the grading transaction; read views with decay; raise-only seeding | 2 |
+| M5 Recommender | Next skill, rung and exercise by fixed rules, saved with reasons | 1 |
+| M6 Exercises | Learner view; 26 verified practice exercises (first 5 skills × 5 rungs, plus one) | 1 |
 | M7 Execution | Fresh offline sandbox per submission, judge, queue, retries, polling | 2 |
-| M12 Fade | Stage start, advance on solve, state endpoint | 1 |
-| **Total** | | **12 of 22 MVP endpoints** |
+| M8 Hints | Five-level ladder, live tutor with leak filter and caps, frozen fallback | 1 |
+| M9 Sessions | Start or resume, pause, resume, end; steps from the recommender; idle rules | 3 |
+| M11 Progress | Every skill, reading and writing apart, fade stage, status | 1 |
+| M12 Fade | Stage start, advance on solve, fast-track from the placement test, state endpoint | 1 |
+| M13 Analytics | Admin overview: learners, code runs, outcomes, content coverage, hardest exercises, hints, AI spend | 1 |
+| **Total** | | **21 of 23 MVP endpoints** |
 
-**Planned for the MVP (10 November):** frontend screens (in progress), LLM adapter with live hints (M8), lesson and exercise generation with sandbox verification (M6), recommender (M5), diagnostic (M3), sessions (M9), progress (M11), analytics (M13), and deployment to the cloud server.
+**Real runs at this stage:** a placement test on real E2B placed a learner who knew 3 skills with 6 questions (5 reading, 1 code), graded the code in about 6 seconds and fast-tracked those 3 skills to the last fade stage; the first recommendation was then the next new skill. Sessions, progress, hints and analytics were each run against the development database (A-10).
+
+**Planned for the MVP (10 November):** Gemini billing activation (7 November), then live hints, frozen hints and exercise generation with sandbox verification (M6, the last 2 endpoints, which also gives skills 6–20 their practice exercises); frontend screens (in progress); deployment to the cloud server; and a pilot with real learners.
 
 ## 4.6 Users Training
 
 - **Learners** need no training beyond the interface. Every verdict has a plain-language message ("Too slow on test 3: limit 2 s"), and the fade state tells the learner what unlocks the next stage.
 - **The frontend team** works from a written API guide (`DOCS/api/FRONTEND-GUIDE.md`) with exact request and response types, error codes, and what to show for each verdict.
-- **Authors** add skills and exercises as seed data; a test checks the skill graph for cycles on every run.
+- **Authors** add skills and exercises as seed data; a test checks the skill graph for cycles on every run, and `pnpm exercises:verify` checks every new exercise in the real sandbox.
+- **Admins** are created with `pnpm user:admin <email>` and see one overview page; it shows counts only, never who.
 
 ## 4.7 Post-Implementation Maintenance
 
@@ -1231,7 +1407,9 @@ The project set out to measure what a learner can *write*, not what they have wa
 3. A deterministic judge gives the verdict.
 4. In the same transaction, the writing score moves by the approved formula and the skill moves to less help when solved with at most one hint.
 
-In a real run, a correct submission was judged **AC (4 of 4 tests) in about 6 seconds**, and the learner's writing mastery for that skill moved from **0 to 0.24**, exactly as the formula predicts. The system is backed by 69 automated tests and a written decision record for every major choice.
+In a real run, a correct submission was judged **AC (4 of 4 tests) in about 6 seconds**, and the learner's writing mastery for that skill moved from **0 to 0.24**, exactly as the formula predicts.
+
+Around that core, the rest of the learner's journey now works too: an adaptive **placement test** that asks an expert 26 questions instead of 40 and fast-tracks what they prove, a **recommender** that chooses the next skill, rung and exercise by explainable rules, **study sessions** that resume at the same step, an honest **progress** view, an **admin overview**, and a **hint ladder** whose live tutor can never hand over the solution. 21 of the 23 MVP endpoints are live, backed by 155 automated tests, 66 exercises verified in the real sandbox, and a written decision record (ADR-0001 to ADR-0015) for every major choice.
 
 ## 5.2 System Specifications
 
@@ -1247,8 +1425,10 @@ In a real run, a correct submission was judged **AC (4 of 4 tests) in about 6 se
 ## 5.3 Limitations of the System
 
 - **No web interface yet.** The frontend is in progress; this draft's sample outputs are API responses, and screen snapshots will be added in the final report.
-- **One exercise so far.** Exercise generation and the template bank are not built yet, so the recommender can't run.
-- **No LLM features yet:** hints, lessons and generation are designed (ADR-0010) but not built.
+- **Practice content covers 5 of 20 skills.** The 26 practice exercises cover the first five skills (plus one); skills 6–20 get theirs from exercise generation. The placement test covers all 20.
+- **Live AI waits for billing.** Live hints are built and tested with a fake model, but stay off until the ₹2,500 prepayment activates the paid tier (7 November); until then learners get frozen hints or a general nudge. Lessons and exercise generation are not built yet.
+- **The judge sees only output.** A determined learner can sometimes avoid a prerequisite (for example by rewriting a struct to use a vector); the tasks are designed so the natural solution uses it.
+- **Placement length.** An expert answers 26 questions (about 28 minutes); a placement seed unlocks the next skills for about 4 days (syntactic skills) before one Build per skill confirms them.
 - **Latency:** about 6 s per submission, mostly network round trips to the sandbox provider, whose servers are outside India.
 - **Sandbox trust:** learner code runs as the same user as our runner script, so a determined learner could tamper with result lines. That's acceptable for practice; the fix is a separate run user.
 - **Formula constants are starting values.** They will be calibrated against held-out exercises once real learners use the system.
@@ -1258,7 +1438,8 @@ In a real run, a correct submission was judged **AC (4 of 4 tests) in about 6 se
 
 - More languages (Java, Python) on the same language-independent engine, and more courses (DSA, frontend, backend).
 - The parent-approval flow for under-18 learners, with identity verification as the DPDP Rules require.
-- Calibration of the mastery model from real data, and spaced-revision scheduling (M10).
+- Calibration of the mastery model from real data (held-out exercises), and spaced-revision scheduling (M10).
+- Exercise generation for every skill, and frozen lessons with a diagram and a worked example per skill.
 - A mobile app (the API already supports Bearer tokens), and colleges as institutional customers.
 - Spoken explanation assessment, and a portable learner profile.
 
@@ -1274,7 +1455,7 @@ In a real run, a correct submission was judged **AC (4 of 4 tests) in about 6 se
 8. Bastani, H., et al. (2025). Generative AI Without Guardrails Can Harm Learning. *Proceedings of the National Academy of Sciences*.
 9. Government of India (2023). *The Digital Personal Data Protection Act, 2023*; and (2025) *Digital Personal Data Protection Rules, 2025*.
 10. Technical documentation: Node.js, Express 5, PostgreSQL 16, Drizzle ORM, BullMQ, E2B, Google Gemini API, Next.js (official documentation, accessed October 2026).
-11. Project documents: Phase 1 synopsis, problem analysis, literature survey and SRS (24 Sep 2026); Phase 2 system design (15 Oct 2026); ADR-0001 to ADR-0010.
+11. Project documents: Phase 1 synopsis, problem analysis, literature survey and SRS (24 Sep 2026); Phase 2 system design (15 Oct 2026, updated 19 Oct); ADR-0001 to ADR-0015; frontend API guide.
 
 ---
 
@@ -1291,7 +1472,10 @@ flowchart TD
   R -->|18 or over| LI
   R -->|under 18| P["Waiting for parent approval"]
   LI --> D["Dashboard: next step, progress"]
-  D --> DG["Diagnostic test"]
+  D --> DG["Placement test (first visit)"]
+  DG --> D
+  D --> SS["Start studying: session steps"]
+  SS --> EX
   D --> EX["Exercise: prompt, editor, Submit, Hint"]
   EX --> RS["Result: verdict, sample test details"]
   RS --> EX
@@ -1310,6 +1494,15 @@ flowchart TD
   APP --> SUB["M7 submissions routes"]
   APP --> MAS["M4 mastery routes"]
   APP --> FAD["M12 scaffolding routes"]
+  APP --> DIA["M3 placement routes"] --> DS["M3 diagnostic service"] --> PL["Placement rules (pure)"]
+  DS --> MS
+  DS --> FS
+  APP --> REC["M5 recommendation routes"] --> RS["M5 recommender service"] --> RR["Recommend rules (pure)"]
+  APP --> SES["M9 session routes"] --> SV["M9 sessions service"] --> RS
+  APP --> PRG["M11 progress routes"] --> RR
+  APP --> HIN["M8 hint routes"] --> HS["M8 hints service"] --> LLM["LLM provider (Gemini)"]
+  HS --> LF["Leak filter (pure)"]
+  APP --> ANA["M13 analytics routes (admin)"]
   EXR --> EXS["M6 exercises service"] --> SK["M2 skills service"]
   EXR --> ATS["M7 attempts service"] --> EN["M3 enrollments service"]
   ATS --> FS["M12 scaffolding service"]
@@ -1344,6 +1537,16 @@ flowchart TD
 | CE (3rd+) | Yes | No change | – |
 | SE | No | – | – |
 
+**Which hint does the learner get?** (levels 1–4; level 5 is always the answer)
+
+| Above the ceiling? | Under the daily and monthly caps, billing on? | Gemini answered? | Filter passed? | Result |
+|---|---|---|---|---|
+| Yes | any | – | – | `409 HINT_LIMIT`, logged `denied_ceiling` |
+| No | Yes | Yes | Yes | Live hint, logged `delivered` with its cost |
+| No | Yes | Yes | No | Logged `blocked`; frozen hint (or general nudge) |
+| No | Yes | No (error) | – | Frozen hint (or general nudge) |
+| No | No | – | – | Frozen hint (or general nudge), no call made |
+
 ## A-7 Data Dictionary
 
 **Table 10: Key tables** (all 42 are described in the Phase 2 design document)
@@ -1359,81 +1562,171 @@ flowchart TD
 | sandbox_runs / run_test_results | run status, verdict, compile output, wall time, peak memory; per-test verdict, time, memory, output excerpt | one result per run and test |
 | mastery_records | (user_id, skill_id, language_code), reading_score, writing_score, evidence times, cleared_at, limit_streak, decay_lambda | scores 0–1; row locked while updated |
 | evidence_events | user, skill, dimension, submission_id, verdict, rung, hints_used, weight, score_before, score_after, formula_version | exactly one source; never counted twice |
-| skill_scaffolding / fade_stage_changes | current stage per learner and skill; every move with its submission | stage must exist in its schedule |
+| skill_scaffolding / fade_stage_changes | current stage per learner and skill; every move with its cause (solved, or the placement test) | stage must exist in its schedule |
+| diagnostic_items / attempts / responses / results | item (skill, reading or writing, verified exercise); attempt number and status; each answer; one estimate per skill | one test in progress per enrollment; one answer per item |
+| recommendations | skill, rung, reason, score breakdown, top-5 snapshot, algorithm version, exercise served | rung 1–5 |
+| learning_sessions / session_steps | status, last activity, study time; ordered steps from recommendations | one open session per learner; one active step per session |
+| hint_events / llm_calls | each hint request (delivered, blocked, refused, bottomed out) with its text or stored hint; each Gemini call with tokens and estimated cost | hint level 1–5 |
 
 ## A-8 Test Reports
 
-Full test run of 16 October 2026: **17 test files, 69 tests, 69 passed.**
+Full test run of 19 October 2026: **31 test files, 155 tests, 155 passed.**
 
-- ✓ attempts.test.ts > attempts schema > never lets the hint level pass the fade ceiling
+- ✓ analytics-api.test.ts > GET /analytics/overview > is for admins only
+- ✓ analytics-api.test.ts > GET /analytics/overview > counts new learners, opt-ins, code runs, sessions and clears in the window
+- ✓ analytics-api.test.ts > GET /analytics/overview > reports one course's content coverage and per-skill averages exactly
+- ✓ analytics-api.test.ts > GET /analytics/overview > lists the hardest practice exercises, lowest solve rate first
+- ✓ analytics-api.test.ts > GET /analytics/overview > accepts a window of 1 to 365 days
 - ✓ attempts.test.ts > attempts schema > rejects a double-submit with the same idempotency key
-- ✓ auth.test.ts > auth > answers a wrong password and an unknown email identically
-- ✓ auth.test.ts > auth > blocks cookie-carrying writes from another site
-- ✓ auth.test.ts > auth > ends the session on logout
-- ✓ auth.test.ts > auth > ignores a role sent at sign-up
+- ✓ attempts.test.ts > attempts schema > never lets the hint level pass the fade ceiling
 - ✓ auth.test.ts > auth > registers, logs in with cookies, and returns the profile without secrets
+- ✓ auth.test.ts > auth > ignores a role sent at sign-up
 - ✓ auth.test.ts > auth > rejects the same email in any letter case with 409
+- ✓ auth.test.ts > auth > answers a wrong password and an unknown email identically
 - ✓ auth.test.ts > auth > rotates refresh tokens, and revokes the whole login when an old one is reused
+- ✓ auth.test.ts > auth > ends the session on logout
+- ✓ auth.test.ts > auth > blocks cookie-carrying writes from another site
 - ✓ auth.test.ts > auth > throttles the 6th failed login for one email
-- ✓ auth.test.ts > consent at sign-up > counts age in whole years, turning 18 on the birthday
-- ✓ auth.test.ts > consent at sign-up > holds a minor for parental approval, with no consent recorded
 - ✓ auth.test.ts > consent at sign-up > records the required consents plus only the opt-ins chosen
-- ✓ auth.test.ts > consent at sign-up > refuses AI-training or research opt-ins from a minor
-- ✓ auth.test.ts > consent at sign-up > refuses a date of birth in the future
 - ✓ auth.test.ts > consent at sign-up > refuses sign-up without accepting the Terms
-- ✓ curriculum.test.ts > curriculum schema > rejects a duplicate edge even when it applies to every language (null)
+- ✓ auth.test.ts > consent at sign-up > refuses a date of birth in the future
+- ✓ auth.test.ts > consent at sign-up > holds a minor for parental approval, with no consent recorded
+- ✓ auth.test.ts > consent at sign-up > refuses AI-training or research opt-ins from a minor
+- ✓ auth.test.ts > consent at sign-up > counts age in whole years, turning 18 on the birthday
 - ✓ curriculum.test.ts > curriculum schema > rejects a skill that requires itself
+- ✓ curriculum.test.ts > curriculum schema > rejects a duplicate edge even when it applies to every language (null)
+- ✓ diagnostic-api.test.ts > POST /diagnostic/start > starts with the first skill's program to read, never its answer, and resumes the same test
+- ✓ diagnostic-api.test.ts > POST /diagnostic/start > is unavailable until items are verified, and 404 for an unknown course
+- ✓ diagnostic-api.test.ts > POST /diagnostic/:id/answers > grades reading on the spot without saying so, and accepts only the current question
+- ✓ diagnostic-api.test.ts > POST /diagnostic/:id/answers > rejects an answer Postgres can't store as a 400, not a 500
+- ✓ diagnostic-api.test.ts > POST /diagnostic/:id/answers > re-queues a code task whose first queueing failed when the answer is retried
+- ✓ diagnostic-api.test.ts > POST /diagnostic/:id/answers > ends after an "I don't know" on the first skill, with nothing asked on top of it
+- ✓ diagnostic-api.test.ts > POST /diagnostic/:id/answers > queues a code task once, in a diagnostic attempt with no hints and no fade stage
+- ✓ diagnostic-api.test.ts > POST /diagnostic/:id/complete > waits for the code task, then seeds mastery and fast-tracks the skills it proves
+- ✓ diagnostic-api.test.ts > POST /diagnostic/:id/complete > starts a skill only read correctly at rung 2: Predict is skipped, writing still starts at 0
+- ✓ diagnostic-api.test.ts > POST /diagnostic/:id/complete > raises a practised skill without lowering it, so the skills built on it unlock
+- ✓ diagnostic-api.test.ts > POST /diagnostic/:id/complete > leaves a skill cleared in practice alone, and doesn't ask it
+- ✓ diagnostic-api.test.ts > POST /diagnostic/:id/complete > won't let a practice submission stand in for the code task
+- ✓ diagnostic-api.test.ts > POST /diagnostic/:id/complete > moves a skill opened before the test (stage 1, never submitted) up to the last stage
+- ✓ diagnostic-api.test.ts > POST /diagnostic/:id/complete > stops waiting for a code task the sandbox never ran, and counts it as unobserved
+- ✓ diagnostic-api.test.ts > retake > starts a new test only when asked, up to three, never lowering earlier results
+- ✓ diagnostic-api.test.ts > retake > lifts a placement on a retake after a failed code task, reusing the open attempt
+- ✓ diagnostic-api.test.ts > retake > finishes cleanly for a learner who has already cleared every skill
+- ✓ diagnostic-api.test.ts > retake > refreshes only a seed that has faded below the new estimate
 - ✓ diagnostic.test.ts > diagnostic schema > allows only one diagnostic in progress per enrollment
-- ✓ enrollment-fade.test.ts > enrollment and fade schema > rejects a skill sitting on a fade stage its schedule doesn't have
 - ✓ enrollment-fade.test.ts > enrollment and fade schema > rejects an enrollment in a language the course doesn't offer
-- ✓ exercises-api.test.ts > GET /exercises/:id > hides exercises that aren't verified
-- ✓ exercises-api.test.ts > GET /exercises/:id > returns a solved attempt as solved instead of starting a new one
+- ✓ enrollment-fade.test.ts > enrollment and fade schema > rejects a skill sitting on a fade stage its schedule doesn't have
+- ✓ exercise-templates.test.ts > cpp-basics template bank > covers rungs 1–5 for each of the first five skills, once each
+- ✓ exercise-templates.test.ts > cpp-basics template bank > only uses skills that exist in the course
+- ✓ exercise-templates.test.ts > cpp-basics template bank > gives rung 1 a program to read and no harness; rungs 2–5 a function to write
+- ✓ exercise-templates.test.ts > cpp-basics placement test bank > has exactly one reading item and one code task per course skill
+- ✓ exercise-templates.test.ts > cpp-basics placement test bank > asks reading as a program to read, showing only the code
+- ✓ exercise-templates.test.ts > cpp-basics placement test bank > asks code tasks as a rung-5 function with hidden tests beyond the shown example
+- ✓ exercise-verification.test.ts > exercise verification > verifies when the reference passes and the starter fails
+- ✓ exercise-verification.test.ts > exercise verification > rejects an exercise whose reference doesn't pass
+- ✓ exercise-verification.test.ts > exercise verification > rejects an exercise whose tests can't tell the starter from a solution
+- ✓ exercise-verification.test.ts > exercise verification > runs only the program itself for rung 1 (there is no starter to try)
 - ✓ exercises-api.test.ts > GET /exercises/:id > shows the exercise and its sample test, never secrets or hidden tests
 - ✓ exercises-api.test.ts > GET /exercises/:id > starts one attempt, enrolling the learner and starting the skill at fade stage 1
-- ✓ exercises.test.ts > exercises schema > rejects a rung outside 1 to 5
+- ✓ exercises-api.test.ts > GET /exercises/:id > returns a solved attempt as solved instead of starting a new one
+- ✓ exercises-api.test.ts > GET /exercises/:id > hides exercises that aren't verified
+- ✓ exercises-api.test.ts > GET /exercises/:id > never shows a predict-the-output exercise's answer
+- ✓ exercises-api.test.ts > GET /exercises/:id > never opens a placement-test exercise as practice
 - ✓ exercises.test.ts > exercises schema > rejects a second exercise with the same content key
-- ✓ identity.test.ts > identity schema > deletes a user's refresh tokens with the user
+- ✓ exercises.test.ts > exercises schema > rejects a rung outside 1 to 5
+- ✓ freeze-hints.test.ts > frozen hints > stores levels 1–4 once, and leaves an exercise that already has hints alone
+- ✓ freeze-hints.test.ts > frozen hints > asks again when a hint gives the solution away, and skips the exercise if it happens twice
+- ✓ hints-api.test.ts > POST /exercises/:id/hints > gives the live tutor's hint for the next level only, and moves the level
+- ✓ hints-api.test.ts > POST /exercises/:id/hints > blocks a reply that gives the solution away and serves the frozen hint instead
+- ✓ hints-api.test.ts > POST /exercises/:id/hints > falls back to a general nudge when the tutor fails and nothing is stored
+- ✓ hints-api.test.ts > POST /exercises/:id/hints > refuses a level above the fade stage's ceiling, and logs it
+- ✓ hints-api.test.ts > POST /exercises/:id/hints > shows the answer at level 5 without the tutor, and marks the bottom-out
+- ✓ hints-api.test.ts > POST /exercises/:id/hints > stops calling the tutor after 20 live hints in a day
+- ✓ hints-api.test.ts > POST /exercises/:id/hints > needs an open attempt on a practice exercise
+- ✓ hints-budget.test.ts > hint budget > serves frozen hints without calling the tutor once ₹500 is spent this month
 - ✓ identity.test.ts > identity schema > treats email as unique and case-insensitive
+- ✓ identity.test.ts > identity schema > deletes a user's refresh tokens with the user
 - ✓ judge.test.ts > judge > accepts the right output, ignoring line endings and trailing spaces
-- ✓ judge.test.ts > judge > cuts long output to a readable excerpt
-- ✓ judge.test.ts > judge > gives MLE above the memory limit or on std::bad_alloc
-- ✓ judge.test.ts > judge > gives RE for a crash or a non-zero exit
-- ✓ judge.test.ts > judge > gives TLE when the time limit killed the test, whatever else happened
 - ✓ judge.test.ts > judge > gives WA for different output, including an early exit that prints nothing
+- ✓ judge.test.ts > judge > gives RE for a crash or a non-zero exit
+- ✓ judge.test.ts > judge > gives MLE above the memory limit or on std::bad_alloc
+- ✓ judge.test.ts > judge > gives TLE when the time limit killed the test, whatever else happened
 - ✓ judge.test.ts > judge > lets the first failing test decide, and calls an empty test list a setup error
-- ✓ mastery-api.test.ts > mastery API > answers 404 for a skill that doesn't exist
+- ✓ judge.test.ts > judge > cuts long output to a readable excerpt
 - ✓ mastery-api.test.ts > mastery API > lists skills with reading and writing apart, decayed on read
 - ✓ mastery-api.test.ts > mastery API > shows one skill in detail, and zeros for a skill never practised
-- ✓ mastery-formula.test.ts > mastery formula v1 > counts rung 1 as reading and rungs 2–5 as writing
+- ✓ mastery-api.test.ts > mastery API > answers 404 for a skill that doesn't exist
 - ✓ mastery-formula.test.ts > mastery formula v1 > follows the approved journey: about five good solves pass 0.7
-- ✓ mastery-formula.test.ts > mastery formula v1 > gives less credit when much slower than usual, but never below 70%
 - ✓ mastery-formula.test.ts > mastery formula v1 > gives no credit for an AC after the solution was shown
-- ✓ mastery-formula.test.ts > mastery formula v1 > halves effective mastery after ln 2 / λ days, and never decays without evidence
-- ✓ mastery-formula.test.ts > mastery formula v1 > leaves a counted compile error's score alone
 - ✓ mastery-formula.test.ts > mastery formula v1 > penalises only the first WA or RE of an attempt, more on easy rungs
 - ✓ mastery-formula.test.ts > mastery formula v1 > starts TLE/MLE tiny, doubles each time, caps at a WA, and lets only AC reset the streak
-- ✓ mastery.test.ts > mastery schema > never counts the same evidence twice
+- ✓ mastery-formula.test.ts > mastery formula v1 > leaves a counted compile error's score alone
+- ✓ mastery-formula.test.ts > mastery formula v1 > gives less credit when much slower than usual, but never below 70%
+- ✓ mastery-formula.test.ts > mastery formula v1 > counts rung 1 as reading and rungs 2–5 as writing
+- ✓ mastery-formula.test.ts > mastery formula v1 > halves effective mastery after ln 2 / λ days, and never decays without evidence
 - ✓ mastery.test.ts > mastery schema > rejects evidence that has no source
+- ✓ mastery.test.ts > mastery schema > never counts the same evidence twice
+- ✓ placement.test.ts > placement order > puts every prerequisite before the skills built on it, easiest first
+- ✓ placement.test.ts > placement walk > ends after one item for a novice who doesn't know, and after the check for one who guesses
+- ✓ placement.test.ts > placement walk > asks writing only on the frontier of what was read correctly
+- ✓ placement.test.ts > placement walk > places all 711 possible learners exactly, within 20 reading and 7 writing items
+- ✓ placement.test.ts > placement walk > rescues a typed slip when the next skill is right, and confirms it when that is wrong too
+- ✓ placement.test.ts > placement walk > checks a suspect skill once: its other dependents wait for that check
+- ✓ placement.test.ts > placement walk > never lets a writing verdict change which item comes next
+- ✓ placement.test.ts > placement walk > infers a skill with no reading item from its dependents, and moves the frontier below a missing writing item
+- ✓ placement.test.ts > placement walk > never asks or estimates skills already cleared in practice, but builds on them
+- ✓ placement.test.ts > placement estimate > lets one frontier AC vouch for every skill below it, at lower confidence
+- ✓ placement.test.ts > placement estimate > treats a pending or failed-to-run task as unobserved, and gives unreached skills nothing
+- ✓ progress-api.test.ts > GET /progress > shows every skill's reading and writing apart, as they are today, with a status
+- ✓ progress-api.test.ts > GET /progress > 404s for a course that doesn't exist in that language
+- ✓ recommendations-api.test.ts > GET /recommendations/next > starts a new learner on the first skill at rung 1, enrolls them, and saves the reasons
+- ✓ recommendations-api.test.ts > GET /recommendations/next > moves to rung 2 after the rung-1 exercise is solved
+- ✓ recommendations-api.test.ts > GET /recommendations/next > names the next skill without an exercise when it has no content yet
+- ✓ recommendations-api.test.ts > GET /recommendations/next > returns null when every skill is cleared and fresh, and 404 for an unknown course
+- ✓ recommender.test.ts > recommender rules v1 > starts a new learner on the first skill only
+- ✓ recommender.test.ts > recommender rules v1 > unlocks the next skill once a prerequisite is cleared, even if it has decayed a little
+- ✓ recommender.test.ts > recommender rules v1 > finishes the skill in progress before a due review, and does due reviews before new skills
+- ✓ recommender.test.ts > recommender rules v1 > prefers the learner's goal skill among equals, and reports nothing when the course is done
+- ✓ recommender.test.ts > recommender rules v1 > follows the approved journey: rung 1 → 2 → 3 → 4 → 5 in five good solves
+- ✓ recommender.test.ts > recommender rules v1 > never goes below the fade stage's easiest rung
+- ✓ recommender.test.ts > recommender rules v1 > picks the unfinished attempt first, then unseen at the rung, then harder, then easier
 - ✓ research.test.ts > research schema > allows one live consent of each kind, and a new one after revoking
 - ✓ scaffolding-api.test.ts > scaffolding fade > moves a skill on when the stage's rung is solved with at most 1 hint, and logs why
+- ✓ scaffolding-api.test.ts > scaffolding fade > stays put with too many hints or on an easier rung, and moves one stage at a time
 - ✓ scaffolding-api.test.ts > scaffolding fade > never moves past the last stage
 - ✓ scaffolding-api.test.ts > scaffolding fade > shows each skill's stage and limits
-- ✓ scaffolding-api.test.ts > scaffolding fade > stays put with too many hints or on an easier rung, and moves one stage at a time
-- ✓ sessions.test.ts > sessions schema > allows only one active step per session
+- ✓ session-clock.test.ts > session clock > leaves a recently active session alone
+- ✓ session-clock.test.ts > session clock > pauses after 15 idle minutes, from the moment it went idle
+- ✓ session-clock.test.ts > session clock > ends a session paused for over 24 hours, whether paused by hand or by going idle
+- ✓ session-clock.test.ts > session clock > counts time between activities as study, but never while paused
+- ✓ session-clock.test.ts > session clock > pauses, resumes and ends on request, and does nothing for the same state
+- ✓ sessions-api.test.ts > POST /sessions > starts a session on the recommender's first step, and resumes it on the next call
+- ✓ sessions-api.test.ts > POST /sessions > ends as completed when the course is done, and 404s for an unknown course
+- ✓ sessions-api.test.ts > GET /sessions/active > moves to the next step once the current exercise is solved
+- ✓ sessions-api.test.ts > GET /sessions/active > pauses a session idle for 15 minutes without counting the gap, and ends one paused for a day
+- ✓ sessions-api.test.ts > PATCH /sessions/:id > pauses, resumes at the same step, and ends for good
+- ✓ sessions-api.test.ts > PATCH /sessions/:id > hides other learners' sessions and rejects unknown states
 - ✓ sessions.test.ts > sessions schema > allows only one open session per learner
-- ✓ skill-graph.test.ts > skill graph > accepts a graph where skills share prerequisites
-- ✓ skill-graph.test.ts > skill graph > cpp-basics seed data > has no cycles
-- ✓ skill-graph.test.ts > skill graph > cpp-basics seed data > has unique slugs and only known prerequisites
+- ✓ sessions.test.ts > sessions schema > allows only one active step per session
 - ✓ skill-graph.test.ts > skill graph > finds a cycle
+- ✓ skill-graph.test.ts > skill graph > accepts a graph where skills share prerequisites
+- ✓ skill-graph.test.ts > skill graph > cpp-basics seed data > has unique slugs and only known prerequisites
+- ✓ skill-graph.test.ts > skill graph > cpp-basics seed data > has no cycles
+- ✓ solution-filter.test.ts > solution filter > passes a hint in words, and a small fragment of a different idea
+- ✓ solution-filter.test.ts > solution filter > blocks the solution, whole or in its key lines, fenced or not
+- ✓ solution-filter.test.ts > solution filter > doesn't count code the learner already has
+- ✓ solution-filter.test.ts > solution filter > blocks more than a fragment of code, even unrelated code
+- ✓ solution-filter.test.ts > solution filter > blocks a predict-the-output hint that gives the output away
+- ✓ submissions.test.ts > submissions > saves and queues a submission, answering 202
+- ✓ submissions.test.ts > submissions > returns the same submission for a repeated idempotency key, counted once
+- ✓ submissions.test.ts > submissions > refuses a key already used on another attempt, so no attempt can borrow another's verdict
 - ✓ submissions.test.ts > submissions > hides other learners' attempts and submissions
 - ✓ submissions.test.ts > submissions > judges a run, shows the sample test in full and the hidden test as a verdict only
+- ✓ submissions.test.ts > submissions > shows compiler output for CE, and doesn't count it before the third
+- ✓ submissions.test.ts > submissions > retries a sandbox failure, then gives SE without counting it
+- ✓ submissions.test.ts > submissions > turns an AC into writing mastery, saved with its ledger row
 - ✓ submissions.test.ts > submissions > penalises only the first wrong answer of an attempt
 - ✓ submissions.test.ts > submissions > records no evidence for SE or an early compile error
-- ✓ submissions.test.ts > submissions > retries a sandbox failure, then gives SE without counting it
-- ✓ submissions.test.ts > submissions > returns the same submission for a repeated idempotency key, counted once
-- ✓ submissions.test.ts > submissions > saves and queues a submission, answering 202
-- ✓ submissions.test.ts > submissions > shows compiler output for CE, and doesn't count it before the third
-- ✓ submissions.test.ts > submissions > turns an AC into writing mastery, saved with its ledger row
 
 **Real-sandbox smoke test:**
 ```
@@ -1446,6 +1739,17 @@ ok   MLE → MLE  5424 ms
 All six verdicts correct.
 ```
 
+**Content verification on the real sandbox (18 October 2026), placement items:**
+```
+Verifying 40 draft exercise(s)…
+ok       rung 1 · What does it print? Comments and line breaks
+ok       rung 1 · What does it print? Implicit conversions
+…        (36 more)
+ok       rung 5 · Sort by distance, split near from far
+ok       rung 5 · Own a heap array inside a struct
+40 verified, 0 rejected.
+```
+
 ## A-9 Sample Inputs
 
 ```bash
@@ -1456,6 +1760,15 @@ curl -X POST http://localhost:3001/api/v1/auth/register -H "Content-Type: applic
 # Submit code for an attempt
 curl -X POST http://localhost:3001/api/v1/submissions -H "Authorization: Bearer <token>" -H "Content-Type: application/json" \
   -d '{"attemptId":"<attempt id>","answer":"int sumOfDigits(int n) { int s = 0; for (; n > 0; n /= 10) s += n % 10; return s; }","idempotencyKey":"try-001"}'
+
+# Placement test: start, then answer the current question (or say "I don't know")
+curl -X POST http://localhost:3001/api/v1/diagnostic/start -H "Authorization: Bearer <token>" -H "Content-Type: application/json" -d '{}'
+curl -X POST http://localhost:3001/api/v1/diagnostic/<id>/answers -H "Authorization: Bearer <token>" -H "Content-Type: application/json" \
+  -d '{"itemId":"<item id>","dontKnow":true}'
+
+# Ask for the next hint, sending the current code
+curl -X POST http://localhost:3001/api/v1/exercises/<exercise id>/hints -H "Authorization: Bearer <token>" -H "Content-Type: application/json" \
+  -d '{"code":"int sumOfDigits(int n) { return n % 10; }"}'
 ```
 
 ## A-10 Sample Outputs
@@ -1488,6 +1801,48 @@ GET exercise:   Sum of digits | rung 3 | skill Functions | sampleTests 1 | attem
 verdict:        AC 4/4
 GET mastery:    Functions | writing 0.240 effective 0.240 | attempts 1
 reopen attempt: solved
+```
+
+```
+Placement test on real E2B (18 Oct 2026): a learner who knows the first 3 skills
+start: attempt 1, first question: reading program-structure   (the answer is not in the response)
+  reading program-structure      → answers
+  reading variables-and-types    → answers
+  reading operators              → answers
+  reading conditionals           → I don't know
+  reading bitwise-operators      → I don't know
+  writing operators              → answers (code, run in the background)
+answered 6 in 621 ms; complete → 202 grading, retry in 5000 ms → completed after 5676 ms
+  program-structure      reading 0.85 writing 0.85 confidence 0.5
+  variables-and-types    reading 0.85 writing 0.85 confidence 0.5
+  operators              reading 0.85 writing 0.85 confidence 1
+next step: conditionals, rung 1
+fade: program-structure = stage 4, variables-and-types = stage 4, operators = stage 4
+```
+
+```
+Session and progress (19 Oct 2026)
+start:  active | step 1 Your first program, rung 1
+pause:  paused | resume: active, same step
+progress summary: total 20, locked 19, ready 1, in progress 0, cleared 0, review due 0
+end:    user | active session after end: none
+```
+
+```
+Hint ladder with live AI switched off (19 Oct 2026), a rung-1 exercise
+200 level 1/5 generic: Re-read the task and list what goes in and what must come out…
+200 level 2/5 generic: Run the example by hand, line by line…
+200 level 3/5 generic: Change one thing at a time and run again…
+200 level 4/5 generic: Solve a tiny version of the task first…
+200 level 5/5 answer:  It prints: Hello World / 3. Trace it again line by line…
+409 HINT_LIMIT
+```
+
+```
+Admin overview, last 30 days (19 Oct 2026, development database)
+learners: total 9, joined 9, ran code 4, waiting for a parent 1, AI-training opt-ins 1
+runs:     5 submissions (AC 4, WA 1), median run 50 ms, sandbox error rate 0
+content:  14 of 20 skills have no practice exercises yet; Your first program has one per rung
 ```
 
 Screen snapshots of the web interface will be added here in the final report.
@@ -1596,4 +1951,40 @@ const DAY_MS = 86_400_000;
 // FR-M4-03: what the learner can still do today. Stored scores never decay; this is computed on read.
 export const effectiveScore = (score: number, decayLambda: number, evidenceAt: Date | null, now = new Date()) =>
   evidenceAt ? score * Math.exp((-decayLambda * (now.getTime() - evidenceAt.getTime())) / DAY_MS) : score;
+```
+
+**The hint leak filter** (`apps/api/src/modules/m8_socratic/services/solution-filter.ts`)
+
+```ts
+// FR-M8-04: every generated hint is checked before a learner sees it. Pure, so it is unit-tested.
+// Code is compared as overlapping runs of 5 tokens ("fingerprints"). A hint is blocked when it
+// carries too many of the fingerprints only the solution has (not the starter, not the learner's
+// own code), when it shows more than a fragment of code, or when it gives away a rung-1 output.
+const RUN = 5;
+const MAX_SHARED = 0.25; // share of the solution's own fingerprints a hint may contain
+const MAX_CODE_LINES = 6; // a hint may show a fragment, never a program
+const MIN_OUTPUT_CHARS = 4; // shorter outputs ("3") appear in prose by chance
+
+export type FilterContext = { reference: string; starter: string; learnerCode?: string; output?: string };
+export type FilterResult = { passed: boolean; shared: number; longestCode: number; givesOutput: boolean };
+
+const TOKEN = /[A-Za-z_]\w*|\d+|"(?:\\.|[^"\\])*"|'(?:\\.|[^'\\])*'|\S/g;
+const tokens = (code: string) => code.replace(/\/\/.*$/gm, "").replace(/\/\*[\s\S]*?\*\//g, "").match(TOKEN) ?? [];
+const fingerprints = (text: string) => {
+  const t = tokens(text);
+  return new Set(Array.from({ length: Math.max(0, t.length - RUN + 1) }, (_, i) => t.slice(i, i + RUN).join(" ")));
+};
+const codeBlocks = (reply: string) => [...reply.matchAll(/```[^\n]*\n([\s\S]*?)```/g)].map((m) => m[1]);
+const squash = (text: string) => text.replace(/\s+/g, " ").trim();
+
+export function checkHint(reply: string, { reference, starter, learnerCode = "", output }: FilterContext): FilterResult {
+  const known = new Set([...fingerprints(starter), ...fingerprints(learnerCode)]);
+  const own = [...fingerprints(reference)].filter((f) => !known.has(f));
+  const inReply = fingerprints(reply);
+  const shared = own.length ? own.filter((f) => inReply.has(f)).length / own.length : 0;
+  const longestCode = Math.max(0, ...codeBlocks(reply).map((c) => c.trim().split("\n").length));
+  const answer = output ? squash(output) : "";
+  const givesOutput = answer.length >= MIN_OUTPUT_CHARS && squash(reply).includes(answer);
+  return { passed: shared < MAX_SHARED && longestCode <= MAX_CODE_LINES && !givesOutput, shared, longestCode, givesOutput };
+}
 ```
