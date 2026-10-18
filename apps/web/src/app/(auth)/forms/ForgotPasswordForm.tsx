@@ -5,6 +5,7 @@ import { Mail, Send } from "lucide-react";
 import Input from "../common/Input";
 import Button from "../common/Button";
 import { isValidEmail } from "../utils/validation";
+import { api, ApiError } from "@/lib/api/client";
 
 function ForgotPasswordForm() {
     const [email, setEmail] = useState("");
@@ -35,15 +36,18 @@ function ForgotPasswordForm() {
         setIsLoading(true);
 
         try {
-            await new Promise<void>((resolve) =>
-                setTimeout(resolve, 1200)
-            );
-
+            // The same answer whether or not the account exists, so nobody can probe for emails.
+            const { message } = await api<{ message: string }>("/auth/forgot-password", {
+                method: "POST",
+                body: JSON.stringify({ email: trimmedEmail }),
+            });
+            setStatusMessage(message);
+        } catch (err) {
             setStatusMessage(
-                "Your request has been validated. Password reset emails are not connected yet."
+                err instanceof ApiError && err.status === 429
+                    ? "Too many requests. Please wait a few minutes and try again."
+                    : "Something went wrong. Please try again."
             );
-        } catch {
-            setStatusMessage("Something went wrong. Please try again.");
         } finally {
             setIsLoading(false);
         }
