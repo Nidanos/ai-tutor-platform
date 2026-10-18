@@ -4,6 +4,8 @@ import { courseLanguages, courses, fadeSchedules, fadeStages, languages } from "
 import { cppBasicsSkills } from "./cpp-basics.js";
 import { courseRows, DEFAULT_LANGUAGE, defaultFadeStages, languageRows } from "./data.js";
 import { seedSkills } from "./seed-skills.js";
+import { cppDiagnosticReading } from "./cpp-diagnostic-reading.js";
+import { cppDiagnosticWriting } from "./cpp-diagnostic-writing.js";
 import { cppBasicsTemplates } from "./cpp-templates.js";
 import { seedExercises } from "./seed-exercises.js";
 
@@ -30,6 +32,7 @@ await db
 
 await seedSkills("cpp-basics", cppBasicsSkills);
 await seedExercises("cpp-basics", cppBasicsTemplates);
+await seedExercises("cpp-basics", [...cppDiagnosticReading, ...cppDiagnosticWriting], "diagnostic");
 
 await db.$client.end();
 console.log("Seed complete");

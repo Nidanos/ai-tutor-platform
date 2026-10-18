@@ -1,7 +1,9 @@
 import { describe, expect, it } from "vitest";
 import { cppBasicsSkills } from "../src/infrastructure/database/seed/cpp-basics.js";
+import { cppDiagnosticReading } from "../src/infrastructure/database/seed/cpp-diagnostic-reading.js";
+import { cppDiagnosticWriting } from "../src/infrastructure/database/seed/cpp-diagnostic-writing.js";
 import { cppBasicsTemplates } from "../src/infrastructure/database/seed/cpp-templates.js";
-import { harnessFor } from "../src/infrastructure/database/seed/seed-exercises.js";
+import { diagnosticPayload, harnessFor } from "../src/infrastructure/database/seed/seed-exercises.js";
 
 const FIRST_FIVE = ["program-structure", "variables-and-types", "operators", "conditionals", "loops"];
 
@@ -29,6 +31,32 @@ describe("cpp-basics template bank", () => {
         expect(t.starterCode).not.toBe(t.reference);
         expect(harnessFor(t)).toContain(`case ${t.cases.length}:`); // one switch case per test
       }
+    }
+  });
+});
+
+describe("cpp-basics placement test bank", () => {
+  it("has exactly one reading item and one code task per course skill", () => {
+    const slugs = cppBasicsSkills.map((s) => s.slug).sort();
+    expect(cppDiagnosticReading.map((t) => t.skill).sort()).toEqual(slugs);
+    expect(cppDiagnosticWriting.map((t) => t.skill).sort()).toEqual(slugs);
+  });
+
+  it("asks reading as a program to read, showing only the code", () => {
+    for (const t of cppDiagnosticReading) {
+      expect([t.rung, t.cases.length, harnessFor(t)]).toEqual([1, 1, null]);
+      expect(t.starterCode).toBe(t.reference);
+      expect(diagnosticPayload(t)).toEqual({ code: t.starterCode });
+    }
+  });
+
+  it("asks code tasks as a rung-5 function with hidden tests beyond the shown example", () => {
+    for (const t of cppDiagnosticWriting) {
+      expect(t.rung).toBe(5);
+      expect(t.cases.length).toBeGreaterThanOrEqual(3);
+      expect(t.starterCode).not.toBe(t.reference);
+      expect(harnessFor(t)).toContain(`case ${t.cases.length}:`);
+      expect(diagnosticPayload(t)).toMatchObject({ functionSignature: t.functionSignature, sample: { expectedOutput: t.cases[0].expected } });
     }
   });
 });

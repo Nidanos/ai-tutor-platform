@@ -23,7 +23,8 @@ import { exercises } from "./exercises.js";
 export const dimension = pgEnum("dimension", ["reading", "writing"]);
 export const diagnosticStatus = pgEnum("diagnostic_status", ["in_progress", "completed", "abandoned"]);
 
-// Frozen placement questions. Writing items point at a real exercise, graded in the sandbox.
+// Frozen placement questions (ADR-0012). Each points at a verified exercise: its test is the reading
+// answer key, and writing items run in the sandbox.
 export const diagnosticItems = pgTable(
   "diagnostic_items",
   {
@@ -33,8 +34,8 @@ export const diagnosticItems = pgTable(
     dimension: dimension().notNull(),
     difficulty: smallint().notNull(),
     promptMd: text().notNull(),
-    payload: jsonb().notNull(), // choices or code
-    answerKey: jsonb(), // server-only; null for writing items
+    payload: jsonb().notNull(), // what the learner sees: the code (and, for writing, the signature and one sample)
+    answerKey: jsonb(), // unused: the key is the verified exercise test, never stored twice
     exerciseId: uuid().references(() => exercises.id),
     contentVersion: text().notNull(),
     status: contentStatus().notNull().default("published"),
@@ -82,7 +83,7 @@ export const diagnosticResponses = pgTable(
   ],
 );
 
-// One estimate per skill; seeds the first mastery records once (FR-M3-02).
+// One estimate per skill; seeds mastery when the test completes, raise-only (FR-M3-02).
 export const diagnosticResults = pgTable(
   "diagnostic_results",
   {

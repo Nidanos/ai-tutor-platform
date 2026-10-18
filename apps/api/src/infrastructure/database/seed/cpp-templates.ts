@@ -18,13 +18,14 @@ export type ExerciseTemplate = {
   functionSignature?: string; // rungs 2–5
   call?: (args: string) => string; // rungs 2–5: one test as a C++ statement
   cases: Case[]; // the first is shown as the sample; the rest are hidden
+  variant?: number; // 1, 2, …: a corrected copy of a seeded template (seeded content is never edited)
 };
 
 // Rungs 2–5 use a `void solve(...)` box: the learner writes inside it, inputs arrive as parameters.
 const solve = (args: string) => `solve(${args});`;
 const BOX = "Write your code inside `solve`. Your inputs arrive as its parameters; print the answer with `std::cout`.";
 
-const predict = (skill: string, title: string, program: string, expected: string): ExerciseTemplate => ({
+export const predict = (skill: string, title: string, program: string, expected: string): ExerciseTemplate => ({
   skill,
   rung: 1,
   title,
