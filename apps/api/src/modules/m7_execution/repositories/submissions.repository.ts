@@ -159,3 +159,13 @@ export async function runStats(since: Date) {
     .where(and(eq(sandboxRuns.purpose, "submission"), eq(sandboxRuns.status, "completed"), gte(sandboxRuns.finishedAt, since)));
   return { ...totals, byVerdict, medianRunMs: timing.medianMs === null ? null : Math.round(Number(timing.medianMs)) };
 }
+
+export const findLatestSubmissionId = async (attemptId: string) =>
+  (
+    await db
+      .select({ id: submissions.id })
+      .from(submissions)
+      .where(and(eq(submissions.attemptId, attemptId), eq(submissions.status, "completed")))
+      .orderBy(desc(submissions.createdAt))
+      .limit(1)
+  )[0]?.id;

@@ -29,3 +29,6 @@ export const submissionsByUser = limiter(MINUTE, 10, { keyGenerator: (req) => re
 
 // The placement test: about one answer a minute is normal, so 30 a minute only stops scripts.
 export const diagnosticByUser = limiter(MINUTE, 30, { keyGenerator: (req) => req.auth!.userId });
+
+// Each live hint costs money and the ladder only goes up: 10 a minute is plenty for a person.
+export const hintsByUser = limiter(MINUTE, 10, { keyGenerator: (req) => req.auth!.userId });

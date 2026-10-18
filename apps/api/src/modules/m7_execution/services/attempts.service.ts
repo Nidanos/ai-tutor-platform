@@ -26,3 +26,6 @@ export async function attemptStatuses(userId: string) {
 
 // For M13: practice exercises with the lowest solve rate.
 export const hardestExercises = repo.hardestExercises;
+
+// For M8: the learner's latest attempt on this exercise (hints apply to an active one).
+export const latestAttempt = repo.findLatestAttempt;

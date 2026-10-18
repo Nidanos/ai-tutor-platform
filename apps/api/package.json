@@ -15,6 +15,7 @@
     "sandbox:build": "tsx src/scripts/build-sandbox-template.ts",
     "sandbox:smoke": "tsx src/scripts/sandbox-smoke.ts",
     "exercises:verify": "tsx src/scripts/verify-exercises.ts",
+    "hints:generate": "tsx src/scripts/generate-hints.ts",
     "user:admin": "tsx src/scripts/make-admin.ts"
   },
   "dependencies": {

@@ -34,3 +34,13 @@ export const verifiedIds = async (ids: string[]) => new Set((await repo.listVeri
 // For M13: content coverage, and titles for the hardest-exercises list.
 export const countServable = repo.countServable;
 export const listTitles = repo.listTitles;
+
+// For M8: server-only context for a hint. Practice exercises only.
+export async function getHintContext(id: string) {
+  const exercise = await repo.findForHints(id);
+  if (!exercise) throw notFound();
+  return exercise;
+}
+
+// For M8's hint generator: every verified practice exercise.
+export const listPracticeIds = repo.listPracticeIds;

@@ -112,3 +112,24 @@ export const listTitles = (ids: string[]) =>
   ids.length
     ? db.select({ id: exercises.id, title: exercises.title, skillId: exercises.skillId, rung: exercises.rung }).from(exercises).where(inArray(exercises.id, ids))
     : Promise.resolve([]);
+
+// Server-only, for M8: the task, the starter, the reference and the first expected output.
+export async function findForHints(id: string) {
+  const [exercise] = await db
+    .select({
+      id: exercises.id,
+      rung: exercises.rung,
+      promptMd: exercises.promptMd,
+      starterCode: exercises.starterCode,
+      referenceSolution: exerciseSecrets.referenceSolution,
+    })
+    .from(exercises)
+    .innerJoin(exerciseSecrets, eq(exerciseSecrets.exerciseId, exercises.id))
+    .where(and(eq(exercises.id, id), eq(exercises.status, "verified"), eq(exercises.purpose, "practice")));
+  if (!exercise) return undefined;
+  const [first] = await db.select({ expectedOutput: exerciseTests.expectedOutput }).from(exerciseTests).where(eq(exerciseTests.exerciseId, id)).orderBy(asc(exerciseTests.seq)).limit(1);
+  return { ...exercise, firstOutput: first?.expectedOutput ?? "" };
+}
+
+export const listPracticeIds = async () =>
+  (await db.select({ id: exercises.id }).from(exercises).where(and(eq(exercises.status, "verified"), eq(exercises.purpose, "practice")))).map((e) => e.id);

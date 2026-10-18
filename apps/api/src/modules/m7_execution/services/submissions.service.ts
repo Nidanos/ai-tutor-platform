@@ -73,3 +73,9 @@ export async function getResult(userId: string, submissionId: string) {
 
 // For M13: submissions by verdict, learners who ran code, median run time.
 export const runStats = repo.runStats;
+
+// For M8: the result of the learner's last graded run on this attempt, if any.
+export async function lastResult(userId: string, attemptId: string) {
+  const id = await repo.findLatestSubmissionId(attemptId);
+  return id ? getResult(userId, id) : undefined;
+}
