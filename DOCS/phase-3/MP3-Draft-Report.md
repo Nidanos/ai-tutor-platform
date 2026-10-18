@@ -101,6 +101,7 @@ Page numbers are added in the printed copy.
 | 13 | Menu flow diagram |
 | 14 | Sequence diagram: request a hint |
 | 15 | Activity diagram: placement test |
+| 16 | Sequence diagram: forgot and reset password |
 
 ## List of Symbols and Abbreviations
 
@@ -113,6 +114,8 @@ Page numbers are added in the printed copy.
 | API, JWT, ORM | Application programming interface, JSON Web Token, object-relational mapper |
 | DPDP | Digital Personal Data Protection Act, 2023 (India) |
 | E2B | Cloud sandbox service that runs learner code in isolated micro-VMs |
+| Brevo | Email delivery service that sends the password-reset emails |
+| SHA-256 | One-way hash; the database stores only this fingerprint of each token |
 | LLM | Large language model (Google Gemini in this project) |
 
 ---
@@ -129,7 +132,7 @@ Page numbers are added in the printed copy.
 
 **5. Tools/Platforms.**
 - **5.1 Hardware:** development on a laptop with a 4-core or better processor, 8–16 GB RAM, 256 GB SSD. Production: one cloud VM (4 ARM cores, 24 GB RAM, Oracle Cloud Always Free) plus managed sandboxes.
-- **5.2 Software:** Windows 11 / Ubuntu 24.04; front end Next.js 16, React 19, TypeScript, Monaco editor; back end Node.js 22, Express 5, TypeScript; database PostgreSQL 16 with Drizzle ORM; Redis 7 with BullMQ; E2B sandboxes with clang 19 (C++20); Google Gemini API; Docker, pnpm, Git/GitHub, Vitest.
+- **5.2 Software:** Windows 11 / Ubuntu 24.04; front end Next.js 16, React 19, TypeScript, Monaco editor; back end Node.js 22, Express 5, TypeScript; database PostgreSQL 16 with Drizzle ORM; Redis 7 with BullMQ; E2B sandboxes with clang 19 (C++20); Google Gemini API; Brevo email API; Docker, pnpm, Git/GitHub, Vitest.
 
 **6. Methodology.** 6.1 Incremental and iterative development. 6.2 It suits a system whose correctness is partly statistical: each increment produces a working system whose predictions can be checked against real learner performance, and the design decisions are recorded as they are made (architecture decision records), so later increments build on settled ground.
 
@@ -220,6 +223,7 @@ The hard technical parts were proven early by building them, not just by plannin
 | Placing learners fairly | A placement walk over the skill graph with a check question after a possible slip | All 711 possible knowledge states placed exactly in simulation (section 4.2) |
 | Keeping the AI from giving answers | A filter compares every hint with the reference solution; caps per learner and per month | Unit tests with real leak attempts (section 4.2) |
 | Trusting AI-written exercises | Stored only after the sandbox proves them: the reference passes, the starter fails, and 3 wrong answers fail | Tests with a fake model and sandbox, including weak tests being rejected (section 4.2) |
+| Account recovery without revealing accounts | The same reply for every email, with all the work done after it; a one-use, 30-minute link stored only as a hash; at most one email per account every 5 minutes | 9 tests and an independent security review (section 4.3) |
 | Team skills | The stack (TypeScript, React, Node, SQL) matches the semester courses | Working code in the repository |
 
 ### 2.1.2 Economic Feasibility
@@ -233,6 +237,7 @@ The budget is a student budget, so every running cost was measured or quoted, no
 | Code execution | E2B, billed per second while a sandbox runs; $100 starting credit | about ₹0.01 per submission |
 | Exercise generation | Gemini 3.8 Flash (3.1 Pro on a third try), once per exercise, then frozen; its own cap of ₹300 per month | about ₹1.5 per exercise; ₹110–150 for skills 6–20 |
 | Live tutor hints | Gemini 3.5 Flash Lite, capped at 20 per learner per day and ₹500 per month in total | about ₹0.08 per hint (₹0.01 measured on short test prompts) |
+| Password-reset emails | Brevo free plan: 300 emails a day | ₹0 |
 
 One cost was found only when paying: a new Google Cloud billing account in India must prepay **₹3,000** in total before the paid Gemini tier activates (₹500 paid on 18 October, ₹2,500 due on 7 November). Until then the key stays on the free tier, where prompts may be used by Google, so live hints are switched off by a setting until billing is active (7 November 2026, section 4.5).
 
@@ -251,9 +256,10 @@ One design decision is a direct result of this study. The first design kept one 
   - separate opt-ins for AI training and research, adults only;
   - learners under 18 are held until a parent approves;
   - learner code is never sent to the AI with a name or email;
+  - password-reset emails go through Brevo (EU), which receives only the email address;
   - data is stored in India.
 - **Licensing.** No third-party course content is copied. Skill names and descriptions are our own, and external tutorials appear only as links.
-- **Schedule.** All 23 MVP endpoints were live by Review 3 (section 4.5); the frontend, deployment, the first live AI runs (once billing is active on 7 November) and the pilot are planned up to 10 November 2026.
+- **Schedule.** All 25 MVP endpoints (the 23 planned, plus forgot and reset password) were live by Review 3 (section 4.5); the frontend, deployment, the first live AI runs (once billing is active on 7 November) and the pilot are planned up to 10 November 2026.
 
 ## 2.2 Analysis Methodology
 
@@ -278,7 +284,7 @@ Every increment ended with automated tests and a real end-to-end run before the 
 
 **Analysis tools used:**
 - **Requirements:** the SRS from Phase 1, numbered as FR-Mx-yy and NFR-xx.
-- **Decisions:** each one recorded as an Architecture Decision Record (ADR-0001 to ADR-0016), with the options compared and the reason for the choice. For example, ADR-0003 compares Judge0, Piston and E2B on compiler version, memory-limit support, network isolation and cost.
+- **Decisions:** each one recorded as an Architecture Decision Record (ADR-0001 to ADR-0017), with the options compared and the reason for the choice. For example, ADR-0003 compares Judge0, Piston and E2B on compiler version, memory-limit support, network isolation and cost.
 - **Measurement before optimisation:** timings were measured step by step before anything was changed.
 
 **Pilot baseline.** The planned "Phase 0" (running the whole loop on paper with a learner before coding) was **not carried out**. It was replaced by a measured baseline of one anonymised pilot learner (Learner A: reading 10/11, writing 0/4), which confirmed the central design choice of separate reading and writing scores. A pilot with real learners on the finished system is planned before the final report.
@@ -299,6 +305,7 @@ Every increment ended with automated tests and a real end-to-end run before the 
 | L. Sessions, progress, analytics | J | 19 Oct | Done |
 | I1. LLM adapter and hints | G | 19 Oct | Done (live calls wait for billing) |
 | I2. Exercise generation | I1 | 19 Oct | Done (live runs wait for billing) |
+| N. Password reset by email | D | 19 Oct | Done (real emails once the Brevo account is set up) |
 | M. Gemini billing activation | – | 7 Nov | Planned (₹2,500 of the ₹3,000 prepayment left) |
 | I3. First live AI runs: frozen hints, generated exercises for skills 6–20 | I2, M | 7–8 Nov | Planned |
 | K. Deployment, pilot, final report | H, I3, L | 5–10 Nov | Planned |
@@ -318,7 +325,7 @@ gantt
   Sandbox, judge, submissions, mastery :done, e, 2026-10-15, 2026-10-16
   Exercises, attempts, fade            :done, g, 2026-10-16, 1d
   Templates, recommender, placement    :done, j, 2026-10-17, 2026-10-18
-  Sessions, analytics, hints, generation :done, l, 2026-10-19, 1d
+  Sessions, analytics, hints, generation, password reset :done, l, 2026-10-19, 1d
   Frontend screens                     :active, h, 2026-10-16, 2026-11-05
   Billing active, first live AI runs   :i, 2026-11-07, 2026-11-08
   section Delivery
@@ -341,6 +348,7 @@ gantt
 | Queue | Redis 7, BullMQ | Running code is slow, so it is queued: retries, rate limits, and the API stays fast |
 | Code execution | E2B sandboxes, Debian 13, clang 19, C++20 | Managed isolation with internet off; a current compiler; per-second billing |
 | AI | Google Gemini (paid tier) | Cheapest capable models; paid-tier data is not used for training; hidden behind one adapter |
+| Email | Brevo transactional email API (plain `fetch`, no SDK) | The free plan covers the pilot (300 emails a day); EU-hosted, with a data processing agreement in its terms |
 | Security | argon2id, jose (JWT), httpOnly cookies, express-rate-limit, helmet | Passwords hashed, short-lived tokens, CSRF origin check, rate limits |
 | Testing | Vitest, Supertest | Fast unit tests and HTTP-level integration tests on a separate test database |
 | Tooling | pnpm workspaces, Docker Compose, Git/GitHub | One repository for web, API and shared types; identical local setup for every team member |
@@ -388,6 +396,7 @@ flowchart LR
   WK["Worker: background jobs"]
   E2B["E2B sandbox, network off"]
   GEM["Gemini"]
+  EM["Brevo: email"]
   B -->|HTTPS JSON| API
   MOB -.->|HTTPS JSON| API
   API --> PG
@@ -397,13 +406,14 @@ flowchart LR
   WK -->|compile and run code| E2B
   WK -->|generate exercises| GEM
   API -->|live hints only| GEM
+  API -->|reset emails| EM
 ```
 
 ## 3.2 UML Modelling
 
 ### 3.2.1 Use Case
 
-The learner registers, takes a diagnostic, solves exercises, asks for hints and views progress. The author maintains the skill graph and template exercises; the admin views analytics. Two non-human actors matter: the **scheduler** (mastery decays with time, not only with clicks) and the **sandbox/LLM services**.
+The learner registers, takes a diagnostic, solves exercises, asks for hints, views progress and can reset a forgotten password by email. The author maintains the skill graph and template exercises; the admin views analytics. Two non-human actors matter: the **scheduler** (mastery decays with time, not only with clicks) and the **sandbox, LLM and email services**.
 
 **Figure 2: Use case diagram**
 
@@ -430,10 +440,12 @@ flowchart LR
     U14(["Grade submission"])
     U15(["Decay check, schedule reviews"])
     U16(["Advance fade stage"])
+    U17(["Reset a forgotten password"])
   end
   Gemini["Actor: Gemini"]
   E2B["Actor: E2B"]
-  Learner --- U1 & U2 & U3 & U4 & U5 & U6 & U7 & U8
+  Brevo["Actor: Brevo (email)"]
+  Learner --- U1 & U2 & U3 & U4 & U5 & U6 & U7 & U8 & U17
   Author --- U9 & U10
   Admin --- U11 & U12
   Clock --- U13 & U15
@@ -443,6 +455,7 @@ flowchart LR
   U13 --- Gemini
   U13 --- E2B
   U6 --- Gemini
+  U17 --- Brevo
 ```
 
 ### 3.2.2 Sequence Diagrams
@@ -475,6 +488,31 @@ sequenceDiagram
   A->>A: Verify JWT signature and expiry
   A->>DB: Load user
   A-->>W: 200 profile
+```
+
+**Figure 16: Forgot and reset password, as built (ADR-0017).** The reply is the same for every email and all the work happens after it, so neither the reply nor its timing shows who has an account. The token travels in the link's `#fragment`, which browsers never send to a server, and only its SHA-256 hash is stored. The reset is one transaction: it marks the link used (only if it is still unused), ends the account's other links, saves the new argon2id hash and revokes every session.
+
+```mermaid
+sequenceDiagram
+  autonumber
+  actor U as User
+  participant W as Web
+  participant A as API (M1)
+  participant DB as Postgres
+  participant M as Brevo
+  U->>W: Forgot password (email)
+  W->>A: POST /auth/forgot-password
+  A-->>W: 202, same reply for any email
+  Note over A,DB: The rest runs after the reply
+  A->>DB: Active user? No link in 5 min?
+  A->>DB: Save hash of a new token (30 min)
+  A->>M: Send the reset link
+  M-->>U: Email with /reset-password#token
+  U->>W: Open link, new password twice
+  W->>A: POST /auth/reset-password
+  A->>DB: Find the live link by hash
+  A->>DB: One transaction (see caption)
+  A-->>W: 204, or 400 RESET_LINK_INVALID
 ```
 
 **Figure 6: Submit code.** This is the central flow of the system. The API saves the submission and answers `202` at once; a worker grades it in a fresh sandbox and saves the verdict, the mastery evidence and any fade advance in **one database transaction**.
@@ -776,8 +814,9 @@ classDiagram
 | One live consent of each kind | Partial unique index `WHERE revoked_at IS NULL` |
 | Email unique in any letter case | `citext` column type |
 | A skill can only sit on a stage its schedule has | Composite foreign key |
+| Each reset link is unique, stored only as its hash, and used once | UNIQUE `token_hash`; the reset marks it used only `WHERE used_at IS NULL` |
 
-The schema has **42 tables in 9 groups**: 38 are built (13 migrations), and 4 come later with their features.
+The schema has **42 tables in 9 groups**: 39 are built (14 migrations), and 3 come later with their features.
 
 ### 3.3.1 ERD
 
@@ -922,7 +961,7 @@ flowchart LR
   AD["Admin"]
   GEM["Gemini LLM"]
   SBX["E2B sandbox"]
-  EM["Email service (later)"]
+  EM["Email service (Brevo)"]
   P0(("0 AI Tutor System"))
   L -->|sign-up, goal, language, answers, code, hint requests| P0
   P0 -->|exercises, verdicts, one hint level, progress, reviews| L
@@ -934,7 +973,7 @@ flowchart LR
   GEM -->|JSON exercise drafts, hint text| P0
   P0 -->|code, harness, limits| SBX
   SBX -->|compiler output, exit codes, time, memory| P0
-  P0 -.->|reset links| EM
+  P0 -->|reset links, address only| EM
 ```
 
 **Figure 10b: Level 1 (the 13 processes)**
@@ -946,6 +985,7 @@ flowchart LR
   AD["Admin"]
   GEM["Gemini"]
   SBX["E2B"]
+  EM["Brevo"]
   P1(("1 Manage accounts"))
   P2(("2 Manage skill graph"))
   P3(("3 Run diagnostic"))
@@ -970,8 +1010,9 @@ flowchart LR
   D9[("D9 Review queue")]
   D10[("D10 Fade state per skill")]
   D11[("D11 Analytics and logs")]
-  L -->|sign-up, login| P1
+  L -->|sign-up, login, password reset| P1
   P1 --> D1
+  P1 -->|reset link| EM
   AU -->|skills, edges, resources| P2
   P2 --> D2
   L -->|answers| P3
@@ -1059,6 +1100,8 @@ All input enters through the REST API, and **every request body is validated by 
 |---|---|---|
 | Register | email, password, displayName, dateOfBirth, acceptTerms, acceptPrivacy, aiTraining?, research? | Email ≤ 254 characters, case-insensitive; password 8–128 characters (NIST: no forced symbols); name 1–80; date of birth a real date, not in the future; both acceptances must be `true`; opt-ins refused for under-18s; unknown fields such as `role` are stripped |
 | Login | email, password, client (web or mobile) | Same email rules; failed logins throttled per email and per IP |
+| Forgot password | email | Same email rules; the same reply whether or not the account exists; 5 requests per IP per 15 minutes, and at most one email per account every 5 minutes |
+| Reset password | token, password | Token 20–200 characters; password as for sign-up; a used, expired or replaced link gives `400 RESET_LINK_INVALID`; 10 per IP per 15 minutes |
 | Submit code | attemptId, answer, idempotencyKey | attemptId must be a UUID of *your own* active attempt; answer ≤ 64 KB; key 8–100 characters; 10 submits per minute per learner |
 | Read mastery / fade state / progress | `language` (and `course`) query parameters | Optional, 1–20 (60) characters; the course must be offered in that language |
 | Placement answer | itemId, then answer or dontKnow | Only the current question is accepted (`409 ITEM_NOT_CURRENT` otherwise); answer ≤ 64 KB with no NUL character; 30 calls per minute |
@@ -1066,7 +1109,7 @@ All input enters through the REST API, and **every request body is validated by 
 | Hint request | code (optional) | ≤ 64 KB; the level is decided by the server, never the client; 10 per minute |
 | Analytics | days (1–365), course, language | Admin role only (`403 FORBIDDEN` otherwise) |
 
-**Screen input (frontend, in progress):** sign-up form with a date picker and two separate required tick boxes, with the optional opt-ins shown only when the date of birth makes the user 18+; login form; exercise page with the Monaco editor (a plain text box for rung-1 "predict the output"). The same rules are applied in the browser to show errors before submitting, but the server is always the authority.
+**Screen input (frontend, in progress):** sign-up form with a date picker and two separate required tick boxes, with the optional opt-ins shown only when the date of birth makes the user 18+; login form; forgot-password and set-new-password forms; exercise page with the Monaco editor (a plain text box for rung-1 "predict the output"). The same rules are applied in the browser to show errors before submitting, but the server is always the authority.
 
 ## 3.5 Output Design
 
@@ -1102,6 +1145,8 @@ The client branches on `error.code` and shows `error.message`.
 { "level": 2, "ceiling": 5, "source": "live", "bodyMd": "Look at the line that returns the result: which variable does it use?" }
 ```
 
+**The password-reset email** has a subject, a button and the plain link (`/reset-password#token=…`), and no name: the email provider may receive only the address (privacy policy §5).
+
 **Mastery output** always shows reading and writing **separately**, each as a stored `score` and an `effective` score after forgetting. They are never blended into one number, because a 10/11 versus 0/4 profile averages into a misleading 65%.
 
 ## 3.6 Code Design and Development
@@ -1114,6 +1159,7 @@ apps/api/src/
     sandbox/                    SandboxProvider interface, E2B adapter, template
     llm/                        LlmProvider interface, Gemini adapter, cost log
     queue/                      BullMQ queue and worker
+    mail/                       Brevo email (printed locally when no key is set)
   shared/                       errors, response envelope, auth helpers, middlewares, India time
   modules/                      each: routes → controllers → services → repositories
     m1_auth  m2_skills  m3_diagnostic  m4_mastery  m5_recommender  m6_exercises
@@ -1218,6 +1264,7 @@ flowchart LR
   API --> RD
   API -->|"code + tests, no identity"| E2B["E2B sandboxes, internet off"]
   API -->|"content and hints"| G["Google Gemini API"]
+  API -->|"reset emails, address only"| BR["Brevo email (EU)"]
   PG -.->|"nightly encrypted backup"| L["Staging laptop (Ubuntu 24.04)"]
 ```
 
@@ -1256,16 +1303,18 @@ HTTP-level tests call the real Express app with real requests:
 - **sessions and progress:** steps from the recommender, pause/resume at the same step, idle and timeout, statuses that match the recommender's unlock rule;
 - **analytics:** admin only, counts only, never a learner's email;
 - **hints:** live hint, a leaky reply replaced by the frozen hint, a failed call, the fade ceiling, the answer at level 5, the daily and monthly caps;
-- **exercise generation:** a proven draft stored ready to serve; a retry after a bad reply; tests a wrong answer passes, rejected three times, ending on the Pro model and the hand-written fallback; a rung-1 program's claimed output checked; the budget stop; admin-only endpoints; automatic queueing by the recommender.
+- **exercise generation:** a proven draft stored ready to serve; a retry after a bad reply; tests a wrong answer passes, rejected three times, ending on the Pro model and the hand-written fallback; a rung-1 program's claimed output checked; the budget stop; admin-only endpoints; automatic queueing by the recommender;
+- **password reset:** the same reply for unknown and inactive accounts, and an email, without the name, only for real ones; the token stored only as a hash; at most one email per account every 5 minutes; one use, even with two resets at once; expiry; only the newest link works; every login ended; the per-IP limit.
 
-The sandbox and Gemini are replaced by **fake providers** in these tests: same interfaces, fixed results. That makes them fast, free and repeatable.
+The sandbox, Gemini and the email service are replaced by **fake providers** in these tests: same interfaces, fixed results. That makes them fast, free and repeatable.
 
 ### 4.1.4 System Testing
 1. **Sandbox smoke test** (`pnpm sandbox:smoke`): six real C++ programs run on the real E2B service, and each must produce its intended verdict (AC, WA, CE, RE, TLE, MLE).
 2. **Content verification** (`pnpm exercises:verify`): every seeded exercise runs in the real sandbox; the reference must pass and the starter must fail. **66 of 66 verified** (26 practice exercises, 40 placement items).
 3. **End-to-end learner loop** on a running server: register → log in → open exercise → submit → poll → read mastery → reopen the exercise.
 4. **End-to-end placement test** on real E2B, then the first recommendation and the fade stages; **sessions** (start, pause, resume, end); **progress**; **hints** (the whole ladder); **analytics** with a promoted admin; **generation** refused correctly while billing is off.
-5. **Manual API tests** with curl, for authentication and consent, by a team member.
+5. **Password reset in a real browser:** the forgot-password form, the emailed link (printed locally), a new password, then logging in with it; the old password and the used link are refused.
+6. **Manual API tests** with curl, for authentication and consent, by a team member.
 
 ### 4.1.5 White-Box and Black-Box Testing
 - **White box:** unit tests cover every branch of the judge and formula, and database-rule tests target specific constraints.
@@ -1277,12 +1326,13 @@ The acceptance criteria are the SRS requirements, traced in the Phase 2 design d
 - **FR-M12-02**, "the help limit is enforced on the server": tested by "never lets the hint level pass the fade ceiling" and "refuses a level above the fade stage's ceiling, and logs it".
 - **FR-M8-04**, "block any reply that looks like the solution": tested by "blocks a reply that gives the solution away and serves the frozen hint instead".
 - **FR-M3-01**, "an adaptive test estimates reading and writing": tested by "places all 711 possible learners exactly".
+- **FR-M1-05**, "reset a forgotten password": tested by "sets the new password, ends every login, and works only once".
 
 Learner acceptance testing is planned for the pilot before the final report.
 
 ## 4.2 Test Data and Test Cases
 
-**Table 8: Automated test suites (171 tests in 35 files, all passing on 19 Oct 2026)**
+**Table 8: Automated test suites (180 tests in 36 files, all passing on 19 Oct 2026)**
 
 | Level | Suite | Tests | What it proves |
 |---|---|---|---|
@@ -1297,6 +1347,7 @@ Learner acceptance testing is planned for the pilot before the final report.
 | Unit | exercise drafts | 5 | Draft rules, conversion to the bank's format, prompt contents |
 | Module | 9 schema suites | 16 | Every key constraint refuses bad data |
 | Integration | auth + consent | 14 | Login flows, token theft, throttling, CSRF; DPDP consent and under-18 hold |
+| Integration | password reset | 9 | Same reply for every email; token stored as a hash; one email per 5 minutes; one use, even at once; expiry; newest link only; every login ended; per-IP limit |
 | Integration | submissions | 10 | 202 + polling, idempotency tied to its attempt, hidden tests private, CE/SE rules |
 | Integration | exercises API + verification | 11 | No secrets or rung-1 answers in responses; bad content rejected; wrong solutions must fail |
 | Integration | mastery API, scaffolding fade | 7 | Reading and writing apart; decay on read; stage advance |
@@ -1333,7 +1384,15 @@ Learner acceptance testing is planned for the pilot before the final report.
 | Expected | Verdict AC, 2 of 2 passed; the sample test shows input, expected and actual output; **the hidden test shows only `{ seq, name, visibility, verdict, timeMs }`** |
 | Result | Pass |
 
-**Test data for the starter exercise "Sum of digits"** (`int sumOfDigits(int n)`):
+**Sample test case: a reset link works only once, even when used twice at the same moment**
+
+| Field | Value |
+|---|---|
+| Input | One reset link; two "set new password" requests are sent with it at the same moment |
+| Expected | Exactly one gets `204` and the other `400 RESET_LINK_INVALID`: the reset marks the link used only if it is still unused, in one transaction |
+| Result | Pass |
+
+**Test data for the starter exercise "Sum of digits" (`int sumOfDigits(int n)`):
 
 | Test | Visibility | Input | Expected |
 |---|---|---|---|
@@ -1344,7 +1403,7 @@ Learner acceptance testing is planned for the pilot before the final report.
 
 ## 4.3 Test Reports and Debugging
 
-**Results:** 171 of 171 automated tests pass, the 6 of 6 real-sandbox verdicts are correct, 66 of 66 seeded exercises verify on the real sandbox, and the end-to-end runs pass (A-8, A-10).
+**Results:** 180 of 180 automated tests pass, the 6 of 6 real-sandbox verdicts are correct, 66 of 66 seeded exercises verify on the real sandbox, and the end-to-end runs pass (A-8, A-10).
 
 Debugging followed one rule: **measure, find the cause, fix the cause, add a test.** These are the defects found:
 
@@ -1366,6 +1425,14 @@ Debugging followed one rule: **measure, find the cause, fix the cause, add a tes
 | 12 | The answer to a **rung-1** exercise was visible | Its only test was marked "sample", and sample tests are shown with the exercise | Rung-1 exercises never show sample tests |
 | 13 | Git showed a source file as **binary** | A script wrote a raw NUL byte instead of the `\0` escape | Replaced with the escape; every changed file is now scanned for NUL bytes |
 | 14 | Live hints would have sent learner code to Google's **free tier** | The Gemini key's project had not activated billing | A `GEMINI_PAID` setting must be `true` before any live call; until then hints fall back to frozen ones |
+| 15 | The set-new-password page said the link was **missing**, though it had one | In development React runs a page's effects twice; the first run had removed the token from the address bar, so the second found none | The token stays in the address bar. That is safe: the `#fragment` never reaches a server, and the link works once, for 30 minutes |
+| 16 | The reply could reveal, by its **timing**, whether an account exists | The new link was saved before replying, and only for real accounts | All the work now happens after the reply |
+| 17 | The reset email included the learner's **name** | The privacy policy lets the email provider receive only the address | The email now starts with "Hi,"; a test checks that the name never appears |
+| 18 | Anyone could **block** someone's password reset (security review) | Three requests an hour for a victim's email filled a per-email limit, so the victim's own request got `429` | No per-email limit: each account gets at most one email every 5 minutes, and asking sooner sends nothing while the link already sent still works |
+| 19 | Two requests at the same moment could leave **two working links** (security review) | Both deleted the old links before either saved its own | A reset now ends every unused link of the account |
+| 20 | In production, a missing email key would have **silently** stopped all reset emails (security review) | The key was optional everywhere | The API now refuses to start in production without it |
+
+The password reset also had an independent security review (19 October): no critical or high issues, and defects 18–20 came from it. Two smaller findings are left for later (section 5.3): making the per-IP limits read the visitor's real address behind the deployed proxy, and a login already in progress at the moment of a reset.
 
 ## 4.4 Implementation Manual
 
@@ -1373,11 +1440,11 @@ Debugging followed one rule: **measure, find the cause, fix the cause, add a tes
 ```bash
 docker compose up -d                  # PostgreSQL 16 + Redis 7
 pnpm install
-cd apps/api && cp .env.example .env   # fill DATABASE_URL, JWT_SECRET, WEB_ORIGIN, E2B_API_KEY, GEMINI_API_KEY
-pnpm db:migrate && pnpm db:seed       # 13 migrations; C++ course, 20 skills, 26 practice exercises, 40 placement items
+cd apps/api && cp .env.example .env   # fill DATABASE_URL, JWT_SECRET, WEB_ORIGIN, E2B_API_KEY, GEMINI_API_KEY, BREVO_API_KEY
+pnpm db:migrate && pnpm db:seed       # 14 migrations; C++ course, 20 skills, 26 practice exercises, 40 placement items
 pnpm exercises:verify                 # runs every new exercise in the real sandbox before it can be served
 pnpm dev                              # API + queue worker on http://localhost:3001
-pnpm test                             # 171 automated tests
+pnpm test                             # 180 automated tests
 pnpm sandbox:smoke                    # real-sandbox check of all six verdicts
 pnpm user:admin <email>               # make the first admin (for analytics)
 pnpm hints:generate                   # once billing is active (GEMINI_PAID=true): freeze hints 1–4
@@ -1390,7 +1457,7 @@ pnpm hints:generate                   # once billing is active (GEMINI_PAID=true
 
 | Module | Built | Endpoints live |
 |---|---|---|
-| M1 Accounts and DPDP consent | Register, login, refresh, logout, me; date of birth; consent kinds; under-18 hold | 5 |
+| M1 Accounts and DPDP consent | Register, login, refresh, logout, me; forgot and reset password by email; date of birth; consent kinds; under-18 hold | 7 |
 | M2 Skill graph | C++ basics course: 20 skills, 23 prerequisites, further-reading links (seed) | – |
 | M3 Placement test | Adaptive reading walk with a slip check, frontier code tasks, seeding, retakes; 40 verified items | 3 |
 | M4 Mastery | Formula v1 inside the grading transaction; read views with decay; raise-only seeding | 2 |
@@ -1402,11 +1469,11 @@ pnpm hints:generate                   # once billing is active (GEMINI_PAID=true
 | M11 Progress | Every skill, reading and writing apart, fade stage, status | 1 |
 | M12 Fade | Stage start, advance on solve, fast-track from the placement test, state endpoint | 1 |
 | M13 Analytics | Admin overview: learners, code runs, outcomes, content coverage, hardest exercises, hints, AI spend | 1 |
-| **Total** | | **all 23 MVP endpoints** |
+| **Total** | | **all 25 MVP endpoints** |
 
-**Real runs at this stage:** a placement test on real E2B placed a learner who knew 3 skills with 6 questions (5 reading, 1 code), graded the code in about 6 seconds and fast-tracked those 3 skills to the last fade stage; the first recommendation was then the next new skill. Sessions, progress, hints, analytics and generation were each run against the development database (A-10).
+**Real runs at this stage:** a placement test on real E2B placed a learner who knew 3 skills with 6 questions (5 reading, 1 code), graded the code in about 6 seconds and fast-tracked those 3 skills to the last fade stage; the first recommendation was then the next new skill. Sessions, progress, hints, analytics and generation were each run against the development database, and the password reset was walked through in a real browser (A-10).
 
-**Planned for the MVP (10 November):** Gemini billing activation (7 November), then the first live AI runs: live hints, the frozen hints, and generated practice exercises for skills 6–20; frontend screens (in progress); deployment to the cloud server; and a pilot with real learners.
+**Planned for the MVP (10 November):** Gemini billing activation (7 November), then the first live AI runs: live hints, the frozen hints, and generated practice exercises for skills 6–20; frontend screens (in progress); the Brevo account and sending domain for real reset emails; deployment to the cloud server; and a pilot with real learners.
 
 ## 4.6 Users Training
 
@@ -1438,7 +1505,7 @@ The project set out to measure what a learner can *write*, not what they have wa
 
 In a real run, a correct submission was judged **AC (4 of 4 tests) in about 6 seconds**, and the learner's writing mastery for that skill moved from **0 to 0.24**, exactly as the formula predicts.
 
-Around that core, the rest of the learner's journey now works too: an adaptive **placement test** that asks an expert 26 questions instead of 40 and fast-tracks what they prove, a **recommender** that chooses the next skill, rung and exercise by explainable rules, **study sessions** that resume at the same step, an honest **progress** view, an **admin overview**, a **hint ladder** whose live tutor can never hand over the solution, and **exercise generation** that stores nothing the sandbox hasn't proven. All 23 MVP endpoints are live, backed by 171 automated tests, 66 exercises verified in the real sandbox, and a written decision record (ADR-0001 to ADR-0016) for every major choice.
+Around that core, the rest of the learner's journey now works too: an adaptive **placement test** that asks an expert 26 questions instead of 40 and fast-tracks what they prove, a **recommender** that chooses the next skill, rung and exercise by explainable rules, **study sessions** that resume at the same step, an honest **progress** view, an **admin overview**, a **hint ladder** whose live tutor can never hand over the solution, **exercise generation** that stores nothing the sandbox hasn't proven, and a **password reset** that never reveals who has an account. All 25 MVP endpoints are live, backed by 180 automated tests, 66 exercises verified in the real sandbox, and a written decision record (ADR-0001 to ADR-0017) for every major choice.
 
 ## 5.2 System Specifications
 
@@ -1448,7 +1515,7 @@ Around that core, the rest of the learner's journey now works too: an adaptive *
 
 ### 5.2.2 S/W Requirement
 - **Server:** Linux (Ubuntu 24.04), Docker; Node.js 22, PostgreSQL 16, Redis 7.
-- **Accounts:** an E2B account (sandboxes) and a Gemini API key.
+- **Accounts:** an E2B account (sandboxes), a Gemini API key, and a Brevo account (reset emails) with the sending domain authenticated.
 - **Client:** Chrome, Edge, Firefox or Safari (current versions).
 
 ## 5.3 Limitations of the System
@@ -1456,6 +1523,8 @@ Around that core, the rest of the learner's journey now works too: an adaptive *
 - **No web interface yet.** The frontend is in progress; this draft's sample outputs are API responses, and screen snapshots will be added in the final report.
 - **Practice content covers 5 of 20 skills.** The 26 practice exercises cover the first five skills (plus one); skills 6–20 get theirs from exercise generation, which is built and tested but first runs once billing is active. The placement test covers all 20.
 - **Live AI waits for billing.** Live hints and exercise generation are built and tested with a fake model, but stay off until the ₹3,000 prepayment is complete and activates the paid tier (the remaining ₹2,500 on 7 November); until then learners get frozen hints or a general nudge. Lessons are not built yet.
+- **Reset emails wait for setup.** Real emails need the Brevo key and the sending domain; until then they are printed in the API terminal (in development only: production refuses to start without the key).
+- **Password reset edge cases.** A login already in progress at the moment of a reset can still finish and keep its session (a window of about a tenth of a second); closing it needs a token version per user. The per-IP limits also need the deployed proxy to pass on the visitor's real address.
 - **The judge sees only output.** A determined learner can sometimes avoid a prerequisite (for example by rewriting a struct to use a vector); the tasks are designed so the natural solution uses it.
 - **Placement length.** An expert answers 26 questions (about 28 minutes); a placement seed unlocks the next skills for about 4 days (syntactic skills) before one Build per skill confirms them.
 - **Latency:** about 6 s per submission, mostly network round trips to the sandbox provider, whose servers are outside India.
@@ -1467,6 +1536,7 @@ Around that core, the rest of the learner's journey now works too: an adaptive *
 
 - More languages (Java, Python) on the same language-independent engine, and more courses (DSA, frontend, backend).
 - The parent-approval flow for under-18 learners, with identity verification as the DPDP Rules require.
+- Changing the password while logged in, and verifying the email address at sign-up.
 - Calibration of the mastery model from real data (held-out exercises), and spaced-revision scheduling (M10).
 - Frozen lessons with a diagram and a worked example per skill, and the brute-force/time-limit check for DSA-sized generated exercises.
 - A mobile app (the API already supports Bearer tokens), and colleges as institutional customers.
@@ -1483,8 +1553,8 @@ Around that core, the rest of the learner's journey now works too: an adaptive *
 7. VanLehn, K. (2011). The Relative Effectiveness of Human Tutoring, Intelligent Tutoring Systems, and Other Tutoring Systems. *Educational Psychologist*, 46(4), 197–221.
 8. Bastani, H., et al. (2025). Generative AI Without Guardrails Can Harm Learning. *Proceedings of the National Academy of Sciences*.
 9. Government of India (2023). *The Digital Personal Data Protection Act, 2023*; and (2025) *Digital Personal Data Protection Rules, 2025*.
-10. Technical documentation: Node.js, Express 5, PostgreSQL 16, Drizzle ORM, BullMQ, E2B, Google Gemini API, Next.js (official documentation, accessed October 2026).
-11. Project documents: Phase 1 synopsis, problem analysis, literature survey and SRS (24 Sep 2026); Phase 2 system design (15 Oct 2026, updated 19 Oct); ADR-0001 to ADR-0016; frontend API guide.
+10. Technical documentation: Node.js, Express 5, PostgreSQL 16, Drizzle ORM, BullMQ, E2B, Google Gemini API, Next.js, Brevo (official documentation, accessed October 2026).
+11. Project documents: Phase 1 synopsis, problem analysis, literature survey and SRS (24 Sep 2026); Phase 2 system design (15 Oct 2026, updated 19 Oct); ADR-0001 to ADR-0017; frontend API guide.
 
 ---
 
@@ -1498,6 +1568,9 @@ Around that core, the rest of the learner's journey now works too: an adaptive *
 flowchart TD
   L["Landing"] --> R["Sign up: name, email, password, date of birth, 2 consents"]
   L --> LI["Log in"]
+  LI --> FP["Forgot password"]
+  FP --> RP["New password"]
+  RP --> LI
   R -->|18 or over| LI
   R -->|under 18| P["Waiting for parent approval"]
   LI --> D["Dashboard: next step, progress"]
@@ -1600,6 +1673,7 @@ After the third failed try (or when the month's budget is spent), the job falls 
 |---|---|---|
 | users | id (UUIDv7), org_id, email (citext), display_name, password_hash (argon2id), role, status (active, disabled, pending_parent), date_of_birth | email unique in any case; name 1–80 characters |
 | consents | user_id, kind (data_processing, terms, parental, ai_training, research_study), policy_version, granted_at, revoked_at | one live consent per kind |
+| password_reset_tokens | user_id, token_hash (SHA-256 of the emailed token), expires_at, used_at, created_at | token hash unique; a link works once; deleted with the user |
 | exercises | id, skill_id, language_code, rung, variant_seed, content_version, status, title, prompt_md, starter_code, time_limit_ms, memory_limit_mb | content key unique; rung 1–5; limits in range |
 | exercise_secrets | exercise_id, harness_code, reference_solution | never read by learner-facing queries |
 | exercise_attempts | id, user_id, exercise_id, status, hint_level, hint_ceiling, ce_count, submission_count | one active per learner and exercise; hint_level ≤ hint_ceiling |
@@ -1616,7 +1690,7 @@ After the third failed try (or when the month's budget is spent), the job falls 
 
 ## A-8 Test Reports
 
-Full test run of 19 October 2026: **35 test files, 171 tests, 171 passed.**
+Full test run of 19 October 2026: **36 test files, 180 tests, 180 passed.**
 
 - ✓ analytics-api.test.ts > GET /analytics/overview > is for admins only
 - ✓ analytics-api.test.ts > GET /analytics/overview > counts new learners, opt-ins, code runs, sessions and clears in the window
@@ -1728,6 +1802,15 @@ Full test run of 19 October 2026: **35 test files, 171 tests, 171 passed.**
 - ✓ mastery-formula.test.ts > mastery formula v1 > halves effective mastery after ln 2 / λ days, and never decays without evidence
 - ✓ mastery.test.ts > mastery schema > rejects evidence that has no source
 - ✓ mastery.test.ts > mastery schema > never counts the same evidence twice
+- ✓ password-reset-api.test.ts > forgot password > emails a 30-minute link with the token in the #fragment, storing only its hash
+- ✓ password-reset-api.test.ts > forgot password > answers unknown and inactive accounts exactly like a real one, and mails only the real one
+- ✓ password-reset-api.test.ts > forgot password > sends one email per account every 5 minutes; asking sooner keeps the link already sent
+- ✓ password-reset-api.test.ts > forgot password > limits each IP to 5 requests per 15 minutes
+- ✓ password-reset-api.test.ts > reset password > sets the new password, ends every login, and works only once
+- ✓ password-reset-api.test.ts > reset password > lets only one of two simultaneous resets through
+- ✓ password-reset-api.test.ts > reset password > refuses an expired link, and an older link once a newer one was sent
+- ✓ password-reset-api.test.ts > reset password > ends the account's other links too (two requests at once can each make one)
+- ✓ password-reset-api.test.ts > reset password > asks for a password of 8 to 128 characters
 - ✓ placement.test.ts > placement order > puts every prerequisite before the skills built on it, easiest first
 - ✓ placement.test.ts > placement walk > ends after one item for a novice who doesn't know, and after the check for one who guesses
 - ✓ placement.test.ts > placement walk > asks writing only on the frontier of what was read correctly
@@ -1831,6 +1914,11 @@ curl -X POST http://localhost:3001/api/v1/diagnostic/<id>/answers -H "Authorizat
 # Ask for the next hint, sending the current code
 curl -X POST http://localhost:3001/api/v1/exercises/<exercise id>/hints -H "Authorization: Bearer <token>" -H "Content-Type: application/json" \
   -d '{"code":"int sumOfDigits(int n) { return n % 10; }"}'
+
+# Forgot password, then set a new one with the token from the emailed link
+curl -X POST http://localhost:3001/api/v1/auth/forgot-password -H "Content-Type: application/json" -d '{"email":"adult@test.com"}'
+curl -X POST http://localhost:3001/api/v1/auth/reset-password -H "Content-Type: application/json" \
+  -d '{"token":"<token from the link>","password":"a brand new passphrase"}'
 ```
 
 ## A-10 Sample Outputs
@@ -1910,6 +1998,15 @@ content:  14 of 20 skills have no practice exercises yet; Your first program has
 ```
 Exercise generation with live AI switched off (19 Oct 2026), as an admin
 POST /exercises/generate { skill: "vectors", rung: 2 } → 503 GENERATION_UNAVAILABLE
+```
+
+```
+Password reset in a real browser (19 Oct 2026; development, so the email is printed instead of sent)
+POST /auth/forgot-password → 202 "If an account uses that email, a reset link is on its way. It works for 30 minutes."
+[mail not sent: no BREVO_API_KEY] to reset-check-…@test.dev: Reset your AI-Tutor password
+  link: http://localhost:3000/reset-password#token=…
+POST /auth/reset-password → 204; log in with the new password → dashboard; old password → 401
+same link again → 400 RESET_LINK_INVALID "This reset link is invalid or has expired. Ask for a new one."
 ```
 
 Screen snapshots of the web interface will be added here in the final report.
@@ -2054,4 +2151,25 @@ export function checkHint(reply: string, { reference, starter, learnerCode = "",
   const givesOutput = answer.length >= MIN_OUTPUT_CHARS && squash(reply).includes(answer);
   return { passed: shared < MAX_SHARED && longestCode <= MAX_CODE_LINES && !givesOutput, shared, longestCode, givesOutput };
 }
+```
+
+**The password reset transaction** (`apps/api/src/modules/m1_auth/repositories/auth.repository.ts`)
+
+```ts
+// The new password, the spent link and the end of every login, together: a session stolen with the
+// old password dies with it. Other unused links go too (two requests at once can each make one).
+// False if the link was just used (a double click: the first one won).
+export const resetPassword = (tokenId: string, userId: string, passwordHash: string) =>
+  db.transaction(async (tx) => {
+    const [spent] = await tx
+      .update(passwordResetTokens)
+      .set({ usedAt: new Date() })
+      .where(and(eq(passwordResetTokens.id, tokenId), isNull(passwordResetTokens.usedAt)))
+      .returning({ id: passwordResetTokens.id });
+    if (!spent) return false;
+    await tx.delete(passwordResetTokens).where(and(eq(passwordResetTokens.userId, userId), isNull(passwordResetTokens.usedAt)));
+    await tx.update(users).set({ passwordHash }).where(eq(users.id, userId));
+    await tx.update(refreshTokens).set({ revokedAt: new Date() }).where(and(eq(refreshTokens.userId, userId), isNull(refreshTokens.revokedAt)));
+    return true;
+  });
 ```
