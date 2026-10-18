@@ -55,6 +55,7 @@ pnpm db:up   # = docker compose up -d
 # 3. Create the tables, then load the starter data (seed is safe to re-run)
 pnpm --filter @ai-tutor/api db:migrate
 pnpm --filter @ai-tutor/api db:seed
+pnpm --filter @ai-tutor/api exercises:verify   # runs the seeded exercises in the E2B sandbox (needs E2B_API_KEY)
 
 # 4. Start development servers across apps (API :3001, web :3000)
 pnpm dev

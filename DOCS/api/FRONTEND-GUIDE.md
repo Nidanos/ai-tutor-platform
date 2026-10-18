@@ -285,6 +285,32 @@ type Progress = {
 - **Two bars per skill, Reading and Writing, never combined** (FR-M11-02). Show `effective` as a percentage, honestly: no rounding up.
 - `review_due`: "Review" badge. `locked`: "Finish its prerequisites first".
 
+## 4i. Admin analytics (live, 19 Oct)
+
+Admins only (`user.role === "ADMIN"`; everyone else gets `403 FORBIDDEN`). Make the first admin with `pnpm --filter @ai-tutor/api user:admin <email>`, then log in again.
+
+`GET /api/v1/analytics/overview?days=30&course=cpp-basics` (all optional; `days` 1–365) → `200 Overview`
+
+```ts
+type SkillRef = { slug: string; name: string };
+type Overview = {
+  window: { days: number; since: string };
+  learners: { total: number; joined: number; ranCode: number; pendingParent: number; consented: { researchStudy: number; aiTraining: number } };
+  study: { sessions: number; studyMinutes: number; placementStarted: number; placementCompleted: number };
+  runs: { submissions: number; byVerdict: Record<string, number>; medianRunMs: number | null; sandboxErrorRate: number }; // byVerdict keys: AC, WA, CE, RE, TLE, MLE, SE, pending
+  outcomes: {
+    skillsCleared: number;
+    stageMoves: Record<string, number>;              // "solved": help faded through practice
+    skills: Array<{ skill: SkillRef; learners: number; avgReading: number; avgWriting: number; cleared: number }>;
+  };
+  content: { skills: Array<{ skill: SkillRef; byRung: Record<"1" | "2" | "3" | "4" | "5", number>; total: number }>; skillsWithoutExercises: number };
+  hardest: Array<{ exerciseId: string; title: string; skill: SkillRef; rung: number; attempts: number; solveRate: number }>;
+};
+```
+
+- One page, five cards: Learners, Code runs (a verdict bar chart; warn if `sandboxErrorRate > 0.05`), Outcomes (reading vs writing bars per skill), Content (a skill × rung grid, empty cells highlighted), Hardest exercises.
+- A window selector (7 / 30 / 90 days) sets `days`.
+
 ## 5. Screens and flow
 
 | Moment | Do this |
@@ -356,7 +382,6 @@ Shapes will be published here when each one goes live. Use mock data until then.
 | --- | --- | --- |
 | Exercise generation | `POST /exercises/generate`, `GET /exercises/generation/:jobId` | Shown while a new exercise is prepared |
 | Hints | `POST /exercises/:id/hints` | "Get a hint" button. The server decides the level and returns one hint |
-| Analytics | `GET /analytics/overview` | Admin-only analytics page |
 
 ## 8. Error codes
 
@@ -378,6 +403,7 @@ Shapes will be published here when each one goes live. Use mock data until then.
 | `ITEM_NOT_CURRENT` | 409 | Answered an old question | Call `/diagnostic/start` and show its question |
 | `DIAGNOSTIC_LIMIT` | 409 | No placement retakes left | Hide the "Retake" button |
 | `DIAGNOSTIC_UNAVAILABLE` | 503 | The placement test isn't ready yet | Skip it and go to the dashboard |
+| `FORBIDDEN` | 403 | Not allowed for this role (e.g. analytics for a learner) | Hide the page; it's admin-only |
 | `SESSION_NOT_FOUND` | 404 | Not your session | Call `GET /sessions/active` |
 | `SESSION_ENDED` | 409 | The session already ended | Call `POST /sessions` |
 | `ATTEMPT_NOT_FOUND` / `SUBMISSION_NOT_FOUND` | 404 | Not yours, or doesn't exist | Reload the exercise |

@@ -17,6 +17,7 @@ Last updated: 19 Oct 2026. These record decisions Ashwani has made. Where no dec
 | [0011](0011-recommender-v1.md) | Recommender v1: candidates, score, rung from writing clamped to fade, exercise choice | Accepted, built |
 | [0012](0012-diagnostic-v1.md) | Placement test v1: reading walk with a slip check, frontier code tasks, fast-track seeding, retakes | Accepted, built |
 | [0013](0013-sessions-and-progress-v1.md) | Sessions (one PATCH for pause/resume/end, 15 min idle, 24 h end) and the progress view | Accepted, built |
+| [0014](0014-analytics-overview-v1.md) | Admin analytics overview: aggregate counts per window, each from its owning module | Accepted, built |
 
 ## Open decisions (Ashwani's to make)
 | # | Question | Blocks |

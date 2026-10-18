@@ -1020,7 +1020,7 @@ erDiagram
 - **Calibration** compares predicted mastery with the result on a held-out exercise (FR-M13-01).
 - **Consent** (owned by M1 since 14 Oct, so sign-up and consent save in one transaction) records each agreement with its policy version. `data_processing` and `terms` are required at sign-up; `ai_training` and `research_study` are optional, adults only. A minor gets none until a parent approves (`parental`). Rows are never deleted (`RESTRICT`); see `DOCS/legal/dpdp-compliance.md`.
 - `llm_calls` tracks token use and estimated cost of every Gemini call.
-- Hint trends, bottom-out rate, exercise effectiveness, generation failure rate, execution statistics and LLM cost will be **SQL views** over existing tables, not extra tables. They are written together with the analytics page, once its exact queries are known.
+- The admin overview (ADR-0014) is built from **aggregate queries owned by each module** (no extra tables, no views): learners and opt-ins, sessions, placement tests, code runs, outcomes per skill, content coverage and the hardest exercises. Hint trends, LLM cost, calibration and generation rates are added with the features that produce them.
 
 ### 5.12 Key constraints
 
@@ -1771,9 +1771,10 @@ Rate limits: login 20 per IP and 5 failures per email per 15 minutes; register 5
 - **Placement test (M3):** `POST /diagnostic/start`, `/:id/answers` and `/:id/complete` (ADR-0012). The test walks all 20 skills easiest-first with predict-the-output questions, with a check question after a possible slip, then asks code tasks (run on E2B in the background) only on the frontier. Completion seeds mastery raise-only (M4) and starts proven skills on the last fade stage (M12) in one transaction. Retakes are allowed (3). The 40 items are verified in the real sandbox (40/40). On the real graph: 1–27 questions, about 28 min for an expert.
 - **Sessions (M9):** `POST /sessions`, `GET /sessions/active` and `PATCH /sessions/:id` (ADR-0013). One open session per learner; each step comes from the recommender and advances when its exercise is solved; 15 minutes idle pauses it, 24 hours paused ends it, worked out when read.
 - **Progress (M11):** `GET /progress` lists every skill with reading and writing apart (stored and today's effective), its fade stage, prerequisites for the graph, and a status (locked, ready, in progress, cleared, review due) from the recommender's own unlock rule.
-- **Tests:** 135 automated tests on a separate test database: database rules, auth and consent flows, the verdict judge, the mastery formula, the recommender rules, the placement rules (all 711 possible learners), session time rules, and submissions with a fake sandbox. `pnpm sandbox:smoke` checks all six verdicts on real E2B.
+- **Analytics (M13):** `GET /analytics/overview?days=30` for admins only (ADR-0014): aggregate counts per window, each gathered by the module that owns the data. `pnpm user:admin <email>` makes the first admin.
+- **Tests:** 140 automated tests on a separate test database: database rules, auth and consent flows, the verdict judge, the mastery formula, the recommender rules, the placement rules (all 711 possible learners), session time rules, analytics (admin-only, counts only), and submissions with a fake sandbox. `pnpm sandbox:smoke` checks all six verdicts on real E2B.
 
-**Next (Phase 3, 23 Oct):** hints (LLM adapter) and exercise generation, analytics; frontend binding. 19 of 23 MVP endpoints are live.
+**Next (Phase 3, 23 Oct):** hints (LLM adapter) and exercise generation; frontend binding. 20 of 23 MVP endpoints are live.
 
 ---
 

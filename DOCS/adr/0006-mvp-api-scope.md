@@ -19,7 +19,7 @@ Base path: `/api/v1`. Live endpoints are documented for the frontend in `DOCS/ap
 | Sessions | POST /sessions · GET /sessions/active · **PATCH /sessions/:id** | **Live** (19 Oct) |
 | Progress | GET /progress | **Live** (19 Oct) |
 | Fade | **GET /scaffolding/state** | **Live** |
-| Analytics | **GET /analytics/overview** (admin only) | Planned |
+| Analytics | **GET /analytics/overview** (admin only) | **Live** (19 Oct) |
 
 **Bold** = added on 13 Oct:
 - **refresh, logout:** short-lived access tokens need a refresh, and logout must revoke the refresh token (ADR-0008).
