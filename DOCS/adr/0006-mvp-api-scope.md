@@ -1,7 +1,7 @@
 # ADR-0006: The MVP builds 22 REST APIs; the ~98-operation spec stays the long-term plan
 
 - **Status:** Accepted
-- **Date:** Sep 2026, updated 13 Oct 2026 (was 18 APIs)
+- **Date:** Sep 2026, updated 13 Oct 2026 (was 18 APIs); status column updated 18 Oct
 - **Decided by:** Ashwani Kumar Puri
 
 ## Decision
@@ -10,15 +10,15 @@ Base path: `/api/v1`. Live endpoints are documented for the frontend in `DOCS/ap
 | Group | Endpoints | Status |
 |---|---|---|
 | Auth | POST /auth/register · POST /auth/login · **POST /auth/refresh** · **POST /auth/logout** · GET /auth/me | **Live** |
-| Diagnostic | POST /diagnostic/start · POST /diagnostic/:id/answers · POST /diagnostic/:id/complete | Planned |
-| Mastery | GET /mastery · GET /mastery/:skillId | Planned |
-| Recommender | GET /recommendations/next | Planned |
-| Exercises | GET /exercises/:id · POST /exercises/generate · **GET /exercises/generation/:jobId** | Planned |
-| Submissions | POST /submissions · GET /submissions/:id/result | Planned |
+| Diagnostic | POST /diagnostic/start · POST /diagnostic/:id/answers · POST /diagnostic/:id/complete | **Live** (18 Oct) |
+| Mastery | GET /mastery · GET /mastery/:skillId | **Live** |
+| Recommender | GET /recommendations/next | **Live** |
+| Exercises | GET /exercises/:id · POST /exercises/generate · **GET /exercises/generation/:jobId** | GET /exercises/:id **Live**; generation planned |
+| Submissions | POST /submissions · GET /submissions/:id/result | **Live** |
 | Hints | POST /exercises/:id/hints | Planned |
 | Sessions | POST /sessions · GET /sessions/active | Planned |
 | Progress | GET /progress | Planned |
-| Fade | **GET /scaffolding/state** | Planned |
+| Fade | **GET /scaffolding/state** | **Live** |
 | Analytics | **GET /analytics/overview** (admin only) | Planned |
 
 **Bold** = added on 13 Oct:

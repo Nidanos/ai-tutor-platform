@@ -31,6 +31,7 @@ The project's core idea is deliberate scaffolding withdrawal: help is reduced on
 - The last stage has no next stage; solving its rung clears the skill (M4 sets `cleared_at`).
 - An open attempt keeps the hint ceiling it started with; the new stage applies from the next exercise.
 - `GET /scaffolding/state` returns each opened skill's stage, its limits and what moves it on.
+- **Diagnostic (18 Oct, ADR-0012):** a skill proven in code in the placement test starts on the **last** stage (logged with reason `diagnostic`, no submission). Other skills start on stage 1 when first opened. The move happens in the diagnostic's completion transaction and never goes down.
 
 ## Consequences
 - M12 is driven by grading results rather than by session ends.

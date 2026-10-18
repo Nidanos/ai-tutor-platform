@@ -574,9 +574,9 @@ erDiagram
     enum dimension "reading or writing"
     smallint difficulty
     text prompt_md
-    jsonb payload "choices or code"
-    jsonb answer_key "SECRET"
-    uuid exercise_id FK "writing items run in E2B"
+    jsonb payload "code, signature, sample"
+    jsonb answer_key "unused: key is the exercise test"
+    uuid exercise_id FK "verified exercise"
     text content_version
   }
   diagnostic_attempts {
@@ -607,7 +607,8 @@ erDiagram
 ```
 
 - An **enrollment** = user + course + language + goal (one per user, course and language). A composite foreign key to `course_languages` rejects a language the course doesn't offer.
-- Writing items are real exercises graded in the sandbox, so starting writing scores also come from executed code. Their submissions do not create evidence directly; `diagnostic_results` seeds the first `mastery_records` once (FR-M3-02).
+- Writing items are real exercises graded in the sandbox, so starting writing scores also come from executed code. Their submissions do not create evidence directly; `diagnostic_results` seeds `mastery_records` when the test completes (FR-M3-02), raise-only, so a retake can lift a score but never lower it.
+- Built rules (ADR-0012): the test walks the skill graph easiest-first (reading), asks code tasks only on the frontier, and fast-tracks proven skills to the last fade stage. A reading item's answer key is its verified exercise's test, so `answer_key` stays null; learner code lives only in `submissions`.
 
 ### 5.6 Mastery and reviews (M4, M10)
 
@@ -836,7 +837,7 @@ erDiagram
 
 - An **attempt** is one learner on one exercise; it owns the server-side hint level (FR-M8-01). A CHECK keeps `hint_level ≤ hint_ceiling`, so the fade limit holds even if application code has a bug.
 - A **submission** is one press of Submit. Its `answer` is code on rungs 2–5 and the predicted output on rung 1 (Predict).
-- **`context` decides evidence:** practice and review attempts create evidence; diagnostic attempts don't (the diagnostic result seeds mastery once); holdout attempts save a calibration record first, then create evidence.
+- **`context` decides evidence:** practice and review attempts create evidence; diagnostic attempts don't (the completed diagnostic seeds mastery, raise-only, ADR-0012); holdout attempts save a calibration record first, then create evidence.
 - `counts_as_attempt` is false for CE (until the 3rd on the same exercise) and for SE.
 - `submissions` copies `user_id` and `exercise_id` from the attempt on purpose, for simpler analytics. The server sets them, never the client.
 - `sandbox_runs` serves both learner submissions and exercise verification, giving one source for execution analytics.
@@ -1715,9 +1716,9 @@ Rate limits: login 20 per IP and 5 failures per email per 15 minutes; register 5
 | FR-M2-03 Editing screen | **MVP: seeded by script.** Screen after MVP; APIs designed (M2, 12 ops) |
 | FR-M2-04 Syntax vs concept type | `skills.skill_type`, `decay_lambda` |
 | FR-M2-05 Graph history (Could) | `skill_graph_changes` |
-| FR-M3-01 Adaptive test | `diagnostic_items` by difficulty and dimension |
+| FR-M3-01 Adaptive test | Skill-graph walk over `diagnostic_items` (ADR-0012) |
 | FR-M3-02 Seed mastery | `diagnostic_results` → `mastery_records`, `evidence_events` (source diagnostic) |
-| FR-M3-03 Retake | `diagnostic_attempts.attempt_no` |
+| FR-M3-03 Retake | `diagnostic_attempts.attempt_no` (3 per enrollment) |
 | FR-M4-01 Mastery fields | `mastery_records` |
 | FR-M4-02 Evidence only | DFD level 1: only process 4 writes D4; `evidence_events` with real source keys; resources never create evidence |
 | FR-M4-03 Exponential decay | Effective mastery computed on read, per dimension |
@@ -1757,7 +1758,7 @@ Rate limits: login 20 per IP and 5 failures per email per 15 minutes; register 5
 
 - pnpm monorepo: `apps/api` (Express 5 + TypeScript 6), `apps/web` (Next.js 16, React 19), `packages/types`, `packages/config`. Exact pinned versions, Node 22.
 - Local infrastructure via `docker compose`: PostgreSQL 16 with pgvector, Redis 7, with secrets in `.env`; settings validated with zod at startup.
-- **Database:** all 38 MVP tables (section 5) as Drizzle schema files with 13 versioned migrations, plus an idempotent seed: the C++ basics course (20 skills, 23 prerequisites, further-reading links) and one verified starter exercise.
+- **Database:** all 38 MVP tables (section 5) as Drizzle schema files with 13 versioned migrations, plus an idempotent seed: the C++ basics course (20 skills, 23 prerequisites, further-reading links), 25 practice exercises and 40 placement items.
 - **Auth (M1):** register, login, refresh, logout and me (section 7.3): argon2id passwords, 15-minute JWT, rotating refresh tokens with theft detection, httpOnly cookies for web and Bearer tokens for mobile, rate limits and a CSRF origin check.
 - **Consent at sign-up (DPDP):** date of birth, required Terms and Privacy consents, optional AI-training and research opt-ins (adults only); under-18 accounts wait for a parent.
 - **Execution (M7):** `POST /submissions` (202 + idempotency key) and `GET /submissions/:id/result` (polling); a BullMQ worker runs each submission in a fresh, offline E2B sandbox (clang 19), and a pure judge gives AC/WA/CE/RE/TLE/MLE/SE. Checked end to end on real E2B: about 6 s per submission.
@@ -1767,9 +1768,10 @@ Rate limits: login 20 per IP and 5 failures per email per 15 minutes; register 5
 - **Recommender (M5):** `GET /recommendations/next` picks the next skill, rung and exercise with fixed rules (ADR-0011): unlocked skills and due reviews, finish-what-you-started first, rung from writing clamped to the fade stage, unseen exercises; every pick is saved with its reasons.
 - **Fade (M12):** an AC on the stage's rung (or harder) with at most 1 hint moves the skill one stage on, inside the grading transaction, logged in `fade_stage_changes`. `GET /scaffolding/state` shows each skill's stage.
 - **Shared layer:** one error type, one response envelope, one error handler.
-- **Tests:** 87 automated tests on a separate test database: database rules, auth and consent flows, the verdict judge, the mastery formula, the recommender rules, and submissions with a fake sandbox. `pnpm sandbox:smoke` checks all six verdicts on real E2B.
+- **Placement test (M3):** `POST /diagnostic/start`, `/:id/answers` and `/:id/complete` (ADR-0012). The test walks all 20 skills easiest-first with predict-the-output questions, with a check question after a possible slip, then asks code tasks (run on E2B in the background) only on the frontier. Completion seeds mastery raise-only (M4) and starts proven skills on the last fade stage (M12) in one transaction. Retakes are allowed (3). The 40 items are verified in the real sandbox (40/40). On the real graph: 1–27 questions, about 28 min for an expert.
+- **Tests:** 122 automated tests on a separate test database: database rules, auth and consent flows, the verdict judge, the mastery formula, the recommender rules, the placement rules (all 711 possible learners), and submissions with a fake sandbox. `pnpm sandbox:smoke` checks all six verdicts on real E2B.
 
-**Next (Phase 3, 23 Oct):** hints (LLM adapter), diagnostic; frontend binding. 13 of 22 MVP endpoints are live.
+**Next (Phase 3, 23 Oct):** sessions and progress, hints (LLM adapter); frontend binding. 15 of 22 MVP endpoints are live.
 
 ---
 

@@ -13,7 +13,7 @@ The recommender (`GET /recommendations/next`) uses fixed rules, never an LLM (FR
 | **Candidates** (FR-M5-01/02) | Skills whose prerequisites are each **cleared, or at effective writing ≥ the edge's `min_mastery` (0.7)**, and which aren't cleared yet. Plus **reviews**: cleared skills whose effective writing has decayed **below 0.5**. With λ = 0.05/day that's about a week after clearing; for concepts (λ = 0.02), about 2–3 weeks |
 | **Score** (FR-M5-03) | 0.4 × *in progress* (started, not cleared) + 0.4 × *review urgency* ((0.5 − writing) / 0.5) + 0.2 × *the enrollment's goal skill*. Ties go to the lower difficulty, then the slug. The effect: **finish what you started, then due reviews, then new skills** |
 | **Rung** (FR-M5-05) | From effective writing: ≥ 0.65 → 5, ≥ 0.45 → 4, ≥ 0.25 → 3; any evidence → 2; none → 1. **Never below the fade stage's easiest rung** (ADR-0007) |
-| **Exercise** | The learner's **open attempt** on that skill first; else an **unseen** verified exercise at the rung, then harder rungs, then easier ones down to the fade minimum |
+| **Exercise** | The learner's **open attempt** on that skill first (unless its rung is now below the fade minimum, added 18 Oct); else an **unseen** verified exercise at the rung, then harder rungs, then easier ones down to the fade minimum |
 | **No content** | A candidate with nothing to serve is skipped for the next one, so learners never get stuck while the bank is small. If no candidate has content, the top one is returned with `exerciseId: null` (to be generated) |
 | **Course done** | No candidates → `recommendation: null` |
 

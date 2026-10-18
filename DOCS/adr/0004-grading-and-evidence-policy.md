@@ -49,7 +49,7 @@ TLE/MLE:  as WA, penalty 0.15/20 doubling per consecutive TLE/MLE, capped at 0.1
 | Dimension | Rung 1 (Predict) moves **reading**; rungs 2–5 move **writing** |
 | Repeated WA/RE in one attempt | **Only the first is penalised**; debugging by trial isn't punished again |
 | Counted CE (3rd+) | Counts in attempt totals, **no score change** |
-| SE, early CE, diagnostic attempts | No evidence |
+| SE, early CE, diagnostic attempts | No evidence. The diagnostic's *completion* writes one seed row per raised dimension, keyed by `diagnostic_id` (ADR-0012) |
 
 About five good solves (rungs 2→5) take a new skill from 0 to 0.72, just past the 0.7 prerequisite threshold. Code: `m4_mastery/services/mastery-formula.ts` (pure, unit-tested). The verdict and its evidence are saved in one transaction, with the mastery row locked.
 

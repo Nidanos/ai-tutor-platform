@@ -149,12 +149,13 @@ type SkillMastery = {
   skill: { id: string; name: string; slug: string }; languageCode: string;
   reading: Dimension; writing: Dimension; // ALWAYS two separate bars, never one combined number
   clearedAt: string | null; attemptCount: number; successCount: number;
-  history?: Array<{ dimension: "reading" | "writing"; verdict: string; rung: number; hintsUsed: number; scoreBefore: number; scoreAfter: number; createdAt: string }>;
+  history?: Array<{ dimension: "reading" | "writing"; verdict: string | null; rung: number | null; hintsUsed: number; scoreBefore: number; scoreAfter: number; createdAt: string }>;
+  // verdict and rung are null for the placement test's starting scores: show "Placement test"
 };
 ```
 
 - **`effective`** is the score after forgetting (it drops a little every day without practice). **`score`** is the stored one. Show `effective` as a percentage, and `clearedAt` as a "Cleared" badge.
-- Rung 1 (predict the output) is a text answer, not code: show a textbox instead of the editor.
+- Rung 1 (predict the output) is a text answer, not code: show a textbox instead of the editor. Its `sampleTests` is always empty (its only test is the answer).
 
 ## 4d. Help fading (live, 16 Oct)
 
@@ -171,7 +172,7 @@ type FadeState = {
   stageEnteredAt: string;
 };
 ```
-- Stages only go **up**, after an AC on `advanceRung` (or harder) with at most `advanceMaxHints` hints. Show the learner the next goal, e.g. "Solve a level 3 exercise with ≤1 hint to unlock less help".
+- Stages only go **up**: after an AC on `advanceRung` (or harder) with at most `advanceMaxHints` hints, or when the placement test proves a skill in code (it starts on the last stage). Show the learner the next goal, e.g. "Solve a level 3 exercise with ≤1 hint to unlock less help".
 - An attempt keeps the hint ceiling it started with (`attempt.hintCeiling`); the next exercise uses the new stage.
 
 ## 4e. What to do next (live, 17 Oct)
@@ -193,12 +194,48 @@ type Recommendation = {
 - `exerciseId: null`: show "New exercises for this skill are being prepared". `recommendation: null`: show "Course complete".
 - `404 COURSE_NOT_FOUND` for an unknown course.
 
+## 4f. Placement test (live, 18 Oct)
+
+Logged in only. All three are `POST`, under `/api/v1/diagnostic`.
+
+| Call | Body | Success |
+| --- | --- | --- |
+| `/start` | `{ course?: "cpp-basics", language?: "cpp", retake?: false }` (all optional) | `200 { diagnostic: InProgress \| Completed }` |
+| `/:id/answers` | `{ itemId, answer }` or `{ itemId, dontKnow: true }` | `200 { diagnostic: InProgress }`, carrying the next question |
+| `/:id/complete` | none | `200 { diagnostic: Completed }`, or `202 { diagnostic: Grading }` |
+
+```ts
+type Question = {
+  itemId: string;
+  dimension: "reading" | "writing";
+  skill: { slug: string; name: string };
+  promptMd: string;                   // render as Markdown
+  code: string;                       // reading: the program to read (read-only); writing: the starter code (Monaco)
+  functionSignature?: string;         // writing only
+  sample?: { input: string | null; expectedOutput: string }; // writing only: one example
+};
+type InProgress = { diagnosticId: string; attemptNo: number; status: "in_progress"; answered: number; question?: Question };
+type Completed = {
+  diagnosticId: string; attemptNo: number; status: "completed"; completedAt: string;
+  results: Array<{ skill: { id: string; slug: string; name: string }; estReading: number; estWriting: number; confidence: number }>;
+};
+type Grading = { diagnosticId: string; status: "grading"; retryAfterMs: number };
+```
+
+- **One question at a time.** Show `question`; when there is none, call `/complete`. The test is adaptive, so there is no "question 5 of 20": show `answered` and a "Finish now" button instead (it calls `/complete`; ask "Are you sure?" first, because unanswered skills start from zero).
+- **Reading** (predict the output): a textbox, compared like rung 1. Add an **"I don't know"** button that sends `dontKnow: true`. It's better than guessing: guesses cost an extra question.
+- **Writing:** the editor with `code`, plus a **"Skip this task"** button (`dontKnow: true`). The reply comes at once, with the next question: the code runs in the background, and nothing tells the learner whether an answer was right.
+- **`/complete` → `202`:** show "Checking your code…" and call `/complete` again after `retryAfterMs`. It always ends within about 2 minutes.
+- **Results page:** `results` lists the skills the test placed (skills already cleared in practice are left out). For each, `estWriting > 0` → "Fast-tracked: one Build to clear it"; `estReading > 0` only → "Starts at level 2"; otherwise "Starts from the beginning". Then go to the dashboard ("What next").
+- **`/start` is also "where am I".** It resumes a test in progress, or returns the last result. It starts a new test only the first time, or with `retake: true` (3 attempts per course). Use the result to choose "Take the placement test" or "Retake".
+- **`409 ITEM_NOT_CURRENT`** (two tabs, or a double click on an old question): call `/start` and show the question it returns.
+
 ## 5. Screens and flow
 
 | Moment | Do this |
 | --- | --- |
 | Sign-up submit | `POST /register` → on `201`: if `user.status === "pending_parent"` show "Ask a parent or guardian to approve your account" (the parent email step comes next); otherwise go to `/login` with "Account created, please log in". On `409` show "Already registered" + a link to login |
-| Login submit | `POST /login` → on `204` call `GET /me`, keep the user in app state, go to the dashboard. On `401` show `error.message` (it never says which field was wrong, on purpose) |
+| Login submit | `POST /login` → on `204` call `GET /me`, keep the user in app state, go to the dashboard. First time on the dashboard: `POST /diagnostic/start` and offer the placement test if it is `in_progress` with no answers yet. On `401` show `error.message` (it never says which field was wrong, on purpose) |
 | App starts | `GET /me` → `200` logged in; `401` (after one refresh try) logged out |
 | Any call returns `401` | Call `POST /refresh` **once**, then retry the call. If refresh fails, clear the user and go to `/login` |
 | Logout | `POST /logout`, clear the user, go to `/login` |
@@ -262,7 +299,6 @@ Shapes will be published here when each one goes live. Use mock data until then.
 
 | Area | Endpoint | For the screen |
 | --- | --- | --- |
-| Diagnostic | `POST /diagnostic/start`, `POST /diagnostic/:id/answers`, `POST /diagnostic/:id/complete` | Placement test |
 | Exercise generation | `POST /exercises/generate`, `GET /exercises/generation/:jobId` | Shown while a new exercise is prepared |
 | Hints | `POST /exercises/:id/hints` | "Get a hint" button. The server decides the level and returns one hint |
 | Sessions | `POST /sessions`, `GET /sessions/active` | Start or resume studying |
@@ -275,6 +311,7 @@ Shapes will be published here when each one goes live. Use mock data until then.
 | --- | --- | --- | --- |
 | `VALIDATION_ERROR` | 400 | A field is wrong | Show `details` next to the fields |
 | `INVALID_JSON` | 400 | Body wasn't JSON | Bug in our code |
+| `BODY_TOO_LARGE` | 413 | Request body over 100 KB | Show "Your code is too long" |
 | `INVALID_CREDENTIALS` | 401 | Wrong email or password | Show the message |
 | `UNAUTHENTICATED` | 401 | Not logged in, or the session ended | Refresh once, else go to login |
 | `TOKEN_EXPIRED` | 401 | The 15-minute access token expired | Refresh once (the helper does it) |
@@ -282,6 +319,12 @@ Shapes will be published here when each one goes live. Use mock data until then.
 | `BAD_ORIGIN` | 403 | Request didn't come from our site | Bug: you called the API directly instead of through `/api` |
 | `EMAIL_TAKEN` | 409 | Email already registered | Link to login |
 | `EXERCISE_NOT_FOUND` / `SKILL_NOT_FOUND` | 404 | Doesn't exist, or isn't ready | Show "Not found" and a link back |
+| `COURSE_NOT_FOUND` | 404 | No such course in that language | Bug: check the course slug and language |
+| `DIAGNOSTIC_NOT_FOUND` | 404 | Not your placement test | Call `/diagnostic/start` |
+| `DIAGNOSTIC_CLOSED` | 409 | The placement test is already finished | Show the results (`/diagnostic/start`) |
+| `ITEM_NOT_CURRENT` | 409 | Answered an old question | Call `/diagnostic/start` and show its question |
+| `DIAGNOSTIC_LIMIT` | 409 | No placement retakes left | Hide the "Retake" button |
+| `DIAGNOSTIC_UNAVAILABLE` | 503 | The placement test isn't ready yet | Skip it and go to the dashboard |
 | `ATTEMPT_NOT_FOUND` / `SUBMISSION_NOT_FOUND` | 404 | Not yours, or doesn't exist | Reload the exercise |
 | `ATTEMPT_CLOSED` | 409 | Exercise already solved | Show "Solved" and the next step |
 | `IDEMPOTENCY_KEY_REUSED` | 409 | Bug: a key was reused for different code | Make a new key per Submit |
