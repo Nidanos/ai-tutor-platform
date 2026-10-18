@@ -71,5 +71,6 @@ describe("recommender rules v1", () => {
     expect(pickExercise(options([["a", 2, "done"], ["b", 4, "none"], ["c", 1, "none"]]), 2)?.id).toBe("b");
     expect(pickExercise(options([["a", 2, "done"], ["c", 1, "none"]]), 2)?.id).toBe("c");
     expect(pickExercise(options([["c", 1, "none"]]), 3, 3)).toBeUndefined(); // below the fade minimum
+    expect(pickExercise(options([["a", 1, "active"], ["b", 5, "none"]]), 5, 5)?.id).toBe("b"); // an attempt the stage has outgrown
   });
 });

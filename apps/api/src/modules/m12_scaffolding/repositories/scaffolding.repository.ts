@@ -1,4 +1,4 @@
-import { and, eq, sql } from "drizzle-orm";
+import { and, eq, max, sql } from "drizzle-orm";
 import { db, type Tx } from "../../../infrastructure/database/index.js";
 import { fadeSchedules, fadeStageChanges, fadeStages, skillScaffolding } from "../../../infrastructure/database/schema/index.js";
 
@@ -26,25 +26,35 @@ const stageRules = {
 const findStage = async (k: LearnerSkill) =>
   (await db.select(stageRules).from(skillScaffolding).innerJoin(fadeStages, currentStageJoin).where(whereKey(k)))[0];
 
-// A skill starts on stage 1 of its course's default schedule, logged as its first stage change.
-export async function ensureStage(key: LearnerSkill, courseId: string) {
-  const current = await findStage(key);
-  if (current) return current;
-
-  const [schedule] = await db
+export async function defaultScheduleId(q: Tx | typeof db, courseId: string) {
+  const [schedule] = await q
     .select({ id: fadeSchedules.id })
     .from(fadeSchedules)
     .where(and(eq(fadeSchedules.courseId, courseId), eq(fadeSchedules.isDefault, true)));
   if (!schedule) throw new Error(`Course ${courseId} has no default fade schedule`);
+  return schedule.id;
+}
 
-  await db.transaction(async (tx) => {
-    const [created] = await tx
-      .insert(skillScaffolding)
-      .values({ ...key, scheduleId: schedule.id, currentStage: FIRST_STAGE })
-      .onConflictDoNothing()
-      .returning({ userId: skillScaffolding.userId });
-    if (created) await tx.insert(fadeStageChanges).values({ ...key, toStage: FIRST_STAGE, reason: "first_attempt" });
-  });
+export const lastStageNo = async (tx: Tx, scheduleId: string) =>
+  (await tx.select({ last: max(fadeStages.stageNo) }).from(fadeStages).where(eq(fadeStages.scheduleId, scheduleId)))[0].last!;
+
+// Gives a skill its first stage, logged as its first stage change. False if it already had one.
+export async function createStage(tx: Tx, key: LearnerSkill, scheduleId: string, stageNo: number, reason: string) {
+  const [created] = await tx
+    .insert(skillScaffolding)
+    .values({ ...key, scheduleId, currentStage: stageNo })
+    .onConflictDoNothing()
+    .returning({ userId: skillScaffolding.userId });
+  if (created) await tx.insert(fadeStageChanges).values({ ...key, toStage: stageNo, reason });
+  return Boolean(created);
+}
+
+// A skill starts on stage 1 of its course's default schedule.
+export async function ensureStage(key: LearnerSkill, courseId: string) {
+  const current = await findStage(key);
+  if (current) return current;
+  const scheduleId = await defaultScheduleId(db, courseId);
+  await db.transaction((tx) => createStage(tx, key, scheduleId, FIRST_STAGE, "first_attempt"));
   return (await findStage(key))!;
 }
 
@@ -67,10 +77,10 @@ export const stageExists = async (tx: Tx, scheduleId: string, stageNo: number) =
       .where(and(eq(fadeStages.scheduleId, scheduleId), eq(fadeStages.stageNo, stageNo)))
   ).length > 0;
 
-// Every move is logged with the solve that caused it: the evidence that help really fades (ADR-0007).
-export async function moveStage(tx: Tx, k: LearnerSkill, from: number, to: number, submissionId: string) {
+// Every move is logged with what caused it (a solve, or the diagnostic): the evidence that help really fades (ADR-0007).
+export async function moveStage(tx: Tx, k: LearnerSkill, from: number, to: number, submissionId: string | null, reason = "solved") {
   await tx.update(skillScaffolding).set({ currentStage: to, stageEnteredAt: new Date() }).where(whereKey(k));
-  await tx.insert(fadeStageChanges).values({ ...k, fromStage: from, toStage: to, submissionId, reason: "solved" });
+  await tx.insert(fadeStageChanges).values({ ...k, fromStage: from, toStage: to, submissionId, reason });
 }
 
 export const listStates = (userId: string, languageCode?: string) =>

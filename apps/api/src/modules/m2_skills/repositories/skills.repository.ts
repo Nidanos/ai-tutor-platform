@@ -1,6 +1,6 @@
 import { and, eq, inArray, isNull, or } from "drizzle-orm";
-import { db } from "../../../infrastructure/database/index.js";
-import { courses, skillPrerequisites, skills } from "../../../infrastructure/database/schema/index.js";
+import { db, type Tx } from "../../../infrastructure/database/index.js";
+import { courseLanguages, courses, skillPrerequisites, skills } from "../../../infrastructure/database/schema/index.js";
 
 const skillRef = {
   id: skills.id,
@@ -10,13 +10,21 @@ const skillRef = {
   decayLambda: skills.decayLambda,
 };
 
-export const findSkill = async (id: string) => (await db.select(skillRef).from(skills).where(eq(skills.id, id)))[0];
+// q: pass the open transaction when called inside one, so it never waits on a second pool connection.
+export const findSkill = async (id: string, q: Tx | typeof db = db) => (await q.select(skillRef).from(skills).where(eq(skills.id, id)))[0];
 
 export const findSkills = (ids: string[]) =>
   ids.length ? db.select(skillRef).from(skills).where(inArray(skills.id, ids)) : Promise.resolve([]);
 
-export const findCourseBySlug = async (slug: string) =>
-  (await db.select({ id: courses.id, slug: courses.slug }).from(courses).where(eq(courses.slug, slug)))[0];
+// Only a course that is offered in this language.
+export const findCourseBySlug = async (slug: string, languageCode: string) =>
+  (
+    await db
+      .select({ id: courses.id, slug: courses.slug })
+      .from(courses)
+      .innerJoin(courseLanguages, eq(courseLanguages.courseId, courses.id))
+      .where(and(eq(courses.slug, slug), eq(courseLanguages.languageCode, languageCode)))
+  )[0];
 
 // The course's active skills with their prerequisites for this language (null edges apply to all).
 export async function listSkillGraph(courseId: string, languageCode: string) {

@@ -7,6 +7,7 @@ import { db } from "../src/infrastructure/database/index.js";
 import {
   evidenceEvents,
   exerciseAttempts,
+  exercises,
   exerciseSecrets,
   masteryRecords,
   exerciseTests,
@@ -17,7 +18,7 @@ import { enqueueSubmission } from "../src/infrastructure/queue/submissions-queue
 import type { RunResult, SandboxProvider, TestRun } from "../src/infrastructure/sandbox/sandbox-provider.js";
 import { runSubmission } from "../src/modules/m7_execution/services/run-submission.js";
 import { signAccessToken } from "../src/shared/auth/tokens.js";
-import { createAttempt } from "./helpers.js";
+import { createAttempt, exerciseRow } from "./helpers.js";
 
 // No Redis in tests: we check what gets queued, then run the worker's job ourselves.
 vi.mock("../src/infrastructure/queue/submissions-queue.js", () => ({ enqueueSubmission: vi.fn() }));
@@ -75,6 +76,20 @@ describe("submissions", () => {
     expect(second).toBe(first);
     const [row] = await db.select().from(exerciseAttempts).where(eq(exerciseAttempts.id, attempt.id));
     expect(row.submissionCount).toBe(1);
+  });
+
+  it("refuses a key already used on another attempt, so no attempt can borrow another's verdict", async () => {
+    const { attempt, api } = await learnerWithAttempt();
+    const [{ skillId }] = await db.select().from(exercises).where(eq(exercises.id, attempt.exerciseId));
+    const [other] = await db.insert(exercises).values({ ...exerciseRow(skillId), variantSeed: 2 }).returning();
+    const [second] = await db
+      .insert(exerciseAttempts)
+      .values({ userId: attempt.userId, enrollmentId: attempt.enrollmentId, exerciseId: other.id, hintCeiling: 3 })
+      .returning();
+    const idempotencyKey = randomUUID();
+    await api.post({ attemptId: attempt.id, answer: "x", idempotencyKey }).expect(202);
+    const res = await api.post({ attemptId: second.id, answer: "x", idempotencyKey }).expect(409);
+    expect(res.body.error.code).toBe("IDEMPOTENCY_KEY_REUSED");
   });
 
   it("hides other learners' attempts and submissions", async () => {

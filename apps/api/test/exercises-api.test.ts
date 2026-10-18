@@ -65,4 +65,17 @@ describe("GET /exercises/:id", () => {
     const res = await open(draft.id, user.id, 404);
     expect(res.body.error.code).toBe("EXERCISE_NOT_FOUND");
   });
+
+  it("never shows a predict-the-output exercise's answer", async () => {
+    const [exercise, user] = [await verifiedExercise(), await createUser()];
+    await db.update(exercises).set({ rung: 1 }).where(eq(exercises.id, exercise.id));
+    const res = await open(exercise.id, user.id);
+    expect(res.body.data.exercise.sampleTests).toEqual([]);
+  });
+
+  it("never opens a placement-test exercise as practice", async () => {
+    const [exercise, user] = [await verifiedExercise(), await createUser()];
+    await db.update(exercises).set({ purpose: "diagnostic" }).where(eq(exercises.id, exercise.id));
+    await open(exercise.id, user.id, 404);
+  });
 });

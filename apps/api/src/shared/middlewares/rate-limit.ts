@@ -26,3 +26,6 @@ export const loginFailuresByEmail = limiter(15 * MINUTE, 5, {
 
 // Every run costs sandbox time: cap it per learner. Runs after authenticate, so req.auth is set.
 export const submissionsByUser = limiter(MINUTE, 10, { keyGenerator: (req) => req.auth!.userId });
+
+// The placement test: about one answer a minute is normal, so 30 a minute only stops scripts.
+export const diagnosticByUser = limiter(MINUTE, 30, { keyGenerator: (req) => req.auth!.userId });

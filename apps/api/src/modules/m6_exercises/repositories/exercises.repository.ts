@@ -48,6 +48,7 @@ export async function findServable(id: string) {
     .from(exercises)
     .where(and(eq(exercises.id, id), eq(exercises.status, "verified"), eq(exercises.purpose, "practice")));
   if (!exercise) return undefined;
+  if (exercise.rung === 1) return { ...exercise, sampleTests: [] }; // its only test is the answer to "what does it print?"
   const sampleTests = await db
     .select({ seq: exerciseTests.seq, name: exerciseTests.name, input: exerciseTests.input, expectedOutput: exerciseTests.expectedOutput })
     .from(exerciseTests)
@@ -90,4 +91,9 @@ export const listServable = (skillIds: string[], languageCode: string) =>
             eq(exercises.purpose, "practice"),
           ),
         )
+    : Promise.resolve([]);
+
+export const listVerified = (ids: string[]) =>
+  ids.length
+    ? db.select({ id: exercises.id }).from(exercises).where(and(inArray(exercises.id, ids), eq(exercises.status, "verified")))
     : Promise.resolve([]);

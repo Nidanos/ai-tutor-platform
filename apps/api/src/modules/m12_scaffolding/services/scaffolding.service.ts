@@ -17,6 +17,16 @@ export async function advanceOnSolve(tx: Tx, { rung, hintsUsed, submissionId, ..
   if (await repo.stageExists(tx, stage.scheduleId, next)) await repo.moveStage(tx, key, stage.stageNo, next, submissionId);
 }
 
+// The diagnostic's fast-track (ADR-0012): a skill proven in the placement test goes straight to its
+// schedule's last stage. Runs inside the diagnostic's completion transaction; never moves a stage down.
+export async function startAtLastStage(tx: Tx, key: repo.LearnerSkill, courseId: string) {
+  const scheduleId = await repo.defaultScheduleId(tx, courseId);
+  if (await repo.createStage(tx, key, scheduleId, await repo.lastStageNo(tx, scheduleId), "diagnostic")) return;
+  const stage = (await repo.lockStage(tx, key))!;
+  const last = await repo.lastStageNo(tx, stage.scheduleId);
+  if (stage.stageNo < last) await repo.moveStage(tx, key, stage.stageNo, last, null, "diagnostic");
+}
+
 // GET /scaffolding/state: how much help each practised skill allows now, and what moves it on.
 export async function listState(userId: string, languageCode?: string) {
   const states = await repo.listStates(userId, languageCode);

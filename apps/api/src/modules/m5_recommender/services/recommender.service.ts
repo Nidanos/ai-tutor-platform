@@ -13,7 +13,7 @@ const SNAPSHOT_SIZE = 5; // top candidates stored with each pick, to explain it 
 // A skill with no content yet is skipped, so learners never get stuck while the bank is small;
 // if no candidate has content, the top one is returned without an exercise (to be generated).
 export async function nextStep(userId: string, courseSlug: string, languageCode: string) {
-  const course = await getCourse(courseSlug);
+  const course = await getCourse(courseSlug, languageCode);
   const enrollment = await ensureEnrollment(userId, course.id, languageCode);
   const [graph, mastery, stages, attempts] = await Promise.all([
     getSkillGraph(course.id, languageCode),

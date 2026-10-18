@@ -16,7 +16,16 @@ export const findOwnAttempt = async (attemptId: string, userId: string) =>
       .where(and(eq(exerciseAttempts.id, attemptId), eq(exerciseAttempts.userId, userId)))
   )[0];
 
-const submissionRef = { id: submissions.id, userId: submissions.userId, status: submissions.status };
+const submissionRef = {
+  id: submissions.id,
+  userId: submissions.userId,
+  attemptId: submissions.attemptId,
+  exerciseId: submissions.exerciseId,
+  status: submissions.status,
+};
+
+export const findByIdempotencyKey = async (idempotencyKey: string) =>
+  (await db.select(submissionRef).from(submissions).where(eq(submissions.idempotencyKey, idempotencyKey)))[0];
 
 // One row per idempotency key: a repeated request gets the first submission back, counted once.
 export const createSubmission = (values: typeof submissions.$inferInsert) =>

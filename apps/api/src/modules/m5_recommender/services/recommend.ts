@@ -56,10 +56,11 @@ export function rankCandidates(skills: SkillNode[], mastery: Map<string, SkillSt
 
 export type ExerciseOption = { id: string; rung: number; attempt: "none" | "active" | "done" };
 
-// The learner's unfinished attempt first; else an unseen exercise at the rung, then harder, then
-// easier down to the fade minimum. Undefined when this skill has nothing to serve yet.
+// The learner's unfinished attempt first, unless the skill's fade stage has since moved past its
+// rung; else an unseen exercise at the rung, then harder, then easier down to the fade minimum.
+// Undefined when this skill has nothing to serve yet.
 export function pickExercise(options: ExerciseOption[], rung: number, minRung = 1) {
-  const active = options.find((o) => o.attempt === "active");
+  const active = options.find((o) => o.attempt === "active" && o.rung >= minRung);
   if (active) return active;
   const harder = Array.from({ length: 5 - rung }, (_, i) => rung + 1 + i);
   const easier = Array.from({ length: Math.max(0, rung - minRung) }, (_, i) => rung - 1 - i);

@@ -2,6 +2,7 @@ import { enqueueSubmission } from "../../../infrastructure/queue/submissions-que
 import { sha256 } from "../../../shared/auth/tokens.js";
 import { AppError } from "../../../shared/errors/app-error.js";
 import { getExercise, getRunnableExercise } from "../../m6_exercises/services/exercises.service.js";
+import { findLatestAttempt, insertAttempt } from "../repositories/attempts.repository.js";
 import * as repo from "../repositories/submissions.repository.js";
 import type { SubmissionInput } from "../schemas/submissions.schemas.js";
 
@@ -21,10 +22,25 @@ export async function submit(userId: string, { attemptId, answer, idempotencyKey
     answerSha256: sha256(answer),
     idempotencyKey,
   });
-  if (saved.userId !== userId) throw new AppError(409, "IDEMPOTENCY_KEY_REUSED", "Send a new idempotency key");
+  // A key only ever returns its own submission: never another learner's, nor another attempt's.
+  if (saved.userId !== userId || saved.attemptId !== attemptId) throw new AppError(409, "IDEMPOTENCY_KEY_REUSED", "Send a new idempotency key");
   // Also on a repeat: if the first enqueue failed, this one heals it (the job id prevents doubles).
   if (saved.status !== "completed") await enqueueSubmission(saved.id);
   return { submissionId: saved.id, status: saved.status };
+}
+
+// For M3: a placement-test code task runs like any submission, in a 'diagnostic' attempt with no hints
+// and no evidence (ADR-0004). An attempt an earlier diagnostic left open on this exercise is reused.
+// A retried answer gets its first submission back, but only one made on this same exercise.
+export async function submitDiagnostic(userId: string, enrollmentId: string, exerciseId: string, answer: string, idempotencyKey: string) {
+  const earlier = await repo.findByIdempotencyKey(idempotencyKey);
+  if (earlier?.userId === userId && earlier.exerciseId === exerciseId) {
+    if (earlier.status !== "completed") await enqueueSubmission(earlier.id); // heals a failed first enqueue, as submit() does
+    return { submissionId: earlier.id, status: earlier.status };
+  }
+  await insertAttempt({ userId, enrollmentId, exerciseId, context: "diagnostic", hintCeiling: 0 });
+  const attempt = (await findLatestAttempt(userId, exerciseId))!;
+  return submit(userId, { attemptId: attempt.id, answer, idempotencyKey });
 }
 
 // Sample tests show input, expected and actual output; hidden tests show only their verdict.

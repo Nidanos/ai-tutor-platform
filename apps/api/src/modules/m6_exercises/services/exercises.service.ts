@@ -27,3 +27,6 @@ export async function getServableExercise(id: string) {
 
 // For M5: every exercise a learner could be served for these skills.
 export const listServable = repo.listServable;
+
+// For M3: which of these exercises passed sandbox verification, so only those are ever asked.
+export const verifiedIds = async (ids: string[]) => new Set((await repo.listVerified(ids)).map((e) => e.id));
