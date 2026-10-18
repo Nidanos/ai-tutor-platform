@@ -1,10 +1,10 @@
 import { eq } from "drizzle-orm";
 import { TOOLCHAINS } from "../../../modules/m7_execution/services/toolchains.js";
 import { db } from "../index.js";
-import { courses, diagnosticItems, exercises, exerciseSecrets, exerciseTests, skills } from "../schema/index.js";
+import { insertExercise } from "../../../modules/m6_exercises/repositories/exercises.repository.js";
+import { courses, diagnosticItems, skills } from "../schema/index.js";
 import type { ExerciseTemplate } from "./cpp-templates.js";
 
-const DEFAULT_LIMITS = { timeLimitMs: 2000, memoryLimitMb: 256 }; // ADR-0003
 // The content key ignores purpose, so placement-test copies need their own variant seed.
 const VARIANT_SEED = { practice: 1, diagnostic: 100 } as const;
 
@@ -44,38 +44,10 @@ export async function seedExercises(courseSlug: string, templates: ExerciseTempl
   for (const t of templates) {
     const skill = skillOf.get(t.skill)!;
     await db.transaction(async (tx) => {
-      const [created] = await tx
-        .insert(exercises)
-        .values({
-          skillId: skill.id,
-          languageCode: "cpp",
-          rung: t.rung,
-          variantSeed: VARIANT_SEED[purpose] + (t.variant ?? 0),
-          contentVersion: TOOLCHAINS.cpp.version,
-          purpose,
-          source: "template",
-          title: t.title,
-          promptMd: t.promptMd,
-          starterCode: t.starterCode,
-          functionSignature: t.functionSignature ?? null,
-          ...DEFAULT_LIMITS,
-        })
-        .onConflictDoNothing()
-        .returning({ id: exercises.id });
+      const variantSeed = VARIANT_SEED[purpose] + (t.variant ?? 0);
+      const created = await insertExercise(tx, t, { skillId: skill.id, variantSeed, purpose, source: "template", status: "draft", harnessCode: harnessFor(t) });
       if (!created) return; // already seeded
 
-      await tx.insert(exerciseSecrets).values({ exerciseId: created.id, harnessCode: harnessFor(t), referenceSolution: t.reference });
-      await tx.insert(exerciseTests).values(
-        t.cases.map((c, i) => ({
-          exerciseId: created.id,
-          seq: i + 1,
-          name: i === 0 ? "Example" : `Test ${i + 1}`,
-          size: "small" as const,
-          visibility: i === 0 ? ("sample" as const) : ("hidden" as const),
-          input: c.args || null,
-          expectedOutput: c.expected,
-        })),
-      );
       if (purpose === "diagnostic") {
         await tx.insert(diagnosticItems).values({
           skillId: skill.id,
@@ -84,7 +56,7 @@ export async function seedExercises(courseSlug: string, templates: ExerciseTempl
           difficulty: skill.difficulty,
           promptMd: t.promptMd,
           payload: diagnosticPayload(t),
-          exerciseId: created.id, // the answer key is this exercise's verified test, never stored twice
+          exerciseId: created, // the answer key is this exercise's verified test, never stored twice
           contentVersion: TOOLCHAINS.cpp.version,
         });
       }

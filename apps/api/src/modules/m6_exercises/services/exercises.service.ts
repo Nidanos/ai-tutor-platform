@@ -44,3 +44,6 @@ export async function getHintContext(id: string) {
 
 // For M8's hint generator: every verified practice exercise.
 export const listPracticeIds = repo.listPracticeIds;
+
+// For M13: generation success and failure by skill and rung.
+export const generationStats = repo.generationStats;

@@ -7,6 +7,7 @@ const skillRef = {
   courseId: skills.courseId,
   slug: skills.slug,
   name: skills.name,
+  description: skills.description,
   decayLambda: skills.decayLambda,
 };
 

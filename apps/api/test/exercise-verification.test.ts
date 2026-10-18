@@ -3,16 +3,17 @@ import { describe, expect, it, vi } from "vitest";
 import { db } from "../src/infrastructure/database/index.js";
 import { exercises, exerciseSecrets, exerciseTests } from "../src/infrastructure/database/schema/index.js";
 import type { SandboxProvider } from "../src/infrastructure/sandbox/sandbox-provider.js";
-import { verifyExercise } from "../src/modules/m6_exercises/services/verify-exercise.js";
+import { verifyContent, verifyExercise } from "../src/modules/m6_exercises/services/verify-exercise.js";
 import { createCourse, createSkill, exerciseRow } from "./helpers.js";
 
 const EXPECTED = ["5", "9"];
 
 // A fake sandbox: the code "REF" prints the expected output; "STARTER" and anything else print "wrong",
-// unless the starter is told to pass too.
+// unless the starter is told to pass too. "NOCOMPILE" doesn't compile.
 const sandbox = (starterPasses = false) => {
   const run = vi.fn<SandboxProvider["run"]>(async ({ files }) => {
     const passes = files["solution.cpp"] === "REF" || (starterPasses && files["solution.cpp"] === "STARTER");
+    if (files["solution.cpp"] === "NOCOMPILE") return { sandboxId: "fake", compile: { ok: false, output: "error" }, tests: [] };
     return {
       sandboxId: "fake",
       compile: { ok: true, output: "" },
@@ -50,7 +51,7 @@ describe("exercise verification", () => {
 
   it("rejects an exercise whose reference doesn't pass", async () => {
     const exercise = await draftExercise(3, "BROKEN");
-    expect(await verifyExercise(exercise.id, sandbox())).toEqual({ ok: false, reason: "the reference solution gets WA" });
+    expect(await verifyExercise(exercise.id, sandbox())).toEqual({ ok: false, stage: "reference", reason: "the reference solution gets WA" });
     expect((await statusOf(exercise.id)).status).toBe("rejected");
   });
 
@@ -66,5 +67,13 @@ describe("exercise verification", () => {
     const provider = sandbox();
     expect(await verifyExercise(exercise.id, provider)).toEqual({ ok: true });
     expect(provider.run).toHaveBeenCalledTimes(1);
+  });
+
+  it("checks content before it is stored: a starter that won't compile, and wrong solutions that slip through", async () => {
+    const content = { rung: 3, languageCode: "cpp", harnessCode: "h", referenceSolution: "REF", starterCode: "STARTER", tests: [{ seq: 1, expectedOutput: "5" }, { seq: 2, expectedOutput: "9" }], limits: { timeLimitMs: 1000, memoryLimitMb: 256 } };
+    expect(await verifyContent({ ...content, wrongSolutions: ["WRONG1", "WRONG2"] }, sandbox())).toEqual({ ok: true });
+    expect(await verifyContent({ ...content, starterCode: "NOCOMPILE" }, sandbox())).toMatchObject({ ok: false, stage: "compile" });
+    expect(await verifyContent({ ...content, wrongSolutions: ["WRONG1", "REF"] }, sandbox())).toEqual({ ok: false, stage: "tests_too_weak", reason: "wrong solution 2 passes every test" });
+    expect(await verifyContent({ ...content, wrongSolutions: ["NOCOMPILE"] }, sandbox())).toMatchObject({ ok: false, stage: "compile" });
   });
 });

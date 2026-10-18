@@ -1,6 +1,9 @@
-import { and, asc, count, eq, inArray } from "drizzle-orm";
-import { db } from "../../../infrastructure/database/index.js";
-import { exercises, exerciseSecrets, exerciseTests } from "../../../infrastructure/database/schema/index.js";
+import { and, asc, count, eq, gte, inArray, max } from "drizzle-orm";
+import { countWhere } from "../../../infrastructure/database/aggregates.js";
+import { db, type Tx } from "../../../infrastructure/database/index.js";
+import { exercises, exerciseSecrets, exerciseTests, generationFailures, generationJobs } from "../../../infrastructure/database/schema/index.js";
+import type { ExerciseTemplate } from "../../../infrastructure/database/seed/cpp-templates.js";
+import { TOOLCHAINS } from "../../m7_execution/services/toolchains.js";
 
 export const findExercise = async (id: string) =>
   (
@@ -133,3 +136,129 @@ export async function findForHints(id: string) {
 
 export const listPracticeIds = async () =>
   (await db.select({ id: exercises.id }).from(exercises).where(and(eq(exercises.status, "verified"), eq(exercises.purpose, "practice")))).map((e) => e.id);
+
+export const DEFAULT_LIMITS = { timeLimitMs: 2000, memoryLimitMb: 256 }; // ADR-0003
+
+type NewExercise = Pick<typeof exercises.$inferInsert, "skillId" | "variantSeed" | "purpose" | "source" | "status"> & { harnessCode: string | null };
+
+// One exercise with its secret half and its tests, saved together. Undefined if the content key exists.
+export async function insertExercise(tx: Tx, t: ExerciseTemplate, { harnessCode, ...row }: NewExercise) {
+  const [created] = await tx
+    .insert(exercises)
+    .values({
+      ...row,
+      languageCode: "cpp",
+      rung: t.rung,
+      contentVersion: TOOLCHAINS.cpp.version,
+      title: t.title,
+      promptMd: t.promptMd,
+      starterCode: t.starterCode,
+      functionSignature: t.functionSignature ?? null,
+      verifiedAt: row.status === "verified" ? new Date() : null,
+      ...DEFAULT_LIMITS,
+    })
+    .onConflictDoNothing()
+    .returning({ id: exercises.id });
+  if (!created) return undefined;
+  await tx.insert(exerciseSecrets).values({ exerciseId: created.id, harnessCode, referenceSolution: t.reference });
+  await tx.insert(exerciseTests).values(
+    t.cases.map((c, i) => ({
+      exerciseId: created.id,
+      seq: i + 1,
+      name: i === 0 ? "Example" : `Test ${i + 1}`,
+      size: "small" as const,
+      visibility: i === 0 ? ("sample" as const) : ("hidden" as const),
+      input: c.args || null,
+      expectedOutput: c.expected,
+    })),
+  );
+  return created.id;
+}
+
+// Generated exercises are verified before they are stored, so they arrive ready to serve.
+export const insertGenerated = (t: ExerciseTemplate, row: Pick<NewExercise, "skillId" | "variantSeed" | "harnessCode">) =>
+  db.transaction((tx) => insertExercise(tx, t, { ...row, purpose: "practice", source: "generated", status: "verified" }));
+
+export const listTitlesForSkill = async (skillId: string) =>
+  (await db.select({ title: exercises.title }).from(exercises).where(and(eq(exercises.skillId, skillId), eq(exercises.purpose, "practice")))).map((e) => e.title);
+
+// FR-M6-03: a hand-written exercise for the same skill and rung, when generation gives up.
+export const findTemplateFallback = async (skillId: string, languageCode: string, rung: number) =>
+  (
+    await db
+      .select({ id: exercises.id })
+      .from(exercises)
+      .where(
+        and(
+          eq(exercises.skillId, skillId),
+          eq(exercises.languageCode, languageCode),
+          eq(exercises.rung, rung),
+          eq(exercises.status, "verified"),
+          eq(exercises.purpose, "practice"),
+          eq(exercises.source, "template"),
+        ),
+      )
+      .limit(1)
+  )[0];
+
+// Generation jobs (ADR-0016).
+export type JobKey = { skillId: string; languageCode: string; rung: number };
+const ACTIVE = ["queued", "generating", "verifying"] as const;
+const GENERATED_SEED_BASE = 1000; // templates use 1–99 and placement items 100+; generated variants never meet them
+const jobKey = (k: JobKey) => and(eq(generationJobs.skillId, k.skillId), eq(generationJobs.languageCode, k.languageCode), eq(generationJobs.rung, k.rung));
+
+export const findJob = async (id: string) => (await db.select().from(generationJobs).where(eq(generationJobs.id, id)))[0];
+export const findActiveJob = async (k: JobKey) => (await db.select().from(generationJobs).where(and(jobKey(k), inArray(generationJobs.status, ACTIVE))))[0];
+export const lastFallbackAt = async (k: JobKey) =>
+  (await db.select({ at: max(generationJobs.finishedAt) }).from(generationJobs).where(and(jobKey(k), eq(generationJobs.status, "fell_back"))))[0].at;
+
+// Each job gets a variant number no exercise or earlier job of this skill and rung has used.
+export async function nextVariantSeed(k: JobKey) {
+  const [{ job }] = await db.select({ job: max(generationJobs.variantSeed) }).from(generationJobs).where(jobKey(k));
+  const [{ exercise }] = await db
+    .select({ exercise: max(exercises.variantSeed) })
+    .from(exercises)
+    .where(and(eq(exercises.skillId, k.skillId), eq(exercises.languageCode, k.languageCode), eq(exercises.rung, k.rung), eq(exercises.source, "generated")));
+  return Math.max(GENERATED_SEED_BASE - 1, job ?? 0, exercise ?? 0) + 1;
+}
+
+// One active job per skill and rung (partial unique index): a second request gets the first job back.
+export async function insertJob(values: typeof generationJobs.$inferInsert) {
+  await db.insert(generationJobs).values(values).onConflictDoNothing();
+  return (await findActiveJob(values))!;
+}
+
+export const updateJob = (id: string, values: Partial<typeof generationJobs.$inferInsert>) => db.update(generationJobs).set(values).where(eq(generationJobs.id, id));
+
+export const logFailure = (generationJobId: string, tryNo: number, stage: (typeof generationFailures.$inferInsert)["stage"], details: object) =>
+  db.insert(generationFailures).values({ generationJobId, tryNo, stage, details });
+
+export const listFailures = (generationJobId: string) =>
+  db
+    .select({ tryNo: generationFailures.tryNo, stage: generationFailures.stage, details: generationFailures.details })
+    .from(generationFailures)
+    .where(eq(generationFailures.generationJobId, generationJobId))
+    .orderBy(asc(generationFailures.tryNo));
+
+// For M13 (FR-M13-03): generation outcomes in the window per skill and rung, and why tries failed.
+export async function generationStats(since: Date) {
+  const inWindow = gte(generationJobs.createdAt, since);
+  const bySkill = await db
+    .select({
+      skillId: generationJobs.skillId,
+      rung: generationJobs.rung,
+      succeeded: countWhere(eq(generationJobs.status, "succeeded")),
+      fellBack: countWhere(eq(generationJobs.status, "fell_back")),
+      pending: countWhere(inArray(generationJobs.status, ACTIVE)),
+    })
+    .from(generationJobs)
+    .where(inWindow)
+    .groupBy(generationJobs.skillId, generationJobs.rung);
+  const failures = await db
+    .select({ stage: generationFailures.stage, n: count() })
+    .from(generationFailures)
+    .innerJoin(generationJobs, eq(generationJobs.id, generationFailures.generationJobId))
+    .where(inWindow)
+    .groupBy(generationFailures.stage);
+  return { bySkill, failures };
+}

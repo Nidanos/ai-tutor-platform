@@ -2,6 +2,7 @@ import { ensureEnrollment } from "../../m3_diagnostic/services/enrollments.servi
 import { getCourse, getSkill, getSkillGraph } from "../../m2_skills/services/skills.service.js";
 import { effectiveStates } from "../../m4_mastery/services/mastery-read.service.js";
 import { listServable } from "../../m6_exercises/services/exercises.service.js";
+import { queueMissingExercise } from "../../m6_exercises/services/request-generation.js";
 import { attemptStatuses } from "../../m7_execution/services/attempts.service.js";
 import { minRungs } from "../../m12_scaffolding/services/scaffolding.service.js";
 import * as repo from "../repositories/recommendations.repository.js";
@@ -43,6 +44,11 @@ export async function recommendNext(userId: string, enrollment: Enrollment) {
     return { candidate, rung, exercise: pickExercise(options, rung, minRung) };
   });
   const chosen = choices.find((c) => c.exercise) ?? choices[0];
+  // ADR-0016: the best candidate with nothing to serve gets an exercise generated in the background.
+  const missing = choices.find((c) => !c.exercise);
+  if (missing && choices.indexOf(missing) <= choices.indexOf(chosen)) {
+    await queueMissingExercise({ skillId: missing.candidate.skill.id, languageCode, rung: missing.rung });
+  }
 
   const { skill, reason, score, breakdown } = chosen.candidate;
   const id = await repo.insertRecommendation({
