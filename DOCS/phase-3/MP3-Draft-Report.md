@@ -80,6 +80,7 @@ Page numbers are added in the printed copy.
 | 10 | Data dictionary (key tables) |
 | 11 | Placement test rules |
 | 12 | Hint ladder and where each hint comes from |
+| 13 | Exercise generation: how a job runs |
 
 ## List of Figures
 
@@ -218,6 +219,7 @@ The hard technical parts were proven early by building them, not just by plannin
 | Data integrity | PostgreSQL constraints: CHECK ranges, partial unique indexes, foreign keys | 16 database-rule tests |
 | Placing learners fairly | A placement walk over the skill graph with a check question after a possible slip | All 711 possible knowledge states placed exactly in simulation (section 4.2) |
 | Keeping the AI from giving answers | A filter compares every hint with the reference solution; caps per learner and per month | Unit tests with real leak attempts (section 4.2) |
+| Trusting AI-written exercises | Stored only after the sandbox proves them: the reference passes, the starter fails, and 3 wrong answers fail | Tests with a fake model and sandbox, including weak tests being rejected (section 4.2) |
 | Team skills | The stack (TypeScript, React, Node, SQL) matches the semester courses | Working code in the repository |
 
 ### 2.1.2 Economic Feasibility
@@ -229,7 +231,7 @@ The budget is a student budget, so every running cost was measured or quoted, no
 | Hosting (API, worker, database, Redis) | Oracle Cloud Always Free VM in an India region; fallback Azure for Students credit | ₹0 per month |
 | Web hosting | Vercel free plan during the college phase | ₹0 |
 | Code execution | E2B, billed per second while a sandbox runs; $100 starting credit | about ₹0.01 per submission |
-| Content generation (lessons, exercises) | Gemini Flash through the Batch API, once per item, then frozen | about ₹300–400 per 300-exercise course |
+| Exercise generation | Gemini 3.8 Flash (3.1 Pro on a third try), once per exercise, then frozen; its own cap of ₹300 per month | about ₹1.5 per exercise; ₹110–150 for skills 6–20 |
 | Live tutor hints | Gemini 3.5 Flash Lite, capped at 20 per learner per day and ₹500 per month in total | about ₹0.08 per hint (₹0.01 measured on short test prompts) |
 
 One cost was found only when paying: a new Google Cloud billing account in India must prepay **₹3,000** in total before the paid Gemini tier activates (₹500 paid on 18 October, ₹2,500 due on 7 November). Until then the key stays on the free tier, where prompts may be used by Google, so live hints are switched off by a setting until billing is active (7 November 2026, section 4.5).
@@ -251,7 +253,7 @@ One design decision is a direct result of this study. The first design kept one 
   - learner code is never sent to the AI with a name or email;
   - data is stored in India.
 - **Licensing.** No third-party course content is copied. Skill names and descriptions are our own, and external tutorials appear only as links.
-- **Schedule.** 21 of the 23 MVP endpoints were live by Review 3 (section 4.5); exercise generation, the frontend, deployment and the pilot are planned up to 10 November 2026.
+- **Schedule.** All 23 MVP endpoints were live by Review 3 (section 4.5); the frontend, deployment, the first live AI runs (once billing is active on 7 November) and the pilot are planned up to 10 November 2026.
 
 ## 2.2 Analysis Methodology
 
@@ -270,12 +272,13 @@ One design decision is a direct result of this study. The first design kept one 
 11. Study sessions and the progress view.
 12. Admin analytics.
 13. LLM adapter and hints.
+14. Exercise generation.
 
-Every increment ended with automated tests and a real end-to-end run before the next one began. Larger designs (the placement test, hints) were also reviewed by adversarial checks that tried to break them, and the holes they found were fixed before the code was committed (Table 9).
+Every increment ended with automated tests and a real end-to-end run before the next one began. Larger designs (the placement test, hints, generation) were also reviewed by adversarial checks that tried to break them, and the holes they found were fixed before the code was committed (Table 9).
 
 **Analysis tools used:**
 - **Requirements:** the SRS from Phase 1, numbered as FR-Mx-yy and NFR-xx.
-- **Decisions:** each one recorded as an Architecture Decision Record (ADR-0001 to ADR-0015), with the options compared and the reason for the choice. For example, ADR-0003 compares Judge0, Piston and E2B on compiler version, memory-limit support, network isolation and cost.
+- **Decisions:** each one recorded as an Architecture Decision Record (ADR-0001 to ADR-0016), with the options compared and the reason for the choice. For example, ADR-0003 compares Judge0, Piston and E2B on compiler version, memory-limit support, network isolation and cost.
 - **Measurement before optimisation:** timings were measured step by step before anything was changed.
 
 **Pilot baseline.** The planned "Phase 0" (running the whole loop on paper with a learner before coding) was **not carried out**. It was replaced by a measured baseline of one anonymised pilot learner (Learner A: reading 10/11, writing 0/4), which confirmed the central design choice of separate reading and writing scores. A pilot with real learners on the finished system is planned before the final report.
@@ -295,11 +298,12 @@ Every increment ended with automated tests and a real end-to-end run before the 
 | J. Template bank, recommender, placement test | G | 17–18 Oct | Done |
 | L. Sessions, progress, analytics | J | 19 Oct | Done |
 | I1. LLM adapter and hints | G | 19 Oct | Done (live calls wait for billing) |
+| I2. Exercise generation | I1 | 19 Oct | Done (live runs wait for billing) |
 | M. Gemini billing activation | – | 7 Nov | Planned (₹2,500 of the ₹3,000 prepayment left) |
-| I2. Exercise generation; frozen hints | I1, M | 7–8 Nov | Planned |
-| K. Deployment, pilot, final report | H, I2, L | 5–10 Nov | Planned |
+| I3. First live AI runs: frozen hints, generated exercises for skills 6–20 | I2, M | 7–8 Nov | Planned |
+| K. Deployment, pilot, final report | H, I3, L | 5–10 Nov | Planned |
 
-**Critical path:** A → B → C → E → F → G → J → I1 → M → I2 → K. The sandbox and grading chain was the riskiest part, so it was built first. The billing activation (M) is now the one outside dependency on the path.
+**Critical path:** A → B → C → E → F → G → J → I1 → I2 → M → I3 → K. The sandbox and grading chain was the riskiest part, so it was built first. The billing activation (M) is now the one outside dependency on the path.
 
 ```mermaid
 gantt
@@ -314,9 +318,9 @@ gantt
   Sandbox, judge, submissions, mastery :done, e, 2026-10-15, 2026-10-16
   Exercises, attempts, fade            :done, g, 2026-10-16, 1d
   Templates, recommender, placement    :done, j, 2026-10-17, 2026-10-18
-  Sessions, progress, analytics, hints :done, l, 2026-10-19, 1d
+  Sessions, analytics, hints, generation :done, l, 2026-10-19, 1d
   Frontend screens                     :active, h, 2026-10-16, 2026-11-05
-  Billing active, generation           :i, 2026-11-07, 2026-11-08
+  Billing active, first live AI runs   :i, 2026-11-07, 2026-11-08
   section Delivery
   Review 3 draft report                :milestone, 2026-10-23, 0d
   Deployment, pilot, final report      :k, 2026-11-05, 2026-11-10
@@ -1125,6 +1129,7 @@ apps/api/src/
 - `placement.ts`: the placement walk and estimates (Table 11, Figure 15).
 - `session-clock.ts`: idle pause after 15 minutes, end after 24 hours paused, study time.
 - `solution-filter.ts`: blocks hints that resemble the solution (Table 12).
+- `exercise-draft.ts`: what the model must write for a new exercise, the prompt, and the conversion into the hand-written bank's format (Table 13).
 
 **Table 5: Verdict rules.** These are checked in this order for each test; the first failing test decides.
 
@@ -1182,6 +1187,18 @@ About five good solves (rungs 2 → 5) take a new skill from 0 to 0.72, just pas
 | 4 Worked example | A different, smaller problem using the same technique | Same |
 | 5 Answer | The reference solution, or the program's output for rung 1 | Always frozen; logged as a bottom-out; the attempt earns no credit |
 
+**Table 13: Exercise generation: how a job runs (ADR-0016).** Started by an admin or author, or queued automatically by the recommender when a learner's best next skill has no exercise.
+
+| Step | Rule |
+|---|---|
+| Queue | One active job per skill and rung; a second request gets the same job. Run one at a time in the background |
+| Tries | Up to 3: Gemini 3.8 Flash, Flash, then Gemini 3.1 Pro. Each retry is told why the last draft was rejected |
+| Draft | JSON checked against a schema: title, prompt, function signature, the call each test makes, starter, reference, 3–6 test cases, and 3 wrong solutions (rung 1: a program and its claimed output) |
+| Prompt | The skill, the only other skills it may use (its prerequisites), the rung's rule, the frozen harness, an example from the hand-written bank, and the titles to avoid |
+| Proof | In the real sandbox: the reference passes every test, the starter compiles but fails one, and each wrong solution compiles but fails one. A rung-1 program must print exactly the output it claims |
+| Store | Only proven content is stored, ready to serve; its frozen hints follow |
+| Failure | Every failed try is logged with its stage. After 3 tries, or when this month's ₹300 is spent, the job falls back to the hand-written exercise for that skill and rung |
+
 A live hint is blocked if it holds 25 % or more of the code only the solution has (5-token fingerprints, not counting the starter or the learner's own code), shows a code block longer than 6 lines, or gives away a rung-1 output.
 
 **Figure 12: Deployment**, as decided for the MVP (ADR-0010)
@@ -1222,7 +1239,8 @@ Pure functions are tested with constructed inputs:
 - **recommender:** candidates, review urgency, rung bands clamped to the fade stage, and the journey from rung 1 to rung 5;
 - **placement:** every one of the **711 knowledge states** the 20-skill graph allows, answered with "I don't know" and with wrong guesses, is placed exactly, in at most 20 reading and 7 code questions; slips, missing items and cleared skills;
 - **session clock:** the idle pause, the 24-hour end, and study time that never counts idle gaps;
-- **leak filter:** prose and fragments pass; the solution, whole or in its key lines, fenced or not, is blocked; the learner's own code is not counted; a rung-1 output is never given away.
+- **leak filter:** prose and fragments pass; the solution, whole or in its key lines, fenced or not, is blocked; the learner's own code is not counted; a rung-1 output is never given away;
+- **exercise drafts:** the schema's rules (the test call must take the test's arguments; exactly 3 wrong solutions), the conversion into the bank's format, and what the prompt contains.
 
 ### 4.1.2 Module Testing
 **Database-rule tests**, one per schema group, try to break each constraint on purpose and expect the database to refuse. Examples: a duplicate email in different letter case, a hint level above the ceiling, a second active attempt, a second open session, a duplicate idempotency key, evidence with no source.
@@ -1237,7 +1255,8 @@ HTTP-level tests call the real Express app with real requests:
 - **placement test:** no answer key in any response, only the current question accepted, replays, code tasks queued once, the 202 grading wait, seeding, fast-track to the last stage, retakes, and a cheat attempt with a borrowed idempotency key;
 - **sessions and progress:** steps from the recommender, pause/resume at the same step, idle and timeout, statuses that match the recommender's unlock rule;
 - **analytics:** admin only, counts only, never a learner's email;
-- **hints:** live hint, a leaky reply replaced by the frozen hint, a failed call, the fade ceiling, the answer at level 5, the daily and monthly caps.
+- **hints:** live hint, a leaky reply replaced by the frozen hint, a failed call, the fade ceiling, the answer at level 5, the daily and monthly caps;
+- **exercise generation:** a proven draft stored ready to serve; a retry after a bad reply; tests a wrong answer passes, rejected three times, ending on the Pro model and the hand-written fallback; a rung-1 program's claimed output checked; the budget stop; admin-only endpoints; automatic queueing by the recommender.
 
 The sandbox and Gemini are replaced by **fake providers** in these tests: same interfaces, fixed results. That makes them fast, free and repeatable.
 
@@ -1245,7 +1264,7 @@ The sandbox and Gemini are replaced by **fake providers** in these tests: same i
 1. **Sandbox smoke test** (`pnpm sandbox:smoke`): six real C++ programs run on the real E2B service, and each must produce its intended verdict (AC, WA, CE, RE, TLE, MLE).
 2. **Content verification** (`pnpm exercises:verify`): every seeded exercise runs in the real sandbox; the reference must pass and the starter must fail. **66 of 66 verified** (26 practice exercises, 40 placement items).
 3. **End-to-end learner loop** on a running server: register → log in → open exercise → submit → poll → read mastery → reopen the exercise.
-4. **End-to-end placement test** on real E2B, then the first recommendation and the fade stages; **sessions** (start, pause, resume, end); **progress**; **hints** (the whole ladder); **analytics** with a promoted admin.
+4. **End-to-end placement test** on real E2B, then the first recommendation and the fade stages; **sessions** (start, pause, resume, end); **progress**; **hints** (the whole ladder); **analytics** with a promoted admin; **generation** refused correctly while billing is off.
 5. **Manual API tests** with curl, for authentication and consent, by a team member.
 
 ### 4.1.5 White-Box and Black-Box Testing
@@ -1263,7 +1282,7 @@ Learner acceptance testing is planned for the pilot before the final report.
 
 ## 4.2 Test Data and Test Cases
 
-**Table 8: Automated test suites (155 tests in 31 files, all passing on 19 Oct 2026)**
+**Table 8: Automated test suites (171 tests in 35 files, all passing on 19 Oct 2026)**
 
 | Level | Suite | Tests | What it proves |
 |---|---|---|---|
@@ -1275,18 +1294,28 @@ Learner acceptance testing is planned for the pilot before the final report.
 | Unit | session clock | 5 | Idle pause, timeout end, study time |
 | Unit | leak filter | 5 | Solution-like hints blocked, learner's own code ignored |
 | Unit | exercise banks | 6 | Practice and placement banks complete and well-formed |
+| Unit | exercise drafts | 5 | Draft rules, conversion to the bank's format, prompt contents |
 | Module | 9 schema suites | 16 | Every key constraint refuses bad data |
 | Integration | auth + consent | 14 | Login flows, token theft, throttling, CSRF; DPDP consent and under-18 hold |
 | Integration | submissions | 10 | 202 + polling, idempotency tied to its attempt, hidden tests private, CE/SE rules |
-| Integration | exercises API + verification | 10 | No secrets or rung-1 answers in responses; verification marks bad content rejected |
+| Integration | exercises API + verification | 11 | No secrets or rung-1 answers in responses; bad content rejected; wrong solutions must fail |
 | Integration | mastery API, scaffolding fade | 7 | Reading and writing apart; decay on read; stage advance |
 | Integration | recommendations API | 4 | First step, rung up, skip skills without content, course done |
 | Integration | placement test API | 18 | No answer key, current question only, background grading, seeding, retakes, cheat refused |
 | Integration | sessions, progress | 8 | Steps advance, pause/resume, idle, statuses |
 | Integration | analytics | 5 | Admin only, counts only |
 | Integration | hints, budget, frozen hints | 10 | Live, blocked, failed, ceiling, answer, daily and monthly caps |
+| Integration | exercise generation, budget, API | 10 | Proven drafts stored; retries; weak tests rejected; Pro then fallback; budget stop; admin only; automatic queueing |
 | System | sandbox smoke (real E2B) | 6 | All six execution verdicts on real infrastructure |
 | System | content verification (real E2B) | 66 | Every seeded exercise: reference passes, starter fails |
+
+**Sample test case: a generated exercise whose tests can't catch a mistake is rejected**
+
+| Field | Value |
+|---|---|
+| Input | The (fake) model writes a correct exercise, but one of its 3 "wrong" solutions is actually correct, so it passes every test; it does this on all 3 tries |
+| Expected | Each try is rejected at stage `tests_too_weak`; the third uses the Pro model; the job ends `fell_back`, pointing at the hand-written exercise of the same skill and rung; nothing is stored |
+| Result | Pass |
 
 **Sample test case: a hint never gives the solution away**
 
@@ -1315,7 +1344,7 @@ Learner acceptance testing is planned for the pilot before the final report.
 
 ## 4.3 Test Reports and Debugging
 
-**Results:** 155 of 155 automated tests pass, the 6 of 6 real-sandbox verdicts are correct, 66 of 66 seeded exercises verify on the real sandbox, and the end-to-end runs pass (A-8, A-10).
+**Results:** 171 of 171 automated tests pass, the 6 of 6 real-sandbox verdicts are correct, 66 of 66 seeded exercises verify on the real sandbox, and the end-to-end runs pass (A-8, A-10).
 
 Debugging followed one rule: **measure, find the cause, fix the cause, add a test.** These are the defects found:
 
@@ -1348,7 +1377,7 @@ cd apps/api && cp .env.example .env   # fill DATABASE_URL, JWT_SECRET, WEB_ORIGI
 pnpm db:migrate && pnpm db:seed       # 13 migrations; C++ course, 20 skills, 26 practice exercises, 40 placement items
 pnpm exercises:verify                 # runs every new exercise in the real sandbox before it can be served
 pnpm dev                              # API + queue worker on http://localhost:3001
-pnpm test                             # 155 automated tests
+pnpm test                             # 171 automated tests
 pnpm sandbox:smoke                    # real-sandbox check of all six verdicts
 pnpm user:admin <email>               # make the first admin (for analytics)
 pnpm hints:generate                   # once billing is active (GEMINI_PAID=true): freeze hints 1–4
@@ -1366,18 +1395,18 @@ pnpm hints:generate                   # once billing is active (GEMINI_PAID=true
 | M3 Placement test | Adaptive reading walk with a slip check, frontier code tasks, seeding, retakes; 40 verified items | 3 |
 | M4 Mastery | Formula v1 inside the grading transaction; read views with decay; raise-only seeding | 2 |
 | M5 Recommender | Next skill, rung and exercise by fixed rules, saved with reasons | 1 |
-| M6 Exercises | Learner view; 26 verified practice exercises (first 5 skills × 5 rungs, plus one) | 1 |
+| M6 Exercises | Learner view; 26 verified practice exercises (first 5 skills × 5 rungs, plus one); generation proven in the sandbox, by admins and automatically | 3 |
 | M7 Execution | Fresh offline sandbox per submission, judge, queue, retries, polling | 2 |
 | M8 Hints | Five-level ladder, live tutor with leak filter and caps, frozen fallback | 1 |
 | M9 Sessions | Start or resume, pause, resume, end; steps from the recommender; idle rules | 3 |
 | M11 Progress | Every skill, reading and writing apart, fade stage, status | 1 |
 | M12 Fade | Stage start, advance on solve, fast-track from the placement test, state endpoint | 1 |
 | M13 Analytics | Admin overview: learners, code runs, outcomes, content coverage, hardest exercises, hints, AI spend | 1 |
-| **Total** | | **21 of 23 MVP endpoints** |
+| **Total** | | **all 23 MVP endpoints** |
 
-**Real runs at this stage:** a placement test on real E2B placed a learner who knew 3 skills with 6 questions (5 reading, 1 code), graded the code in about 6 seconds and fast-tracked those 3 skills to the last fade stage; the first recommendation was then the next new skill. Sessions, progress, hints and analytics were each run against the development database (A-10).
+**Real runs at this stage:** a placement test on real E2B placed a learner who knew 3 skills with 6 questions (5 reading, 1 code), graded the code in about 6 seconds and fast-tracked those 3 skills to the last fade stage; the first recommendation was then the next new skill. Sessions, progress, hints, analytics and generation were each run against the development database (A-10).
 
-**Planned for the MVP (10 November):** Gemini billing activation (7 November), then live hints, frozen hints and exercise generation with sandbox verification (M6, the last 2 endpoints, which also gives skills 6–20 their practice exercises); frontend screens (in progress); deployment to the cloud server; and a pilot with real learners.
+**Planned for the MVP (10 November):** Gemini billing activation (7 November), then the first live AI runs: live hints, the frozen hints, and generated practice exercises for skills 6–20; frontend screens (in progress); deployment to the cloud server; and a pilot with real learners.
 
 ## 4.6 Users Training
 
@@ -1409,7 +1438,7 @@ The project set out to measure what a learner can *write*, not what they have wa
 
 In a real run, a correct submission was judged **AC (4 of 4 tests) in about 6 seconds**, and the learner's writing mastery for that skill moved from **0 to 0.24**, exactly as the formula predicts.
 
-Around that core, the rest of the learner's journey now works too: an adaptive **placement test** that asks an expert 26 questions instead of 40 and fast-tracks what they prove, a **recommender** that chooses the next skill, rung and exercise by explainable rules, **study sessions** that resume at the same step, an honest **progress** view, an **admin overview**, and a **hint ladder** whose live tutor can never hand over the solution. 21 of the 23 MVP endpoints are live, backed by 155 automated tests, 66 exercises verified in the real sandbox, and a written decision record (ADR-0001 to ADR-0015) for every major choice.
+Around that core, the rest of the learner's journey now works too: an adaptive **placement test** that asks an expert 26 questions instead of 40 and fast-tracks what they prove, a **recommender** that chooses the next skill, rung and exercise by explainable rules, **study sessions** that resume at the same step, an honest **progress** view, an **admin overview**, a **hint ladder** whose live tutor can never hand over the solution, and **exercise generation** that stores nothing the sandbox hasn't proven. All 23 MVP endpoints are live, backed by 171 automated tests, 66 exercises verified in the real sandbox, and a written decision record (ADR-0001 to ADR-0016) for every major choice.
 
 ## 5.2 System Specifications
 
@@ -1425,8 +1454,8 @@ Around that core, the rest of the learner's journey now works too: an adaptive *
 ## 5.3 Limitations of the System
 
 - **No web interface yet.** The frontend is in progress; this draft's sample outputs are API responses, and screen snapshots will be added in the final report.
-- **Practice content covers 5 of 20 skills.** The 26 practice exercises cover the first five skills (plus one); skills 6–20 get theirs from exercise generation. The placement test covers all 20.
-- **Live AI waits for billing.** Live hints are built and tested with a fake model, but stay off until the ₹3,000 prepayment is complete and activates the paid tier (the remaining ₹2,500 on 7 November); until then learners get frozen hints or a general nudge. Lessons and exercise generation are not built yet.
+- **Practice content covers 5 of 20 skills.** The 26 practice exercises cover the first five skills (plus one); skills 6–20 get theirs from exercise generation, which is built and tested but first runs once billing is active. The placement test covers all 20.
+- **Live AI waits for billing.** Live hints and exercise generation are built and tested with a fake model, but stay off until the ₹3,000 prepayment is complete and activates the paid tier (the remaining ₹2,500 on 7 November); until then learners get frozen hints or a general nudge. Lessons are not built yet.
 - **The judge sees only output.** A determined learner can sometimes avoid a prerequisite (for example by rewriting a struct to use a vector); the tasks are designed so the natural solution uses it.
 - **Placement length.** An expert answers 26 questions (about 28 minutes); a placement seed unlocks the next skills for about 4 days (syntactic skills) before one Build per skill confirms them.
 - **Latency:** about 6 s per submission, mostly network round trips to the sandbox provider, whose servers are outside India.
@@ -1439,7 +1468,7 @@ Around that core, the rest of the learner's journey now works too: an adaptive *
 - More languages (Java, Python) on the same language-independent engine, and more courses (DSA, frontend, backend).
 - The parent-approval flow for under-18 learners, with identity verification as the DPDP Rules require.
 - Calibration of the mastery model from real data (held-out exercises), and spaced-revision scheduling (M10).
-- Exercise generation for every skill, and frozen lessons with a diagram and a worked example per skill.
+- Frozen lessons with a diagram and a worked example per skill, and the brute-force/time-limit check for DSA-sized generated exercises.
 - A mobile app (the API already supports Bearer tokens), and colleges as institutional customers.
 - Spoken explanation assessment, and a portable learner profile.
 
@@ -1455,7 +1484,7 @@ Around that core, the rest of the learner's journey now works too: an adaptive *
 8. Bastani, H., et al. (2025). Generative AI Without Guardrails Can Harm Learning. *Proceedings of the National Academy of Sciences*.
 9. Government of India (2023). *The Digital Personal Data Protection Act, 2023*; and (2025) *Digital Personal Data Protection Rules, 2025*.
 10. Technical documentation: Node.js, Express 5, PostgreSQL 16, Drizzle ORM, BullMQ, E2B, Google Gemini API, Next.js (official documentation, accessed October 2026).
-11. Project documents: Phase 1 synopsis, problem analysis, literature survey and SRS (24 Sep 2026); Phase 2 system design (15 Oct 2026, updated 19 Oct); ADR-0001 to ADR-0015; frontend API guide.
+11. Project documents: Phase 1 synopsis, problem analysis, literature survey and SRS (24 Sep 2026); Phase 2 system design (15 Oct 2026, updated 19 Oct); ADR-0001 to ADR-0016; frontend API guide.
 
 ---
 
@@ -1503,6 +1532,10 @@ flowchart TD
   APP --> HIN["M8 hint routes"] --> HS["M8 hints service"] --> LLM["LLM provider (Gemini)"]
   HS --> LF["Leak filter (pure)"]
   APP --> ANA["M13 analytics routes (admin)"]
+  EXR --> GEN["M6 generation (admin)"] --> GQ["Generation queue"] --> GW["Worker: runGeneration"]
+  GW --> LLM
+  GW --> SP
+  RS --> GEN
   EXR --> EXS["M6 exercises service"] --> SK["M2 skills service"]
   EXR --> ATS["M7 attempts service"] --> EN["M3 enrollments service"]
   ATS --> FS["M12 scaffolding service"]
@@ -1547,6 +1580,18 @@ flowchart TD
 | No | Yes | No (error) | – | Frozen hint (or general nudge) |
 | No | No | – | – | Frozen hint (or general nudge), no call made |
 
+**Is a generated draft stored?**
+
+| Valid JSON matching the schema? | Reference passes every test? | Starter compiles and fails? | Every wrong solution compiles and fails? | Result |
+|---|---|---|---|---|
+| No | – | – | – | Logged `schema`; next try |
+| Yes | No | – | – | Logged `compile` or `reference`; next try |
+| Yes | Yes | No | – | Logged `compile` or `tests_too_weak`; next try |
+| Yes | Yes | Yes | No | Logged `compile` or `tests_too_weak`; next try |
+| Yes | Yes | Yes | Yes | **Stored, ready to serve**; frozen hints follow |
+
+After the third failed try (or when the month's budget is spent), the job falls back to the hand-written exercise.
+
 ## A-7 Data Dictionary
 
 **Table 10: Key tables** (all 42 are described in the Phase 2 design document)
@@ -1566,11 +1611,12 @@ flowchart TD
 | diagnostic_items / attempts / responses / results | item (skill, reading or writing, verified exercise); attempt number and status; each answer; one estimate per skill | one test in progress per enrollment; one answer per item |
 | recommendations | skill, rung, reason, score breakdown, top-5 snapshot, algorithm version, exercise served | rung 1–5 |
 | learning_sessions / session_steps | status, last activity, study time; ordered steps from recommendations | one open session per learner; one active step per session |
+| generation_jobs / generation_failures | skill, rung, variant, trigger (admin or automatic), status, tries, model, the exercise made or the fallback; each failed try with its stage and reason | one active job per skill and rung; tries 0–3 |
 | hint_events / llm_calls | each hint request (delivered, blocked, refused, bottomed out) with its text or stored hint; each Gemini call with tokens and estimated cost | hint level 1–5 |
 
 ## A-8 Test Reports
 
-Full test run of 19 October 2026: **31 test files, 155 tests, 155 passed.**
+Full test run of 19 October 2026: **35 test files, 171 tests, 171 passed.**
 
 - ✓ analytics-api.test.ts > GET /analytics/overview > is for admins only
 - ✓ analytics-api.test.ts > GET /analytics/overview > counts new learners, opt-ins, code runs, sessions and clears in the window
@@ -1616,6 +1662,11 @@ Full test run of 19 October 2026: **31 test files, 155 tests, 155 passed.**
 - ✓ diagnostic.test.ts > diagnostic schema > allows only one diagnostic in progress per enrollment
 - ✓ enrollment-fade.test.ts > enrollment and fade schema > rejects an enrollment in a language the course doesn't offer
 - ✓ enrollment-fade.test.ts > enrollment and fade schema > rejects a skill sitting on a fade stage its schedule doesn't have
+- ✓ exercise-draft.test.ts > exercise drafts > become templates the bank's harness can run, with the standard closing instruction
+- ✓ exercise-draft.test.ts > exercise drafts > turn a predict draft into a rung-1 template whose program is its own reference
+- ✓ exercise-draft.test.ts > exercise drafts > refuse a call statement that doesn't take the test's arguments
+- ✓ exercise-draft.test.ts > exercise drafts > prompt with the skill, what it may use, the existing titles and the last failure
+- ✓ exercise-draft.test.ts > exercise drafts > give Gemini a schema without the dialect tag
 - ✓ exercise-templates.test.ts > cpp-basics template bank > covers rungs 1–5 for each of the first five skills, once each
 - ✓ exercise-templates.test.ts > cpp-basics template bank > only uses skills that exist in the course
 - ✓ exercise-templates.test.ts > cpp-basics template bank > gives rung 1 a program to read and no harness; rungs 2–5 a function to write
@@ -1626,6 +1677,7 @@ Full test run of 19 October 2026: **31 test files, 155 tests, 155 passed.**
 - ✓ exercise-verification.test.ts > exercise verification > rejects an exercise whose reference doesn't pass
 - ✓ exercise-verification.test.ts > exercise verification > rejects an exercise whose tests can't tell the starter from a solution
 - ✓ exercise-verification.test.ts > exercise verification > runs only the program itself for rung 1 (there is no starter to try)
+- ✓ exercise-verification.test.ts > exercise verification > checks content before it is stored: a starter that won't compile, and wrong solutions that slip through
 - ✓ exercises-api.test.ts > GET /exercises/:id > shows the exercise and its sample test, never secrets or hidden tests
 - ✓ exercises-api.test.ts > GET /exercises/:id > starts one attempt, enrolling the learner and starting the skill at fade stage 1
 - ✓ exercises-api.test.ts > GET /exercises/:id > returns a solved attempt as solved instead of starting a new one
@@ -1636,6 +1688,16 @@ Full test run of 19 October 2026: **31 test files, 155 tests, 155 passed.**
 - ✓ exercises.test.ts > exercises schema > rejects a rung outside 1 to 5
 - ✓ freeze-hints.test.ts > frozen hints > stores levels 1–4 once, and leaves an exercise that already has hints alone
 - ✓ freeze-hints.test.ts > frozen hints > asks again when a hint gives the solution away, and skips the exercise if it happens twice
+- ✓ generate-exercise.test.ts > exercise generation > stores a draft the sandbox proves, verified and ready to serve
+- ✓ generate-exercise.test.ts > exercise generation > tries again after a bad reply, telling the model what was wrong
+- ✓ generate-exercise.test.ts > exercise generation > rejects tests a wrong solution passes, tries Pro last, then falls back to the hand-written exercise
+- ✓ generate-exercise.test.ts > exercise generation > checks a predict-the-output draft's claimed output by running the program
+- ✓ generate-exercise.test.ts > exercise generation > does nothing for a job that has already finished
+- ✓ generation-api.test.ts > POST /exercises/generate > queues one job per skill and rung for an author, and returns the same job while it runs
+- ✓ generation-api.test.ts > POST /exercises/generate > is for admins and authors only, and refuses while billing is off
+- ✓ generation-api.test.ts > POST /exercises/generate > 404s for an unknown skill or job
+- ✓ generation-api.test.ts > automatic generation > queues an exercise when the learner's next skill has none, once
+- ✓ generation-budget.test.ts > generation budget > stops before calling the model once ₹300 is spent this month, and falls back
 - ✓ hints-api.test.ts > POST /exercises/:id/hints > gives the live tutor's hint for the next level only, and moves the level
 - ✓ hints-api.test.ts > POST /exercises/:id/hints > blocks a reply that gives the solution away and serves the frozen hint instead
 - ✓ hints-api.test.ts > POST /exercises/:id/hints > falls back to a general nudge when the tutor fails and nothing is stored
@@ -1843,6 +1905,11 @@ Admin overview, last 30 days (19 Oct 2026, development database)
 learners: total 9, joined 9, ran code 4, waiting for a parent 1, AI-training opt-ins 1
 runs:     5 submissions (AC 4, WA 1), median run 50 ms, sandbox error rate 0
 content:  14 of 20 skills have no practice exercises yet; Your first program has one per rung
+```
+
+```
+Exercise generation with live AI switched off (19 Oct 2026), as an admin
+POST /exercises/generate { skill: "vectors", rung: 2 } → 503 GENERATION_UNAVAILABLE
 ```
 
 Screen snapshots of the web interface will be added here in the final report.
