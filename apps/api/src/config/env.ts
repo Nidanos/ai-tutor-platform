@@ -13,5 +13,8 @@ export const env = z
     WEB_ORIGIN: z.url(), // the only origin allowed to send cookie-authenticated writes
     REDIS_URL: z.url().default("redis://localhost:6379"), // the submissions queue
     E2B_API_KEY: z.string().optional(), // only needed to run learner code (ADR-0003)
+    GEMINI_API_KEY: z.string().optional(), // live hints and generation; without it hints fall back to frozen ones
+    // Set "true" only once billing is active: free-tier prompts may be used by Google, and prompts carry learner code.
+    GEMINI_PAID: z.enum(["true", "false"]).default("false"),
   })
   .parse(process.env);
