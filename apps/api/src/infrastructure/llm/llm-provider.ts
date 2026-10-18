@@ -8,6 +8,7 @@ export type LlmRequest = {
   system: string;
   prompt: string;
   maxOutputTokens: number;
+  thinking?: "minimal" | "low"; // more thinking costs more; content that is kept gets "low" (default "minimal")
   jsonSchema?: object; // set: the reply is JSON matching this schema
   ref?: { type: string; id: string }; // what the call was for, kept in the cost log
 };

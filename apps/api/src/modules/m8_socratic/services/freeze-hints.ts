@@ -32,7 +32,8 @@ export async function freezeHints(exerciseId: string, llm: LlmProvider): Promise
 
   let reason = "";
   for (let i = 0; i < TRIES; i++) {
-    const { text } = await llm.generate({ purpose: "hint", model: MODEL, promptVersion: HINT_PROMPT_VERSION, system: SYSTEM, prompt, maxOutputTokens: 1200, jsonSchema, ref: { type: "exercise", id: exerciseId } });
+    // Kept content: counted against the generation budget, not the live-hint one (ADR-0016).
+    const { text } = await llm.generate({ purpose: "exercise_generation", model: MODEL, promptVersion: HINT_PROMPT_VERSION, system: SYSTEM, prompt, maxOutputTokens: 1200, thinking: "low", jsonSchema, ref: { type: "exercise_hints", id: exerciseId } });
     const parsed = schema.safeParse(JSON.parse(text));
     if (!parsed.success) {
       reason = "the reply didn't match the schema";

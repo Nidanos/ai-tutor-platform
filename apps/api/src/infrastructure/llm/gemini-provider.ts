@@ -9,7 +9,11 @@ const USD_TO_INR = 88; // update when the rupee moves
 const USD_PER_MILLION: Record<string, { input: number; output: number }> = {
   "gemini-3.5-flash-lite": { input: 0.3, output: 2.5 },
   "gemini-3.8-flash": { input: 0.75, output: 3.75 },
+  "gemini-3.1-pro-preview": { input: 2, output: 12 },
 };
+
+// Calls are allowed only with a key on a paid project (privacy policy §5).
+export const geminiReady = () => Boolean(env.GEMINI_API_KEY) && env.GEMINI_PAID === "true";
 
 type GeminiResponse = {
   candidates?: { content?: { parts?: { text?: string }[] }; finishReason?: string }[];
@@ -39,7 +43,7 @@ export const geminiProvider: LlmProvider = {
         contents: [{ role: "user", parts: [{ text: req.prompt }] }],
         generationConfig: {
           maxOutputTokens: req.maxOutputTokens,
-          thinkingConfig: { thinkingLevel: "minimal" },
+          thinkingConfig: { thinkingLevel: req.thinking ?? "minimal" },
           ...(req.jsonSchema && { responseMimeType: "application/json", responseJsonSchema: req.jsonSchema }),
         },
       }),

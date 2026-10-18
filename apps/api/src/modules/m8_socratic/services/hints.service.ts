@@ -13,7 +13,7 @@ import { checkHint } from "./solution-filter.js";
 const MODEL = "gemini-3.5-flash-lite"; // ADR-0015
 const MAX_OUTPUT_TOKENS = 400;
 const LIVE_PER_DAY = 20; // per learner (ADR-0010)
-export const MONTHLY_BUDGET_INR = 500; // all learners together (ADR-0010)
+export const MONTHLY_BUDGET_INR = 500; // live hints, all learners together (ADR-0010)
 const COMPILER_CHARS = 800;
 
 type Task = Awaited<ReturnType<typeof getHintContext>>;
@@ -36,7 +36,7 @@ function describe(result: LastResult) {
 // a cap was hit, Gemini failed, or the filter blocked the reply (logged, FR-M8-04).
 async function liveHint(llm: LlmProvider, userId: string, attempt: { id: string }, task: Task, level: number, learnerCode?: string) {
   if ((await repo.liveCallsSince(userId, startOfIstDay())) >= LIVE_PER_DAY) return undefined;
-  if ((await spentThisMonthInr()) >= MONTHLY_BUDGET_INR) return undefined;
+  if ((await spentThisMonthInr("hint")) >= MONTHLY_BUDGET_INR) return undefined;
   try {
     const prompt = hintPrompt(task, level, learnerCode, describe(await lastResult(userId, attempt.id)));
     const { text, callId } = await llm.generate({
