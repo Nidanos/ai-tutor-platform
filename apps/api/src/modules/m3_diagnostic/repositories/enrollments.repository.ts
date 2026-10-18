@@ -11,3 +11,11 @@ export async function ensureEnrollment(userId: string, courseId: string, languag
     .where(and(eq(enrollments.userId, userId), eq(enrollments.courseId, courseId), eq(enrollments.languageCode, languageCode)));
   return enrollment;
 }
+
+export const findEnrollment = async (id: string) =>
+  (
+    await db
+      .select({ id: enrollments.id, courseId: enrollments.courseId, languageCode: enrollments.languageCode, goalSkillId: enrollments.goalSkillId })
+      .from(enrollments)
+      .where(eq(enrollments.id, id))
+  )[0];

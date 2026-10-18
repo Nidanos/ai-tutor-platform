@@ -7,8 +7,9 @@ export const courseRows = [
   { slug: "cpp-basics", title: "C++ Basics" },
 ];
 
-// Every seeded course is offered in C++ first (ADR-0002).
+// Every seeded course is offered in C++ first (ADR-0002); C++ basics is where learners start.
 export const DEFAULT_LANGUAGE = "cpp";
+export const DEFAULT_COURSE = "cpp-basics";
 
 // A skill moves on when its advanceRung is solved with at most 1 hint; solving rung 5 clears it.
 // Hint ceilings (5, 4, 3, 2) are starting values, tunable here.

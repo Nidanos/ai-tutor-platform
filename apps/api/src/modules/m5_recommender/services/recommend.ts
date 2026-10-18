@@ -23,7 +23,13 @@ export type Candidate = {
   breakdown: Record<keyof typeof WEIGHTS, number>;
 };
 
-const EMPTY: SkillState = { reading: 0, writing: 0, cleared: false, attempts: 0 };
+export const EMPTY: SkillState = { reading: 0, writing: 0, cleared: false, attempts: 0 };
+
+// ADR-0011: a skill opens once each prerequisite is cleared, or still at its required writing level.
+export const isUnlocked = (skill: SkillNode, stateOf: (id: string) => SkillState) =>
+  skill.prerequisites.every((p) => stateOf(p.id).cleared || stateOf(p.id).writing >= p.minMastery);
+
+export const isReviewDue = (state: SkillState) => state.cleared && state.writing < REVIEW_BELOW;
 
 // FR-M5-05: the level comes from the writing score, but never below the fade stage's easiest rung.
 export function rungFor(state: SkillState, minRung = 1) {
@@ -35,14 +41,12 @@ export function rungFor(state: SkillState, minRung = 1) {
 // reviews, then new skills; ties go to the easier skill.
 export function rankCandidates(skills: SkillNode[], mastery: Map<string, SkillState>, goalSkillId: string | null): Candidate[] {
   const stateOf = (id: string) => mastery.get(id) ?? EMPTY;
-  const unlocked = (skill: SkillNode) =>
-    skill.prerequisites.every((p) => stateOf(p.id).cleared || stateOf(p.id).writing >= p.minMastery);
 
   return skills
     .flatMap((skill): Candidate[] => {
       const state = stateOf(skill.id);
-      const review = state.cleared && state.writing < REVIEW_BELOW;
-      if (!review && (state.cleared || !unlocked(skill))) return [];
+      const review = isReviewDue(state);
+      if (!review && (state.cleared || !isUnlocked(skill, stateOf))) return [];
       const breakdown = {
         inProgress: !state.cleared && state.attempts > 0 ? 1 : 0,
         urgency: review ? (REVIEW_BELOW - state.writing) / REVIEW_BELOW : 0,

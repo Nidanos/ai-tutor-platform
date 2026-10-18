@@ -1,11 +1,13 @@
 import { ensureEnrollment } from "../../m3_diagnostic/services/enrollments.service.js";
-import { getCourse, getSkillGraph } from "../../m2_skills/services/skills.service.js";
+import { getCourse, getSkill, getSkillGraph } from "../../m2_skills/services/skills.service.js";
 import { effectiveStates } from "../../m4_mastery/services/mastery-read.service.js";
 import { listServable } from "../../m6_exercises/services/exercises.service.js";
 import { attemptStatuses } from "../../m7_execution/services/attempts.service.js";
 import { minRungs } from "../../m12_scaffolding/services/scaffolding.service.js";
 import * as repo from "../repositories/recommendations.repository.js";
-import { ALGORITHM_VERSION, pickExercise, rankCandidates, rungFor } from "./recommend.js";
+import { ALGORITHM_VERSION, EMPTY, pickExercise, rankCandidates, rungFor } from "./recommend.js";
+
+type Enrollment = { id: string; courseId: string; languageCode: string; goalSkillId: string | null };
 
 const SNAPSHOT_SIZE = 5; // top candidates stored with each pick, to explain it later
 
@@ -15,8 +17,14 @@ const SNAPSHOT_SIZE = 5; // top candidates stored with each pick, to explain it 
 export async function nextStep(userId: string, courseSlug: string, languageCode: string) {
   const course = await getCourse(courseSlug, languageCode);
   const enrollment = await ensureEnrollment(userId, course.id, languageCode);
+  return recommendNext(userId, { ...enrollment, courseId: course.id, languageCode });
+}
+
+// For M9: the next step for an enrollment the caller already holds. Saved like every pick.
+export async function recommendNext(userId: string, enrollment: Enrollment) {
+  const { courseId, languageCode } = enrollment;
   const [graph, mastery, stages, attempts] = await Promise.all([
-    getSkillGraph(course.id, languageCode),
+    getSkillGraph(courseId, languageCode),
     effectiveStates(userId, languageCode),
     minRungs(userId, languageCode),
     attemptStatuses(userId),
@@ -28,7 +36,7 @@ export async function nextStep(userId: string, courseSlug: string, languageCode:
   const exercises = await listServable(candidates.map((c) => c.skill.id), languageCode);
   const choices = candidates.map((candidate) => {
     const minRung = stages.get(candidate.skill.id) ?? 1;
-    const rung = rungFor(mastery.get(candidate.skill.id) ?? { reading: 0, writing: 0, cleared: false, attempts: 0 }, minRung);
+    const rung = rungFor(mastery.get(candidate.skill.id) ?? EMPTY, minRung);
     const options = exercises
       .filter((e) => e.skillId === candidate.skill.id)
       .map((e) => ({ id: e.id, rung: e.rung, attempt: attempts.get(e.id) ?? ("none" as const) }));
@@ -56,4 +64,11 @@ export async function nextStep(userId: string, courseSlug: string, languageCode:
     reason,
     exerciseId: chosen.exercise?.id ?? null,
   };
+}
+
+// For M9: what a saved pick was, to show a session's current step.
+export async function getRecommendation(id: string) {
+  const rec = (await repo.findRecommendation(id))!;
+  const { slug, name } = await getSkill(rec.skillId);
+  return { ...rec, skill: { id: rec.skillId, slug, name } };
 }

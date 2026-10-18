@@ -1,15 +1,11 @@
 import type { RequestHandler } from "express";
 import { z } from "zod";
-import { DEFAULT_LANGUAGE } from "../../../infrastructure/database/seed/data.js";
+import { courseFields } from "../../../shared/http/course-fields.js";
 import { ok } from "../../../shared/http/envelope.js";
 import { answerText } from "../../m7_execution/schemas/submissions.schemas.js";
 import * as diagnostic from "../services/diagnostic.service.js";
 
-const startBody = z.object({
-  course: z.string().min(1).max(60).default("cpp-basics"),
-  language: z.string().min(1).max(20).default(DEFAULT_LANGUAGE),
-  retake: z.boolean().default(false),
-});
+const startBody = z.object({ ...courseFields, retake: z.boolean().default(false) });
 const params = z.object({ id: z.uuid() });
 // An answer is the predicted output or the code; "I don't know" / "Skip this task" sends dontKnow instead.
 const answerBody = z.union([
