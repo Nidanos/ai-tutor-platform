@@ -2,7 +2,8 @@ import { learnerStats } from "../../m1_auth/services/auth.service.js";
 import { getCourse, getSkillGraph, getSkills } from "../../m2_skills/services/skills.service.js";
 import { placementStats } from "../../m3_diagnostic/services/diagnostic.service.js";
 import { clearedSince, skillStats } from "../../m4_mastery/services/mastery-read.service.js";
-import { countServable, listTitles } from "../../m6_exercises/services/exercises.service.js";
+import { countServable, generationStats, listTitles } from "../../m6_exercises/services/exercises.service.js";
+import { GENERATION_BUDGET_INR } from "../../m6_exercises/services/generate-exercise.js";
 import { spentThisMonthInr } from "../../../infrastructure/llm/llm-log.js";
 import { hardestExercises } from "../../m7_execution/services/attempts.service.js";
 import { runStats } from "../../m7_execution/services/submissions.service.js";
@@ -21,7 +22,7 @@ export async function overview(days: number, courseSlug: string, languageCode: s
   const course = await getCourse(courseSlug, languageCode);
   const graph = await getSkillGraph(course.id, languageCode);
   const skillIds = graph.map((s) => s.id);
-  const [learners, placement, sessions, runs, hardest, outcomes, cleared, moves, content, hints, spent] = await Promise.all([
+  const [learners, placement, sessions, runs, hardest, outcomes, cleared, moves, content, hints, hintSpend, generation, generationSpend] = await Promise.all([
     learnerStats(since),
     placementStats(since),
     sessionStats(since),
@@ -32,10 +33,14 @@ export async function overview(days: number, courseSlug: string, languageCode: s
     stageMoves(since),
     countServable(skillIds),
     hintStats(since),
-    spentThisMonthInr(),
+    spentThisMonthInr("hint"),
+    generationStats(since),
+    spentThisMonthInr("exercise_generation"),
   ]);
   const titles = await listTitles(hardest.map((h) => h.exerciseId));
-  const skillOf = new Map((await getSkills([...skillIds, ...titles.map((t) => t.skillId)])).map((s) => [s.id, { slug: s.slug, name: s.name }]));
+  const otherSkills = [...titles.map((t) => t.skillId), ...generation.bySkill.map((g) => g.skillId)];
+  const skillOf = new Map((await getSkills([...skillIds, ...otherSkills])).map((s) => [s.id, { slug: s.slug, name: s.name }]));
+  const total = (key: "succeeded" | "fellBack" | "pending") => generation.bySkill.reduce((sum, g) => sum + g[key], 0);
   const outcomeOf = new Map(outcomes.map((o) => [o.skillId, o]));
   const se = runs.byVerdict.find((v) => v.verdict === "SE")?.n ?? 0;
 
@@ -63,7 +68,18 @@ export async function overview(days: number, courseSlug: string, languageCode: s
     },
     content: { skills: contentSkills, skillsWithoutExercises: contentSkills.filter((s) => s.total === 0).length },
     hints: { ...hints, generic: hints.delivered - hints.live - hints.frozen },
-    ai: { spentThisMonthInr: spent, monthlyBudgetInr: MONTHLY_BUDGET_INR }, // this calendar month (IST), not the window
+    generation: {
+      succeeded: total("succeeded"),
+      fellBack: total("fellBack"),
+      pending: total("pending"),
+      failuresByStage: Object.fromEntries(generation.failures.map((f) => [f.stage, f.n])),
+      bySkill: generation.bySkill.map(({ skillId, ...g }) => ({ skill: skillOf.get(skillId), ...g })),
+    },
+    // This calendar month (IST), not the window. Each purpose has its own cap (ADR-0016).
+    ai: {
+      spentThisMonthInr: { hints: hintSpend, generation: generationSpend },
+      monthlyBudgetInr: { hints: MONTHLY_BUDGET_INR, generation: GENERATION_BUDGET_INR },
+    },
     hardest: hardest.map((h) => {
       const t = titles.find((x) => x.id === h.exerciseId)!;
       return { exerciseId: h.exerciseId, title: t.title, skill: skillOf.get(t.skillId), rung: t.rung, attempts: h.attempts, solveRate: h.solved / h.attempts };

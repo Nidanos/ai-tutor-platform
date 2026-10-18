@@ -9,6 +9,8 @@ import {
   enrollments,
   exerciseAttempts,
   exercises,
+  generationFailures,
+  generationJobs,
   hintEvents,
   learningSessions,
   masteryRecords,
@@ -54,6 +56,11 @@ describe("GET /analytics/overview", () => {
     await db.insert(learningSessions).values({ userId: learner.id, enrollmentId: enrollment.id, activeMs: 10 * 60_000, status: "ended" });
     await db.insert(masteryRecords).values({ userId: learner.id, skillId: skill.id, languageCode: "cpp", decayLambda: 0.05, clearedAt: new Date() });
     await db.insert(hintEvents).values([{ attemptId: attempt.id, level: 1, kind: "delivered" }, { attemptId: attempt.id, level: 5, kind: "bottomed_out" }]);
+    const [gaveUp] = await db
+      .insert(generationJobs)
+      .values({ skillId: skill.id, languageCode: "cpp", rung: 2, variantSeed: 1000, trigger: "on_demand", status: "fell_back", model: "m", promptVersion: "p" })
+      .returning();
+    await db.insert(generationFailures).values({ generationJobId: gaveUp.id, tryNo: 1, stage: "schema" });
 
     const after = (await overviewFor(auth, inCourse)).data;
     expect(after.window.days).toBe(30);
@@ -66,7 +73,10 @@ describe("GET /analytics/overview", () => {
     expect(after.outcomes.skillsCleared - before.outcomes.skillsCleared).toBeGreaterThanOrEqual(1);
     expect(after.hints.delivered - before.hints.delivered).toBeGreaterThanOrEqual(1);
     expect(after.hints.bottomedOut - before.hints.bottomedOut).toBeGreaterThanOrEqual(1);
-    expect(after.ai).toMatchObject({ monthlyBudgetInr: 500 });
+    expect(after.ai).toMatchObject({ monthlyBudgetInr: { hints: 500, generation: 300 } });
+    expect(after.generation.fellBack - before.generation.fellBack).toBeGreaterThanOrEqual(1);
+    expect((after.generation.failuresByStage.schema ?? 0) - (before.generation.failuresByStage.schema ?? 0)).toBeGreaterThanOrEqual(1);
+    expect(after.generation.bySkill).toContainEqual({ skill: { slug: skill.slug, name: "Test" }, rung: 2, succeeded: 0, fellBack: 1, pending: 0 });
     expect(JSON.stringify(after)).not.toContain(learner.email); // counts only, never who
   });
 
