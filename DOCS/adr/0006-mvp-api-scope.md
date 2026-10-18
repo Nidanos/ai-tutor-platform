@@ -1,7 +1,7 @@
-# ADR-0006: The MVP builds 23 REST APIs; the ~98-operation spec stays the long-term plan
+# ADR-0006: The MVP builds 25 REST APIs; the ~98-operation spec stays the long-term plan
 
 - **Status:** Accepted
-- **Date:** Sep 2026, updated 13 Oct 2026 (was 18 APIs); status column updated 18 Oct; PATCH /sessions/:id added 19 Oct (23 APIs)
+- **Date:** Sep 2026, updated 13 Oct 2026 (was 18 APIs); status column updated 18 Oct; PATCH /sessions/:id added 19 Oct (23 APIs); forgot/reset password added 19 Oct (25 APIs)
 - **Decided by:** Ashwani Kumar Puri
 
 ## Decision
@@ -9,7 +9,7 @@ Base path: `/api/v1`. Live endpoints are documented for the frontend in `DOCS/ap
 
 | Group | Endpoints | Status |
 |---|---|---|
-| Auth | POST /auth/register · POST /auth/login · **POST /auth/refresh** · **POST /auth/logout** · GET /auth/me | **Live** |
+| Auth | POST /auth/register · POST /auth/login · **POST /auth/refresh** · **POST /auth/logout** · GET /auth/me · POST /auth/forgot-password · POST /auth/reset-password | **Live** (reset 19 Oct, ADR-0017) |
 | Diagnostic | POST /diagnostic/start · POST /diagnostic/:id/answers · POST /diagnostic/:id/complete | **Live** (18 Oct) |
 | Mastery | GET /mastery · GET /mastery/:skillId | **Live** |
 | Recommender | GET /recommendations/next | **Live** |
@@ -37,3 +37,4 @@ Base path: `/api/v1`. Live endpoints are documented for the frontend in `DOCS/ap
 
 ## Resolved 19 Oct
 - **M9 pause, resume and end (FR-M9-01):** one endpoint, `PATCH /sessions/:id { status }` (ADR-0013).
+- **Password reset (FR-M1-05, a Should):** `POST /auth/forgot-password` and `POST /auth/reset-password` (ADR-0017), making 25 APIs.

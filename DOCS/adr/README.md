@@ -20,6 +20,7 @@ Last updated: 19 Oct 2026. These record decisions Ashwani has made. Where no dec
 | [0014](0014-analytics-overview-v1.md) | Admin analytics overview: aggregate counts per window, each from its owning module | Accepted, built |
 | [0015](0015-hints-v1.md) | Hints: live tutor first (3.5 Flash Lite), frozen fallback, leak filter, caps, paid-tier safety switch | Accepted, built |
 | [0016](0016-exercise-generation-v1.md) | Exercise generation: admin + automatic, ₹300/month, wrong answers must fail, Flash twice then Pro | Accepted, built |
+| [0017](0017-password-reset-v1.md) | Password reset: Brevo email, one-use 30-minute link in the #fragment, logged out everywhere | Accepted, built |
 
 ## Open decisions (Ashwani's to make)
 | # | Question | Blocks |
