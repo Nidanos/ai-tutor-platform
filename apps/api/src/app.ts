@@ -2,6 +2,7 @@ import cookieParser from "cookie-parser";
 import express from "express";
 import helmet from "helmet";
 import { authRouter } from "./modules/m1_auth/routes/auth.routes.js";
+import { diagnosticRouter } from "./modules/m3_diagnostic/routes/diagnostic.routes.js";
 import { masteryRouter } from "./modules/m4_mastery/routes/mastery.routes.js";
 import { recommendationsRouter } from "./modules/m5_recommender/routes/recommendations.routes.js";
 import { exercisesRouter } from "./modules/m6_exercises/routes/exercises.routes.js";
@@ -24,6 +25,7 @@ app.get("/health", (_req, res) => {
 });
 
 app.use("/api/v1/auth", authRouter);
+app.use("/api/v1/diagnostic", diagnosticRouter);
 app.use("/api/v1/mastery", masteryRouter);
 app.use("/api/v1/recommendations", recommendationsRouter);
 app.use("/api/v1/exercises", exercisesRouter);
