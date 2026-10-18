@@ -2,7 +2,7 @@ import type { Request, RequestHandler, Response } from "express";
 import { clearAuthCookies, REFRESH_COOKIE, setAuthCookies } from "../../../shared/auth/cookies.js";
 import { ACCESS_TTL_SECONDS } from "../../../shared/auth/tokens.js";
 import { ok } from "../../../shared/http/envelope.js";
-import { loginBody, registerBody, tokenBody } from "../schemas/auth.schemas.js";
+import { forgotPasswordBody, loginBody, registerBody, resetPasswordBody, tokenBody } from "../schemas/auth.schemas.js";
 import * as auth from "../services/auth.service.js";
 
 const device = (req: Request) => ({ userAgent: req.get("user-agent")?.slice(0, 300), ip: req.ip });
@@ -40,4 +40,16 @@ export const logout: RequestHandler = async (req, res) => {
 
 export const me: RequestHandler = async (req, res) => {
   res.json(ok({ user: await auth.me(req.auth!.userId) }));
+};
+
+// 202 and the same words whether or not the account exists (ADR-0017).
+export const forgotPassword: RequestHandler = (req, res) => {
+  auth.forgotPassword(forgotPasswordBody.parse(req.body).email);
+  res.status(202).json(ok({ message: "If an account uses that email, a reset link is on its way. It works for 30 minutes." }));
+};
+
+export const resetPassword: RequestHandler = async (req, res) => {
+  const { token, password } = resetPasswordBody.parse(req.body);
+  await auth.resetPassword(token, password);
+  res.status(204).end();
 };

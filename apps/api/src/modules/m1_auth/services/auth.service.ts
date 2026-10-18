@@ -1,9 +1,12 @@
 import { v7 as uuidv7 } from "uuid";
+import { env } from "../../../config/env.js";
 import { isUniqueViolation } from "../../../infrastructure/database/errors.js";
+import { sendMail } from "../../../infrastructure/mail/mailer.js";
 import { DUMMY_HASH, hashPassword, verifyPassword } from "../../../shared/auth/password.js";
 import {
   type AuthUser,
   newRefreshToken,
+  randomToken,
   REFRESH_TTL_DAYS,
   sha256,
   signAccessToken,
@@ -12,12 +15,15 @@ import { AppError } from "../../../shared/errors/app-error.js";
 import * as repo from "../repositories/auth.repository.js";
 import type { RegisterInput } from "../schemas/auth.schemas.js";
 import { isAdult } from "./age.js";
+import { resetEmail } from "./reset-email.js";
 
 type Client = "web" | "mobile";
 type Device = { userAgent?: string; ip?: string };
 
 // When two tabs refresh at once, the second shows a just-replaced token: allow that briefly.
 const REUSE_GRACE_MS = 20_000;
+const RESET_LINK_MINUTES = 30; // ADR-0017
+const RESET_EMAIL_GAP_MINUTES = 5; // at most one reset email per account in this time
 // The DOCS/legal version users agree to. Bump it when the Privacy Policy or Terms change.
 const LEGAL_VERSION = "0.1";
 
@@ -99,3 +105,31 @@ async function issueSession(user: AuthUser, familyId: string, client: Client, de
 
 // For M13: learner counts and research opt-ins.
 export const learnerStats = repo.learnerStats;
+
+// POST /auth/forgot-password (ADR-0017). All the work happens after the reply, which is the same for
+// every email, so neither the reply nor its timing says whether an account exists.
+export function forgotPassword(email: string) {
+  void sendResetLink(email).catch((err) => console.error("Password reset link failed", err));
+}
+
+async function sendResetLink(email: string) {
+  const user = await repo.findUserByEmail(email);
+  if (!user || user.status !== "active") return;
+  const token = randomToken();
+  const now = Date.now();
+  // Asking again within the gap sends nothing: the recent link still works. That caps the emails one
+  // inbox can get without a per-email limit that anyone could fill to lock its owner out.
+  const created = await repo.createResetToken(user.id, sha256(token), new Date(now + RESET_LINK_MINUTES * 60_000), new Date(now - RESET_EMAIL_GAP_MINUTES * 60_000));
+  if (!created) return;
+  // The token travels in the #fragment, which browsers never send to a server or put in a Referer header.
+  const link = `${env.WEB_ORIGIN}/reset-password#token=${token}`;
+  await sendMail({ to: user.email, ...resetEmail(link, RESET_LINK_MINUTES) });
+}
+
+// POST /auth/reset-password: a live link sets the new password and logs the account out everywhere.
+export async function resetPassword(token: string, password: string) {
+  const invalid = () => new AppError(400, "RESET_LINK_INVALID", "This reset link is invalid or has expired. Ask for a new one.");
+  const found = await repo.findLiveResetToken(sha256(token));
+  if (!found) throw invalid();
+  if (!(await repo.resetPassword(found.id, found.userId, await hashPassword(password)))) throw invalid();
+}

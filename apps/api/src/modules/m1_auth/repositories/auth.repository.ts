@@ -1,8 +1,8 @@
-import { and, eq, gte, isNull, sql } from "drizzle-orm";
+import { and, eq, gt, gte, isNull, sql } from "drizzle-orm";
 import { countWhere } from "../../../infrastructure/database/aggregates.js";
 import { v7 as uuidv7 } from "uuid";
 import { db } from "../../../infrastructure/database/index.js";
-import { consents, organizations, refreshTokens, users } from "../../../infrastructure/database/schema/index.js";
+import { consents, organizations, passwordResetTokens, refreshTokens, users } from "../../../infrastructure/database/schema/index.js";
 
 // What clients may see of a user. Never the password hash.
 const publicUser = {
@@ -78,3 +78,52 @@ export async function learnerStats(since: Date) {
     .where(isNull(consents.revokedAt));
   return { ...counts, consented };
 }
+
+// "Forgot password" (ADR-0017): false if a link was sent since `unlessSentSince`. Otherwise the new link
+// replaces any unused one, so only the latest email works.
+export const createResetToken = (userId: string, tokenHash: string, expiresAt: Date, unlessSentSince: Date) =>
+  db.transaction(async (tx) => {
+    const [recent] = await tx
+      .select({ id: passwordResetTokens.id })
+      .from(passwordResetTokens)
+      .where(and(eq(passwordResetTokens.userId, userId), gt(passwordResetTokens.createdAt, unlessSentSince)))
+      .limit(1);
+    if (recent) return false;
+    await tx.delete(passwordResetTokens).where(and(eq(passwordResetTokens.userId, userId), isNull(passwordResetTokens.usedAt)));
+    await tx.insert(passwordResetTokens).values({ userId, tokenHash, expiresAt });
+    return true;
+  });
+
+// A link that is unused, unexpired, and for an account that can still log in.
+export const findLiveResetToken = async (tokenHash: string) =>
+  (
+    await db
+      .select({ id: passwordResetTokens.id, userId: passwordResetTokens.userId })
+      .from(passwordResetTokens)
+      .innerJoin(users, eq(users.id, passwordResetTokens.userId))
+      .where(
+        and(
+          eq(passwordResetTokens.tokenHash, tokenHash),
+          isNull(passwordResetTokens.usedAt),
+          gt(passwordResetTokens.expiresAt, new Date()),
+          eq(users.status, "active"),
+        ),
+      )
+  )[0];
+
+// The new password, the spent link and the end of every login, together: a session stolen with the
+// old password dies with it. Other unused links go too (two requests at once can each make one).
+// False if the link was just used (a double click: the first one won).
+export const resetPassword = (tokenId: string, userId: string, passwordHash: string) =>
+  db.transaction(async (tx) => {
+    const [spent] = await tx
+      .update(passwordResetTokens)
+      .set({ usedAt: new Date() })
+      .where(and(eq(passwordResetTokens.id, tokenId), isNull(passwordResetTokens.usedAt)))
+      .returning({ id: passwordResetTokens.id });
+    if (!spent) return false;
+    await tx.delete(passwordResetTokens).where(and(eq(passwordResetTokens.userId, userId), isNull(passwordResetTokens.usedAt)));
+    await tx.update(users).set({ passwordHash }).where(eq(users.id, userId));
+    await tx.update(refreshTokens).set({ revokedAt: new Date() }).where(and(eq(refreshTokens.userId, userId), isNull(refreshTokens.revokedAt)));
+    return true;
+  });

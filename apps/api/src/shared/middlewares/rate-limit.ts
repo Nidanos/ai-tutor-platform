@@ -32,3 +32,7 @@ export const diagnosticByUser = limiter(MINUTE, 30, { keyGenerator: (req) => req
 
 // Each live hint costs money and the ladder only goes up: 10 a minute is plenty for a person.
 export const hintsByUser = limiter(MINUTE, 10, { keyGenerator: (req) => req.auth!.userId });
+
+// Reset emails cost money: few requests per IP. Each account also gets at most one email per 5 minutes (M1 service).
+export const forgotByIp = limiter(15 * MINUTE, 5);
+export const resetByIp = limiter(15 * MINUTE, 10);

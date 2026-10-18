@@ -27,5 +27,7 @@ export async function verifyAccessToken(token: string): Promise<AuthUser> {
 }
 
 // Refresh token: 32 random bytes. Only its SHA-256 is stored; random tokens need no slow hash.
-export const newRefreshToken = () => randomBytes(32).toString("base64url");
+// 256 random bits, URL-safe: refresh tokens and password-reset links.
+export const randomToken = () => randomBytes(32).toString("base64url");
+export const newRefreshToken = randomToken;
 export const sha256 = (value: string) => createHash("sha256").update(value).digest("hex");
