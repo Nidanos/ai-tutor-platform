@@ -16,5 +16,8 @@ export const env = z
     GEMINI_API_KEY: z.string().optional(), // live hints and generation; without it hints fall back to frozen ones
     // Set "true" only once billing is active: free-tier prompts may be used by Google, and prompts carry learner code.
     GEMINI_PAID: z.enum(["true", "false"]).default("false"),
+    BREVO_API_KEY: z.string().optional(), // password-reset emails; without it they are printed (required in production)
+    MAIL_FROM: z.email().default("no-reply@nidanos.com"), // must be a sender verified in Brevo
   })
+  .refine((e) => e.NODE_ENV !== "production" || !!e.BREVO_API_KEY, { error: "BREVO_API_KEY is required in production", path: ["BREVO_API_KEY"] })
   .parse(process.env);
