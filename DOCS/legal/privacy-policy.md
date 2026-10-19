@@ -78,7 +78,7 @@ Anyone can learn on [PRODUCT], but **if you are under 18, a parent or legal guar
 |---|---|
 | **Access**: a summary of your data, how we use it, and who we shared it with | Settings → Privacy → Download my data, or email us |
 | **Correction and update** | Edit your profile, or email us |
-| **Erasure** | Settings → Delete account, or email us |
+| **Erasure** | Settings → Delete account (you confirm with your password), or email us |
 | **Withdraw consent** | Settings → Privacy, or email us |
 | **Nominate** someone to act for you if you die or can't act yourself | Email us |
 | **Grievance** | Section 10 |
@@ -95,7 +95,7 @@ We may need to confirm your identity first. We reply as soon as we can, and **wi
 | Payment records (once paid plans start) | As tax law requires (up to 8 years) |
 | De-identified data (sections 3–4) | It can no longer identify you, so it may be kept |
 
-**When you delete your account**, we erase your name, email, password and code. Records we must keep, such as proof of consent, stay linked only to a random ID.
+**When you delete your account**, we wait **7 days** in case you change your mind: signing in during that time cancels the deletion. Then we erase your name, email, password, date of birth and code. Your progress is deleted too, unless you opted in to AI training or research: then only de-identified numbers (such as test results and scores) stay. Records we must keep, such as proof of consent, stay linked only to a random ID.
 
 ## 10. Questions and complaints (Grievance Officer)
 **Aditi Tanwar**, Grievance Officer, Nidanos
