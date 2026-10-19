@@ -24,7 +24,7 @@
 ## Notes
 - An access token issued before the reset still works until it expires (at most 15 minutes, ADR-0008).
 - Known v1 limit: a login or token refresh already in flight when the reset commits can still finish and keep its new session (a window of about a tenth of a second). Closing it needs a token version on `users`.
-- Per-IP limits need the real client IP: check the X-Forwarded-For chain and `trust proxy` when deploying (ADR-0010).
+- Per-IP limits need the real client IP: how the API gets it, and what Caddy and Vercel must do, is in ADR-0008 ("Client IP behind proxies").
 - A failed send is logged as `Password reset link failed` with Brevo's reason; the learner can simply ask again.
 - Used and expired links are kept 1 year as security records, then deleted with old refresh tokens (DPDP doc §4, job to build). An account's links are deleted with the account.
 - Not in v1: changing the password while logged in (spec API 6) and verifying the email at sign-up.

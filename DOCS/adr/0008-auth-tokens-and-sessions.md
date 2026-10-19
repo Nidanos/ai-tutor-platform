@@ -22,8 +22,42 @@ The web app comes first and a mobile app follows next year. Login has to be safe
 | Same origin | The web app reaches the API through a Next.js proxy | Cookies just work and no CORS is needed |
 | CSRF | Cookie-carrying writes must come from `WEB_ORIGIN` | Browsers attach cookies automatically |
 | Guessing | Rate limits: 5 failed logins per email and 20 attempts per IP per 15 minutes; throttle, never lock | A lockout would let anyone block someone else's account |
+| Client IP | Only our own proxy may tell the API the caller's IP (see "Client IP behind proxies" below) | Otherwise a caller picks a new IP per request and skips every per-IP limit |
 | Account discovery | A wrong email and a wrong password get the same error and the same timing | Attackers can't learn who has an account |
 | Roles | Sign-up always creates a `LEARNER`; authors and admins come from a seed script | Nobody can send `"role": "ADMIN"` to promote themselves |
+
+## Client IP behind proxies (added 19 Oct 2026)
+A security review found that the self-hosted Next.js proxy (`next dev`, `next start`) passes the browser's `X-Forwarded-For` on unchanged and adds none. Confirmed in the Next 16.4 source and with a local test: under the old `trust proxy: 1`, a made-up header per request got past every per-IP limit, and without one all users shared one bucket.
+
+Express now trusts proxies by **address**, not hop count: `loopback, uniquelocal` (this machine or the private network). A hop count of 1 would believe anyone who reached the API port directly.
+
+| Setup | Path | Who sets `X-Forwarded-For` | `trust proxy` |
+|---|---|---|---|
+| Local dev | browser → `next dev` → API | the browser (untrusted) | `false`: every request is `::1`, one bucket for the one developer |
+| Tests | supertest → API | the test, playing our proxy | `loopback, uniquelocal` |
+| Production (ADR-0010) | browser → Vercel → Caddy → API, or app → Caddy → API | Caddy, as below | `loopback, uniquelocal` |
+
+**To set up when deploying** (not tested yet):
+- **Vercel** replaces `X-Forwarded-For` with the visitor's IP. On the `/api` rewrite, also set a secret header `X-Origin-Secret` from the env var `ORIGIN_SECRET`: a `vercel.json` route transform that lists the variable under `env`, or Vercel sends the literal text (Vercel docs, "Restricting your origin to Vercel traffic").
+- **Caddy** overwrites `X-Forwarded-For` with the caller's own address by default. Keep that for everyone except requests with the right secret:
+  ```caddy
+  api.example.com {
+  	@vercel header X-Origin-Secret {$ORIGIN_SECRET}
+  	handle @vercel {
+  		reverse_proxy api:3001 {
+  			header_up X-Forwarded-For {header.X-Forwarded-For} # keep Vercel's value: the visitor's IP
+  			header_up -X-Origin-Secret
+  		}
+  	}
+  	handle {
+  		reverse_proxy api:3001
+  	}
+  }
+  ```
+  Without this, every web user shows up as one of Vercel's addresses and they share each per-IP limit (5 sign-ups an hour). Make the secret hex (`openssl rand -hex 32`), because Caddy pastes it into the config as text. If Caddy's access log is on, drop this header from it: Caddy hides only cookies and `Authorization` by default.
+- Don't publish the API port: only Caddy reaches it, over the Compose network. A published port can make outside callers look like Docker's private gateway, which we trust. Never put `next start` on the internet without Caddy or Vercel in front.
+- Set `NODE_ENV=production`. Without it the API acts as local dev: it trusts nobody, so all users share one bucket.
+- After deploying, send a fake `X-Forwarded-For` through the site and straight to Caddy: the IP saved with the login (`refresh_tokens.ip`) must stay the real one.
 
 ## Consequences
 - Logout revokes the whole login (the family) and clears the cookies.

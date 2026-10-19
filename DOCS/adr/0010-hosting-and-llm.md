@@ -43,4 +43,4 @@ Everything ships as Docker Compose plus a database dump, so moving between these
 ## Consequences
 - Learner code goes to Gemini only inside live tutor calls, never with a name or email; the Privacy Policy already says so (section 5).
 - Vendors to add to the DPDP register: Oracle (hosting), Vercel (web), Google (Gemini).
-- New work: production Compose file, Caddy, a nightly backup script, the LLM adapter with spend caps, and lesson generation.
+- New work: production Compose file, Caddy, a nightly backup script, the LLM adapter with spend caps, and lesson generation. Caddy and Vercel must pass on the visitor's IP for the rate limits (ADR-0008, "Client IP behind proxies").
