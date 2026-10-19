@@ -8,5 +8,5 @@ const query = z.object(courseFields);
 
 export const next: RequestHandler = async (req, res) => {
   const { course, language } = query.parse(req.query);
-  res.json(ok({ recommendation: await nextStep(req.auth!.userId, course, language) }));
+  res.json(ok(await nextStep(req.auth!.userId, course, language)));
 };

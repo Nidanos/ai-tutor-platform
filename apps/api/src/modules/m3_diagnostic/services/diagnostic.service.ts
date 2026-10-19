@@ -23,10 +23,18 @@ type Row = State["rows"][number];
 
 const notFound = () => new AppError(404, "DIAGNOSTIC_NOT_FOUND", "No such placement test");
 
+// The placement test covers its own course. A prerequisite from another course (C++ basics, for DSA)
+// has its own placement test, and the recommender still holds a skill back until it is met.
+async function courseGraph(courseId: string, languageCode: string) {
+  const graph = await getSkillGraph(courseId, languageCode);
+  const own = new Set(graph.map((s) => s.id));
+  return graph.map((s) => ({ ...s, prerequisites: s.prerequisites.filter((p) => own.has(p.id)) }));
+}
+
 // Everything the placement rules need, read through the modules that own it. Only items whose
 // exercise passed sandbox verification are ever asked.
 async function load(userId: string, courseId: string, languageCode: string, diagnosticId?: string) {
-  const [skills, mastery] = await Promise.all([getSkillGraph(courseId, languageCode), effectiveStates(userId, languageCode)]);
+  const [skills, mastery] = await Promise.all([courseGraph(courseId, languageCode), effectiveStates(userId, languageCode)]);
   const listed = await repo.listItems(skills.map((s) => s.id), languageCode);
   const verified = await verifiedIds(listed.map((i) => i.exerciseId!));
   return {
@@ -62,7 +70,7 @@ function inProgressView(attempt: Attempt, state: State) {
 }
 
 async function completedView(attempt: Attempt) {
-  const [results, skills] = await Promise.all([repo.listResults(attempt.id), getSkillGraph(attempt.courseId, attempt.languageCode)]);
+  const [results, skills] = await Promise.all([repo.listResults(attempt.id), courseGraph(attempt.courseId, attempt.languageCode)]);
   const resultOf = new Map(results.map((r) => [r.skillId, r]));
   return {
     diagnosticId: attempt.id,

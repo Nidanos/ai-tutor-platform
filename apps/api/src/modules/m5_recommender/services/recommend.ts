@@ -29,6 +29,16 @@ export const EMPTY: SkillState = { reading: 0, writing: 0, cleared: false, attem
 export const isUnlocked = (skill: SkillNode, stateOf: (id: string) => SkillState) =>
   skill.prerequisites.every((p) => stateOf(p.id).cleared || stateOf(p.id).writing >= p.minMastery);
 
+// Nothing open because a prerequisite from another course is unmet (DSA waits on C++ basics): those
+// prerequisites, for the skills that would be next. Empty when the course is simply done.
+export function waitingOn(skills: SkillNode[], mastery: Map<string, SkillState>) {
+  const stateOf = (id: string) => mastery.get(id) ?? EMPTY;
+  const own = new Set(skills.map((s) => s.id));
+  const met = (p: SkillNode["prerequisites"][number]) => stateOf(p.id).cleared || stateOf(p.id).writing >= p.minMastery;
+  const next = skills.filter((s) => !stateOf(s.id).cleared && s.prerequisites.every((p) => !own.has(p.id) || met(p)));
+  return [...new Set(next.flatMap((s) => s.prerequisites.filter((p) => !own.has(p.id) && !met(p)).map((p) => p.id)))];
+}
+
 export const isReviewDue = (state: SkillState) => state.cleared && state.writing < REVIEW_BELOW;
 
 // FR-M5-05: the level comes from the writing score, but never below the fade stage's easiest rung.

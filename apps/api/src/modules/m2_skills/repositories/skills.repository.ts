@@ -17,6 +17,16 @@ export const findSkill = async (id: string, q: Tx | typeof db = db) => (await q.
 export const findSkills = (ids: string[]) =>
   ids.length ? db.select(skillRef).from(skills).where(inArray(skills.id, ids)) : Promise.resolve([]);
 
+// Skills named with their course: for prerequisites that come from another course.
+export const findSkillsWithCourse = (ids: string[]) =>
+  ids.length
+    ? db
+        .select({ id: skills.id, slug: skills.slug, name: skills.name, course: courses.slug })
+        .from(skills)
+        .innerJoin(courses, eq(courses.id, skills.courseId))
+        .where(inArray(skills.id, ids))
+    : Promise.resolve([]);
+
 // Only a course that is offered in this language.
 export const findCourseBySlug = async (slug: string, languageCode: string) =>
   (

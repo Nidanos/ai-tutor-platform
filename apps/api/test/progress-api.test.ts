@@ -44,6 +44,24 @@ describe("GET /progress", () => {
     expect(summary).toEqual({ total: 5, locked: 1, ready: 1, in_progress: 1, cleared: 1, review_due: 1 });
   });
 
+  it("names prerequisites from another course, and holds a skill back until they are met", async () => {
+    const [basics, course] = [await createCourse(), await createCourse()];
+    const [pointers, lists] = [await createSkill(basics.id), await createSkill(course.id)];
+    await db.insert(skillPrerequisites).values({ skillId: lists.id, prerequisiteId: pointers.id });
+    const user = await createUser();
+    const progress = async () =>
+      (await request(app).get(`/api/v1/progress?course=${course.slug}`).set("Authorization", await bearerFor(user.id)).expect(200)).body.data;
+
+    const before = await progress();
+    expect(before.skills[0]).toMatchObject({ status: "locked", prerequisites: [pointers.id] });
+    expect(before.outside).toEqual([{ skill: { id: pointers.id, slug: pointers.slug, name: pointers.name }, course: { slug: basics.slug }, status: "not_started" }]);
+
+    await db.insert(masteryRecords).values({ userId: user.id, skillId: pointers.id, languageCode: "cpp", decayLambda: 0.05, writingScore: 0.9, writingEvidenceAt: new Date(), clearedAt: new Date() });
+    const after = await progress();
+    expect(after.skills[0].status).toBe("ready");
+    expect(after.outside[0].status).toBe("cleared");
+  });
+
   it("404s for a course that doesn't exist in that language", async () => {
     const user = await createUser();
     await request(app).get("/api/v1/progress?course=no-such-course").set("Authorization", await bearerFor(user.id)).expect(404);

@@ -67,6 +67,12 @@ async function placementCourse() {
   return { course, first, second, items, user, auth, post, start };
 }
 
+// A prerequisite from another course (as DSA's come from C++ basics): the recommender's business, not the placement test's.
+async function needsOutsideSkill(skillId: string) {
+  const outside = await createSkill((await createCourse()).id);
+  await db.insert(skillPrerequisites).values({ skillId, prerequisiteId: outside.id });
+}
+
 const nextStep = async (t: Awaited<ReturnType<typeof placementCourse>>) =>
   (await request(app).get(`/api/v1/recommendations/next?course=${t.course.slug}`).set("Authorization", t.auth).expect(200)).body.data.recommendation;
 
@@ -85,6 +91,13 @@ async function readBothThenWrite(t: Awaited<ReturnType<typeof placementCourse>>)
 }
 
 describe("POST /diagnostic/start", () => {
+  it("asks a skill whose prerequisite comes from another course", async () => {
+    const t = await placementCourse();
+    await needsOutsideSkill(t.first.id);
+    const { question } = await t.start();
+    expect(question.itemId).toBe(t.items.firstReading.id);
+  });
+
   it("starts with the first skill's program to read, never its answer, and resumes the same test", async () => {
     const t = await placementCourse();
     const first = await t.start();

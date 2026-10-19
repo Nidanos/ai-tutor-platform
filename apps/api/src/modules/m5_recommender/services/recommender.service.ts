@@ -1,12 +1,12 @@
 import { ensureEnrollment } from "../../m3_diagnostic/services/enrollments.service.js";
-import { getCourse, getSkill, getSkillGraph } from "../../m2_skills/services/skills.service.js";
+import { getCourse, getSkill, getSkillGraph, getSkillsWithCourse } from "../../m2_skills/services/skills.service.js";
 import { effectiveStates } from "../../m4_mastery/services/mastery-read.service.js";
 import { listServable } from "../../m6_exercises/services/exercises.service.js";
 import { queueMissingExercise } from "../../m6_exercises/services/request-generation.js";
 import { attemptStatuses } from "../../m7_execution/services/attempts.service.js";
 import { minRungs } from "../../m12_scaffolding/services/scaffolding.service.js";
 import * as repo from "../repositories/recommendations.repository.js";
-import { ALGORITHM_VERSION, EMPTY, pickExercise, rankCandidates, rungFor } from "./recommend.js";
+import { ALGORITHM_VERSION, EMPTY, pickExercise, rankCandidates, rungFor, waitingOn } from "./recommend.js";
 
 type Enrollment = { id: string; courseId: string; languageCode: string; goalSkillId: string | null };
 
@@ -15,10 +15,16 @@ const SNAPSHOT_SIZE = 5; // top candidates stored with each pick, to explain it 
 // GET /recommendations/next (design §6.7): the best candidate that has an exercise to serve.
 // A skill with no content yet is skipped, so learners never get stuck while the bank is small;
 // if no candidate has content, the top one is returned without an exercise (to be generated).
+// GET /recommendations/next. With nothing to offer, it says whether the course is done or waits on
+// skills from another course (waitingFor).
 export async function nextStep(userId: string, courseSlug: string, languageCode: string) {
   const course = await getCourse(courseSlug, languageCode);
   const enrollment = await ensureEnrollment(userId, course.id, languageCode);
-  return recommendNext(userId, { ...enrollment, courseId: course.id, languageCode });
+  const recommendation = await recommendNext(userId, { ...enrollment, courseId: course.id, languageCode });
+  if (recommendation) return { recommendation, waitingFor: [] };
+  const [graph, mastery] = await Promise.all([getSkillGraph(course.id, languageCode), effectiveStates(userId, languageCode)]);
+  const waiting = await getSkillsWithCourse(waitingOn(graph, mastery));
+  return { recommendation, waitingFor: waiting.map(({ course: slug, ...skill }) => ({ skill, course: { slug } })) };
 }
 
 // For M9: the next step for an enrollment the caller already holds. Saved like every pick.

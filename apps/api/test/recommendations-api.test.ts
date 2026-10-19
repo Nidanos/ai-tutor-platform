@@ -59,11 +59,25 @@ describe("GET /recommendations/next", () => {
     expect((await next()).data.recommendation).toMatchObject({ skill: { id: second.id }, exerciseId: null });
   });
 
+  it("names the other course's skills a learner must finish first, instead of saying the course is done", async () => {
+    const { first, next, masteryOf } = await courseWithLearner();
+    const basics = await createCourse();
+    const outside = await createSkill(basics.id);
+    await db.insert(skillPrerequisites).values({ skillId: first.id, prerequisiteId: outside.id });
+
+    expect((await next()).data).toEqual({
+      recommendation: null,
+      waitingFor: [{ skill: { id: outside.id, slug: outside.slug, name: outside.name }, course: { slug: basics.slug } }],
+    });
+    await masteryOf(outside.id, CLEARED);
+    expect((await next()).data).toMatchObject({ recommendation: { skill: { id: first.id } }, waitingFor: [] });
+  });
+
   it("returns null when every skill is cleared and fresh, and 404 for an unknown course", async () => {
     const { first, second, next, masteryOf } = await courseWithLearner();
     await masteryOf(first.id, CLEARED);
     await masteryOf(second.id, CLEARED);
-    expect((await next()).data.recommendation).toBeNull();
+    expect((await next()).data).toEqual({ recommendation: null, waitingFor: [] });
 
     const user = await createUser();
     const res = await request(app).get("/api/v1/recommendations/next?course=no-such-course").set("Authorization", await bearerFor(user.id)).expect(404);

@@ -16,7 +16,9 @@ export async function getCourse(slug: string, languageCode: string) {
   return course;
 }
 
+// A course's skills; a prerequisite can be a skill of another course (DSA builds on C++ basics).
 export const getSkillGraph = repo.listSkillGraph;
+export const getSkillsWithCourse = repo.findSkillsWithCourse;
 export const getResources = repo.listResources;
 
 // Every skill below this one in the graph (its prerequisites, theirs, and so on).

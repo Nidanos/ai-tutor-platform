@@ -1,4 +1,4 @@
-import { getCourse, getSkillGraph } from "../../m2_skills/services/skills.service.js";
+import { getCourse, getSkillGraph, getSkillsWithCourse } from "../../m2_skills/services/skills.service.js";
 import { listMastery } from "../../m4_mastery/services/mastery-read.service.js";
 import { EMPTY, isReviewDue, isUnlocked } from "../../m5_recommender/services/recommend.js";
 import { listState } from "../../m12_scaffolding/services/scaffolding.service.js";
@@ -41,5 +41,14 @@ export async function getProgress(userId: string, courseSlug: string, languageCo
     };
   });
   const summary = Object.fromEntries(STATUSES.map((s) => [s, skills.filter((k) => k.status === s).length]));
-  return { course: { slug: course.slug }, summary: { total: skills.length, ...summary }, skills };
+
+  // Prerequisites from another course (C++ basics, for DSA), so the graph can show what a locked skill waits for.
+  const own = new Set(graph.map((s) => s.id));
+  const outsideIds = [...new Set(graph.flatMap((s) => s.prerequisites.map((p) => p.id)).filter((id) => !own.has(id)))];
+  const outside = (await getSkillsWithCourse(outsideIds)).map(({ course: courseSlug, ...skill }) => ({
+    skill,
+    course: { slug: courseSlug },
+    status: stateOf(skill.id).cleared ? ("cleared" as const) : recordOf.has(skill.id) ? ("in_progress" as const) : ("not_started" as const),
+  }));
+  return { course: { slug: course.slug }, summary: { total: skills.length, ...summary }, skills, outside };
 }
