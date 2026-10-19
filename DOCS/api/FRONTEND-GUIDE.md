@@ -143,7 +143,11 @@ type Exercise = {
   id: string; title: string; promptMd: string; // render as Markdown
   starterCode: string; functionSignature: string | null; // put starterCode in the Monaco editor
   rung: 1 | 2 | 3 | 4 | 5; languageCode: "cpp"; timeLimitMs: number; memoryLimitMb: number;
-  skill: { id: string; name: string; slug: string };
+  skill: {
+    id: string; name: string; slug: string;
+    description: string | null;                 // what the skill is about: show it above the task
+    resources: Array<{ title: string; url: string; kind: "article" | "docs" }>; // "Read more" links, in order
+  };
   sampleTests: Array<{ seq: number; name: string; input: string | null; expectedOutput: string | null }>;
 };
 type Attempt = { id: string; status: "active" | "solved" | "abandoned"; hintLevel: number; hintCeiling: number; submissionCount: number };
@@ -160,6 +164,7 @@ type SkillMastery = {
 
 - **`effective`** is the score after forgetting (it drops a little every day without practice). **`score`** is the stored one. Show `effective` as a percentage, and `clearedAt` as a "Cleared" badge.
 - Rung 1 (predict the output) is a text answer, not code: show a textbox instead of the editor. Its `sampleTests` is always empty (its only test is the answer).
+- **Skill info (19 Oct):** `skill.description` says what the skill is about, and `skill.resources` are further-reading links for the exercise's language. Open them in a new tab (`target="_blank" rel="noopener noreferrer"`).
 
 ## 4d. Help fading (live, 16 Oct)
 
@@ -275,7 +280,7 @@ type Progress = {
   course: { slug: string };
   summary: { total: number; locked: number; ready: number; in_progress: number; cleared: number; review_due: number };
   skills: Array<{
-    skill: { id: string; slug: string; name: string; difficulty: number };
+    skill: { id: string; slug: string; name: string; description: string | null; difficulty: number };
     prerequisites: string[];                        // skill ids: draw the graph edges from these
     reading: { score: number; effective: number };  // effective = today, after forgetting (show this)
     writing: { score: number; effective: number };
@@ -288,6 +293,7 @@ type Progress = {
 - **Skill graph:** one node per skill, edges from `prerequisites`, coloured by `status`. Always print the label and the numbers too, never colour alone (accessibility).
 - **Two bars per skill, Reading and Writing, never combined** (FR-M11-02). Show `effective` as a percentage, honestly: no rounding up.
 - `review_due`: "Review" badge. `locked`: "Finish its prerequisites first".
+- `skill.description`: show it when a learner taps a skill (19 Oct).
 
 ## 4i. Admin analytics (live, 19 Oct)
 
