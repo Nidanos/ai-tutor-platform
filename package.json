@@ -8,7 +8,8 @@
     "build": "pnpm -r --if-present run build",
     "typecheck": "pnpm -r --if-present run typecheck",
     "db:up": "docker compose up -d",
-    "db:down": "docker compose down"
+    "db:down": "docker compose down",
+    "report:pdf": "pnpm --filter @ai-tutor/report-pdf pdf"
   },
   "packageManager": "pnpm@10.30.3",
   "engines": {

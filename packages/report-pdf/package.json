@@ -1,0 +1,12 @@
+{
+  "name": "@ai-tutor/report-pdf",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "pdf": "node build.js"
+  },
+  "dependencies": {
+    "marked": "15.0.12"
+  }
+}
