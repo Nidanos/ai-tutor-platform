@@ -1,8 +1,9 @@
+import { eq } from "drizzle-orm";
 import request from "supertest";
 import { describe, expect, it } from "vitest";
 import { app } from "../src/app.js";
 import { db } from "../src/infrastructure/database/index.js";
-import { masteryRecords, skillPrerequisites } from "../src/infrastructure/database/schema/index.js";
+import { masteryRecords, skillPrerequisites, skills as skillRows } from "../src/infrastructure/database/schema/index.js";
 import { getStage } from "../src/modules/m12_scaffolding/services/scaffolding.service.js";
 import { addDefaultFadeSchedule, bearerFor, createCourse, createSkill, createUser } from "./helpers.js";
 
@@ -27,6 +28,8 @@ describe("GET /progress", () => {
     ]);
     await getStage({ userId: user.id, skillId: loops.id, languageCode: "cpp" }, course.id);
 
+    await db.update(skillRows).set({ description: "Works on its own." }).where(eq(skillRows.id, solo.id));
+
     const res = await request(app).get(`/api/v1/progress?course=${course.slug}`).set("Authorization", await bearerFor(user.id)).expect(200);
     const { summary, skills } = res.body.data;
     const of = (id: string) => skills.find((s: { skill: { id: string } }) => s.skill.id === id);
@@ -36,7 +39,7 @@ describe("GET /progress", () => {
     expect(of(loops.id).writing.score).toBe(0.4); // stored, never changed
     expect(of(loops.id).writing.effective).toBeCloseTo(0.4 * Math.exp(-0.05 * 10), 3); // what's left today
     expect(of(arrays.id)).toMatchObject({ status: "locked", reading: { score: 0, effective: 0 }, stage: null });
-    expect(of(solo.id).status).toBe("ready");
+    expect(of(solo.id)).toMatchObject({ status: "ready", skill: { description: "Works on its own." } });
     expect(of(old.id).status).toBe("review_due"); // cleared, but faded below 0.5
     expect(summary).toEqual({ total: 5, locked: 1, ready: 1, in_progress: 1, cleared: 1, review_due: 1 });
   });

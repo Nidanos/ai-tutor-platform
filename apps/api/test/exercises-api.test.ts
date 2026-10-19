@@ -9,9 +9,11 @@ import {
   exercises,
   exerciseSecrets,
   exerciseTests,
+  skillResources,
+  skills,
   skillScaffolding,
 } from "../src/infrastructure/database/schema/index.js";
-import { addDefaultFadeSchedule, bearerFor, createCourse, createSkill, createUser, exerciseRow } from "./helpers.js";
+import { addDefaultFadeSchedule, bearerFor, createCourse, createSkill, createUser, ensureLanguage, exerciseRow } from "./helpers.js";
 
 // A verified practice exercise with a secret harness, one sample test and one hidden test.
 async function verifiedExercise(status: "verified" | "draft" = "verified") {
@@ -37,6 +39,27 @@ describe("GET /exercises/:id", () => {
     const res = await open(exercise.id, user.id);
     expect(res.body.data.exercise).toMatchObject({ title: "Test", rung: 3, sampleTests: [{ seq: 1, input: "2 3", expectedOutput: "5" }] });
     expect(JSON.stringify(res.body)).not.toMatch(/SECRET|HIDDEN/);
+  });
+
+  it("shows what the skill is about and its active reading links for the exercise's language, in order", async () => {
+    const [exercise, user] = [await verifiedExercise(), await createUser()];
+    await ensureLanguage("python");
+    await db.update(skills).set({ description: "Fixed-size sequences of values." }).where(eq(skills.id, exercise.skillId));
+    const link = (title: string, values: Partial<typeof skillResources.$inferInsert>) =>
+      ({ skillId: exercise.skillId, title, url: `https://example.test/${title}`, kind: "article" as const, ...values });
+    await db.insert(skillResources).values([
+      link("second", { position: 2 }),
+      link("first", { position: 1, languageCode: "cpp" }),
+      link("retired", { position: 0, isActive: false }),
+      link("python-only", { position: 0, languageCode: "python" }),
+    ]);
+
+    const { skill } = (await open(exercise.id, user.id)).body.data.exercise;
+    expect(skill.description).toBe("Fixed-size sequences of values.");
+    expect(skill.resources).toEqual([
+      { title: "first", url: "https://example.test/first", kind: "article" },
+      { title: "second", url: "https://example.test/second", kind: "article" },
+    ]);
   });
 
   it("starts one attempt, enrolling the learner and starting the skill at fade stage 1", async () => {

@@ -17,6 +17,7 @@ export async function getCourse(slug: string, languageCode: string) {
 }
 
 export const getSkillGraph = repo.listSkillGraph;
+export const getResources = repo.listResources;
 
 // Every skill below this one in the graph (its prerequisites, theirs, and so on).
 export function prerequisitesOf<T extends { id: string; prerequisites: { id: string }[] }>(graph: T[], skillId: string) {

@@ -1,6 +1,6 @@
 import { and, eq, inArray, isNull, or } from "drizzle-orm";
 import { db, type Tx } from "../../../infrastructure/database/index.js";
-import { courseLanguages, courses, skillPrerequisites, skills } from "../../../infrastructure/database/schema/index.js";
+import { courseLanguages, courses, skillPrerequisites, skillResources, skills } from "../../../infrastructure/database/schema/index.js";
 
 const skillRef = {
   id: skills.id,
@@ -30,7 +30,7 @@ export const findCourseBySlug = async (slug: string, languageCode: string) =>
 // The course's active skills with their prerequisites for this language (null edges apply to all).
 export async function listSkillGraph(courseId: string, languageCode: string) {
   const nodes = await db
-    .select({ id: skills.id, slug: skills.slug, name: skills.name, difficulty: skills.difficulty })
+    .select({ id: skills.id, slug: skills.slug, name: skills.name, description: skills.description, difficulty: skills.difficulty })
     .from(skills)
     .where(and(eq(skills.courseId, courseId), eq(skills.status, "active")));
   const edges = await db
@@ -44,3 +44,17 @@ export async function listSkillGraph(courseId: string, languageCode: string) {
     );
   return nodes.map((n) => ({ ...n, prerequisites: edges.filter((e) => e.skillId === n.id).map(({ id, minMastery }) => ({ id, minMastery })) }));
 }
+
+// A skill's further-reading links for this language (null = any language), active ones only, in order.
+export const listResources = (skillId: string, languageCode: string) =>
+  db
+    .select({ title: skillResources.title, url: skillResources.url, kind: skillResources.kind })
+    .from(skillResources)
+    .where(
+      and(
+        eq(skillResources.skillId, skillId),
+        eq(skillResources.isActive, true),
+        or(isNull(skillResources.languageCode), eq(skillResources.languageCode, languageCode)),
+      ),
+    )
+    .orderBy(skillResources.position);

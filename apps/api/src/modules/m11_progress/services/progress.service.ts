@@ -32,7 +32,7 @@ export async function getProgress(userId: string, courseSlug: string, languageCo
     const m = recordOf.get(skill.id);
     const dimension = (d?: { score: number; effective: number }) => ({ score: d?.score ?? 0, effective: d?.effective ?? 0 });
     return {
-      skill: { id: skill.id, slug: skill.slug, name: skill.name, difficulty: skill.difficulty },
+      skill: { id: skill.id, slug: skill.slug, name: skill.name, description: skill.description, difficulty: skill.difficulty },
       prerequisites: skill.prerequisites.map((p) => p.id),
       reading: dimension(m?.reading),
       writing: dimension(m?.writing),
