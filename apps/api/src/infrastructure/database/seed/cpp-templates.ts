@@ -22,8 +22,11 @@ export type ExerciseTemplate = {
 };
 
 // Rungs 2–5 use a `void solve(...)` box: the learner writes inside it, inputs arrive as parameters.
-const solve = (args: string) => `solve(${args});`;
-const BOX = "Write your code inside `solve`. Your inputs arrive as its parameters; print the answer with `std::cout`.";
+export const solve = (args: string) => `solve(${args});`;
+export const BOX = "Write your code inside `solve`. Your inputs arrive as its parameters; print the answer with `std::cout`.";
+// Or the learner writes a named function, and each test prints what it returns.
+export const TASK = "Write the function. Hidden tests call it with other inputs too, so don't hard-code the example.";
+export const printCall = (fn: string) => (args: string) => `std::cout << ${fn}(${args}) << "\\n";`;
 
 export const predict = (skill: string, title: string, program: string, expected: string): ExerciseTemplate => ({
   skill,

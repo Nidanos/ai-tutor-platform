@@ -6,7 +6,7 @@ import { courseRows, DEFAULT_LANGUAGE, defaultFadeStages, languageRows } from ".
 import { seedSkills } from "./seed-skills.js";
 import { cppDiagnosticReading } from "./cpp-diagnostic-reading.js";
 import { cppDiagnosticWriting } from "./cpp-diagnostic-writing.js";
-import { cppBasicsTemplates } from "./cpp-templates.js";
+import { cppPracticeBank } from "./cpp-practice-bank.js";
 import { seedExercises } from "./seed-exercises.js";
 
 // Safe to run any number of times.
@@ -31,7 +31,7 @@ await db
   .onConflictDoNothing();
 
 await seedSkills("cpp-basics", cppBasicsSkills);
-await seedExercises("cpp-basics", cppBasicsTemplates);
+await seedExercises("cpp-basics", cppPracticeBank);
 await seedExercises("cpp-basics", [...cppDiagnosticReading, ...cppDiagnosticWriting], "diagnostic");
 
 await db.$client.end();
