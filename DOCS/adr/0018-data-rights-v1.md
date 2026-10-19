@@ -45,5 +45,5 @@ Every step can run twice: if one fails, the account is simply tried again the ne
 - `review_items` and `calibration_records` have no writer yet. Their module adds its export and erase step when it gets one; until then a forgotten step fails loudly (a foreign key stops the delete), and the erasure tests catch it.
 - Whether the numbers stay is decided at erasure time, from the opt-ins live then.
 - The download is a file, so it skips the API envelope; errors still use it.
-- Still to build (DPDP doc §4): the code purge when a skill is cleared, the 3-year inactivity job, the 1-year security-log cleanup and deleting pending child sign-ups after 7 days.
+- Still to build (DPDP doc §4): the 3-year inactivity job and the 1-year security-log cleanup. The code purge on clearing a skill was built on 20 Oct (ADR-0007), and pending child sign-ups can't arise while the pilot is adults only.
 - Not in v1: changing the email or date of birth (by email to `privacy@`), nominating someone (by email), and a parent acting for a child (with the parental flow).

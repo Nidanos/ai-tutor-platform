@@ -62,9 +62,9 @@ Form rules (same as the server, so show errors before submitting):
 | email | valid email, ≤ 254 characters (case doesn't matter) |
 | password | 8 to 128 characters, any characters, no "must contain a symbol" rule |
 | displayName | 1 to 80 characters after trimming spaces |
-| dateOfBirth | `"YYYY-MM-DD"`, not in the future (use a date picker) |
+| dateOfBirth | `"YYYY-MM-DD"`, not in the future (use a date picker). **18 or over during the pilot**: the server answers `400` on `dateOfBirth` with "AI-Tutor is open to adults (18 and over) for now" (the form checks first, 20 Oct) |
 | acceptTerms, acceptPrivacy | must be `true`: two **separate** required tick boxes, each linking to its page (`/terms`, `/privacy`) |
-| aiTraining, research | optional, **unticked by default**. **Show them only if the date of birth makes the user 18+**; the server rejects them for under-18s |
+| aiTraining, research | optional, **unticked by default**. Show them once the date of birth makes the user 18+ |
 
 **Password reset (19 Oct, ADR-0017).** Both pages are built: `/forgot-password` (Aman's form, now calling the API) and `/reset-password` (`ResetPasswordForm`). The email links to `/reset-password#token=…`; the page reads the token from `location.hash` (a `#fragment` never reaches a server). A link works once, for 30 minutes, and only the newest one works. Each account gets at most one email every 5 minutes: asking again sooner sends nothing, and the first link still works. The new password follows the same rule as sign-up. A reset logs out every session, so send the user to `/login`.
 
@@ -78,7 +78,7 @@ type User = {
   role: "LEARNER" | "AUTHOR" | "ADMIN";
   timezone: string;   // e.g. "Asia/Kolkata"
   dateOfBirth: string | null; // "YYYY-MM-DD"
-  status: "active" | "pending_parent"; // pending_parent = under 18, waiting for a parent
+  status: "active" | "pending_parent"; // pending_parent = under 18, waiting for a parent (none are made during the pilot)
   createdAt: string;  // ISO date
 };
 ```
@@ -409,7 +409,7 @@ export async function downloadMyData() {
 
 | Moment | Do this |
 | --- | --- |
-| Sign-up submit | `POST /register` → on `201`: if `user.status === "pending_parent"` show "Ask a parent or guardian to approve your account" (the parent email step comes next); otherwise go to `/login` with "Account created, please log in". On `409` show "Already registered" + a link to login |
+| Sign-up submit | `POST /register` → on `201` go to `/login` with "Account created, please log in" (no `pending_parent` accounts are made during the pilot). On `409` show "Already registered" + a link to login |
 | Login submit | `POST /login` → on `204` call `GET /me`, keep the user in app state, go to the dashboard. First time on the dashboard: `POST /diagnostic/start` and offer the placement test if it is `in_progress` with no answers yet. On `401` show `error.message` (it never says which field was wrong, on purpose) |
 | App starts | `GET /me` → `200` logged in; `401` (after one refresh try) logged out |
 | Any call returns `401` | Call `POST /refresh` **once**, then retry the call. If refresh fails, clear the user and go to `/login` |
@@ -484,7 +484,7 @@ All 31 MVP endpoints are live. Live AI (hints and generation) switches on once G
 | `INVALID_CREDENTIALS` | 401 | Wrong email or password | Show the message |
 | `UNAUTHENTICATED` | 401 | Not logged in, or the session ended | Refresh once, else go to login |
 | `TOKEN_EXPIRED` | 401 | The 15-minute access token expired | Refresh once (the helper does it) |
-| `PARENT_APPROVAL_PENDING` | 403 | Under-18 account not yet approved by a parent | Show "Waiting for your parent or guardian to approve" |
+| `PARENT_APPROVAL_PENDING` | 403 | Under-18 account not yet approved by a parent (none are made during the pilot) | Show "Waiting for your parent or guardian to approve" |
 | `BAD_ORIGIN` | 403 | Request didn't come from our site | Bug: you called the API directly instead of through `/api` |
 | `EMAIL_TAKEN` | 409 | Email already registered | Link to login |
 | `WRONG_PASSWORD` | 403 | The password typed to delete the account is wrong | Show the message under the field |

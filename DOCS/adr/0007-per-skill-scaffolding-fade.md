@@ -23,7 +23,7 @@ The project's core idea is deliberate scaffolding withdrawal: help is reduced on
 - The stage values are **data** (`fade_stages`), seeded as the default schedule and tunable without code changes. The hint ceilings (5, 4, 3, 2) are starting values.
 - The starting stage of each skill is set from the diagnostic's writing estimate.
 - **The ceiling is enforced by the database:** an attempt copies its hint ceiling from the stage, and a CHECK keeps `hint_level ≤ hint_ceiling` (FR-M12-02).
-- **Code retention:** a learner's submitted answers are kept until they clear that skill, then emptied by a worker job (`answer_purged_at`). Verdicts, test results and evidence are kept, because they are the learning record and the research data.
+- **Code retention:** a learner's submitted answers are kept until they clear that skill, then emptied by the grading worker as soon as the clearing submission is graded, and any later code for that skill once it is graded (`answer_purged_at`; built 20 Oct). Compiler and error messages go too, because they quote source lines; the result just graded keeps its compiler message until the skill's next graded submission, so the learner can read it. Verdicts, test results and evidence are kept, because they are the learning record and the research data.
 
 ## Built (16 Oct)
 - The advance runs inside the grading transaction, on an AC in a practice or review attempt, with the skill's stage row locked.

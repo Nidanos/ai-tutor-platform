@@ -1020,7 +1020,7 @@ erDiagram
 ```
 
 - **Calibration** compares predicted mastery with the result on a held-out exercise (FR-M13-01).
-- **Consent** (owned by M1 since 14 Oct, so sign-up and consent save in one transaction) records each agreement with its policy version. `data_processing` and `terms` are required at sign-up; `ai_training` and `research_study` are optional, adults only. A minor gets none until a parent approves (`parental`). Rows are never deleted (`RESTRICT`); see `DOCS/legal/dpdp-compliance.md`.
+- **Consent** (owned by M1 since 14 Oct, so sign-up and consent save in one transaction) records each agreement with its policy version. `data_processing` and `terms` are required at sign-up; `ai_training` and `research_study` are optional, adults only. A minor gets none until a parent approves (`parental`); during the pilot, sign-up refuses under-18s (20 Oct). Rows are never deleted (`RESTRICT`); see `DOCS/legal/dpdp-compliance.md`.
 - `llm_calls` tracks token use and estimated cost of every Gemini call.
 - The admin overview (ADR-0014) is built from **aggregate queries owned by each module** (no extra tables, no views): learners and opt-ins, sessions, placement tests, code runs, outcomes per skill, content coverage and the hardest exercises. Hint trends, LLM cost, calibration and generation rates are added with the features that produce them.
 
@@ -1077,7 +1077,7 @@ Totals: 39 tables built (the 38 of the MVP plus password_reset_tokens), 3 later 
 
 | Data | Kept | Why |
 | --- | --- | --- |
-| Learner answers (`submissions.answer`) | Until the learner clears that skill; then a worker job empties it and sets `answer_purged_at` | Code is needed while the learner is still working on the skill; afterwards only the results matter |
+| Learner answers (`submissions.answer`) | Until the learner clears that skill; then the grading worker empties it and sets `answer_purged_at` (built 20 Oct) | Code is needed while the learner is still working on the skill; afterwards only the results matter |
 | Verdicts, test results, evidence, hint logs | Always | They are the learning record and the research data |
 | Refresh tokens | Until expiry, then removed by a cleanup job | No value after expiry |
 | Consents | Always | Proof of agreement |
@@ -1675,7 +1675,7 @@ Base: `/api/v1/auth`. Web sends `client` as `web` (default) and works with cooki
 
 | Endpoint | Request | Success | Errors |
 | --- | --- | --- | --- |
-| `POST /register` | `{ email, password (8–128), displayName (1–80), dateOfBirth, acceptTerms, acceptPrivacy, aiTraining?, research? }` | `201 { user }`, no tokens; adults go to login, under-18s get `status: pending_parent` | `400 VALIDATION_ERROR`, `409 EMAIL_TAKEN`, `429 RATE_LIMITED` |
+| `POST /register` | `{ email, password (8–128), displayName (1–80), dateOfBirth, acceptTerms, acceptPrivacy, aiTraining?, research? }` | `201 { user }`, no tokens; adults go to login. During the pilot under-18s get `400` on `dateOfBirth` | `400 VALIDATION_ERROR`, `409 EMAIL_TAKEN`, `429 RATE_LIMITED` |
 | `POST /login` | `{ email, password, client? }` | Web: `204` + cookies. Mobile: `200 { accessToken, refreshToken, expiresIn }` | `401 INVALID_CREDENTIALS` (same for a wrong email or password), `403 PARENT_APPROVAL_PENDING`, `429` |
 | `POST /refresh` | Web: the refresh cookie. Mobile: `{ refreshToken }` | Same as login, with a new token pair | `401 UNAUTHENTICATED` (log in again) |
 | `POST /logout` | Same as refresh | `204`, cookies cleared, the whole login revoked | none |
@@ -1765,7 +1765,7 @@ Rate limits: login 20 per IP and 5 failures per email per 15 minutes; register 5
 - Local infrastructure via `docker compose`: PostgreSQL 16 with pgvector, Redis 7, with secrets in `.env`; settings validated with zod at startup.
 - **Database:** all 38 MVP tables (section 5) plus `password_reset_tokens`, as Drizzle schema files with 15 versioned migrations, plus an idempotent seed: the C++ basics course (20 skills, 23 prerequisites, further-reading links), 100 practice exercises (every skill × rungs 1–5) and 40 placement items.
 - **Auth (M1):** register, login, refresh, logout and me (section 7.3): argon2id passwords, 15-minute JWT, rotating refresh tokens with theft detection, httpOnly cookies for web and Bearer tokens for mobile, rate limits and a CSRF origin check. Forgot and reset password (ADR-0017): a one-use, 30-minute link emailed through Brevo and stored only as a hash; a reset logs the account out everywhere.
-- **Consent at sign-up (DPDP):** date of birth, required Terms and Privacy consents, optional AI-training and research opt-ins (adults only); under-18 accounts wait for a parent.
+- **Consent at sign-up (DPDP):** date of birth, required Terms and Privacy consents, optional AI-training and research opt-ins; during the pilot, sign-up is for adults only (the parent-approval flow comes later). A learner's code is deleted once they clear its skill (20 Oct).
 - **Execution (M7):** `POST /submissions` (202 + idempotency key) and `GET /submissions/:id/result` (polling); a BullMQ worker runs each submission in a fresh, offline E2B sandbox (clang 19), and a pure judge gives AC/WA/CE/RE/TLE/MLE/SE. Checked end to end on real E2B: about 6 s per submission.
 - **Mastery (M4):** formula v1 (ADR-0004) turns each counted verdict into reading or writing evidence; the verdict, the evidence row and the mastery snapshot are saved in one transaction with the mastery row locked. `GET /mastery` and `GET /mastery/:skillId` show reading and writing apart, decayed on read.
 - **Exercises (M6):** `GET /exercises/:id` shows a verified exercise with its sample tests only, and starts the attempt: it enrolls the learner and starts the skill at fade stage 1 (M12), copying that stage's hint ceiling.
@@ -1780,7 +1780,7 @@ Rate limits: login 20 per IP and 5 failures per email per 15 minutes; register 5
 - **Hints (M8):** `POST /exercises/:id/hints` (ADR-0015). Live Gemini 3.5 Flash Lite hint about the learner's own code first, frozen hint as the fallback; one level per request within the fade ceiling; level 5 is the answer (bottom-out logged, no credit); a leak filter blocks solution-like replies; 20 live hints per learner per day and ₹500 per month, each call logged with its cost. Live calls stay off until billing is active (`GEMINI_PAID`).
 - **Exercise generation (M6):** `POST /exercises/generate` and `GET /exercises/generation/:jobId` for admins and authors, plus automatic jobs queued by the recommender (ADR-0016). Up to 3 tries (Gemini 3.8 Flash twice, then 3.1 Pro); a draft is stored only after the sandbox proves it: the reference passes, the starter fails, and 3 model-written wrong solutions fail. Every failed try is logged; after 3 it falls back to the hand-written bank. Separate ₹300/month cap.
 - **Data rights (M1, DPDP):** `PATCH /me`, `GET /me/data`, `DELETE /me` and the opt-in switches (ADR-0018). The download gathers each module's rows through its service. Deletion asks for the password, waits 7 days (logging in cancels it), then an hourly job anonymises the account and erases each module's rows, keeping anonymous numbers only for learners who opted in to research or AI training.
-- **Tests:** 203 automated tests on a separate test database: database rules, auth and consent flows, the verdict judge, the mastery formula, the recommender rules, the placement rules (all 711 possible learners), session time rules, analytics (admin-only, counts only), hints (fake LLM: live, blocked, caps, ceiling, answer), the leak filter, and exercise generation (fake LLM and sandbox: retries, weak tests, fallback, budget), password reset (fake email: one use, expiry, only the newest link, one email per 5 minutes, logged out everywhere), data rights (correction, opt-ins, the download from every module, deletion with and without an opt-in, the grace period), and submissions with a fake sandbox. `pnpm sandbox:smoke` checks all six verdicts on real E2B.
+- **Tests:** 204 automated tests on a separate test database, run with the type checks and the web build on every push and pull request (GitHub Actions): database rules, auth and consent flows, the verdict judge, the mastery formula, the recommender rules, the placement rules (all 711 possible learners), session time rules, analytics (admin-only, counts only), hints (fake LLM: live, blocked, caps, ceiling, answer), the leak filter, and exercise generation (fake LLM and sandbox: retries, weak tests, fallback, budget), password reset (fake email: one use, expiry, only the newest link, one email per 5 minutes, logged out everywhere), data rights (correction, opt-ins, the download from every module, deletion with and without an opt-in, the grace period), and submissions with a fake sandbox. `pnpm sandbox:smoke` checks all six verdicts on real E2B.
 
 **Next (Phase 3, 23 Oct):** frontend binding, deployment, then live AI once billing is active (7 Nov). All 31 MVP endpoints are live.
 
