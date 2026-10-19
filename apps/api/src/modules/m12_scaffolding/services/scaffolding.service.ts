@@ -44,3 +44,7 @@ export async function minRungs(userId: string, languageCode: string) {
 
 // For M13: stage moves by cause.
 export const stageMoves = repo.stageMoves;
+
+// For M1: the learner's own help stages (DPDP access), and their erasure.
+export const learnerScaffolding = repo.learnerScaffolding;
+export const eraseScaffolding = repo.eraseScaffolding;

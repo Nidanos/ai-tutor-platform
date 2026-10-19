@@ -158,3 +158,7 @@ export async function complete(userId: string, diagnosticId: string) {
 
 // For M13: placement tests started and completed.
 export const placementStats = repo.placementStats;
+
+// For M1: the learner's own placement tests (DPDP access), and their erasure.
+export const learnerPlacements = repo.learnerPlacements;
+export const erasePlacements = repo.erasePlacements;

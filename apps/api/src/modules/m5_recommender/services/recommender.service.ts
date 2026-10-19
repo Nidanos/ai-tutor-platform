@@ -78,3 +78,7 @@ export async function getRecommendation(id: string) {
   const { slug, name } = await getSkill(rec.skillId);
   return { ...rec, skill: { id: rec.skillId, slug, name } };
 }
+
+// For M1: the picks made for a learner, by their enrollments (DPDP access), and their erasure.
+export const learnerRecommendations = repo.listForEnrollments;
+export const eraseRecommendations = repo.eraseForEnrollments;

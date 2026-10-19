@@ -85,3 +85,7 @@ export async function setStatus(userId: string, id: string, to: "active" | "paus
 
 // For M13: sessions started and study time.
 export const sessionStats = repo.sessionStats;
+
+// For M1: the learner's own sessions (DPDP access), and their erasure.
+export const learnerSessions = repo.learnerSessions;
+export const eraseSessions = repo.eraseSessions;

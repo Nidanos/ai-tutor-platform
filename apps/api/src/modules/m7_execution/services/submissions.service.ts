@@ -79,3 +79,7 @@ export async function lastResult(userId: string, attemptId: string) {
   const id = await repo.findLatestSubmissionId(attemptId);
   return id ? getResult(userId, id) : undefined;
 }
+
+// For M1: the learner's own attempts and code (DPDP access), and their erasure.
+export const learnerPractice = repo.learnerPractice;
+export const erasePractice = repo.erasePractice;

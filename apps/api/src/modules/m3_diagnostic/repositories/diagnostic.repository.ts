@@ -1,4 +1,4 @@
-import { and, asc, desc, eq, gte, inArray, isNotNull } from "drizzle-orm";
+import { and, asc, desc, eq, gte, inArray, isNotNull, sql } from "drizzle-orm";
 import { countWhere } from "../../../infrastructure/database/aggregates.js";
 import { db, type Tx } from "../../../infrastructure/database/index.js";
 import {
@@ -93,3 +93,35 @@ export const placementStats = async (since: Date) =>
       .select({ started: countWhere(gte(diagnosticAttempts.startedAt, since)), completed: countWhere(gte(diagnosticAttempts.completedAt, since)) })
       .from(diagnosticAttempts)
   )[0];
+
+// A learner's placement tests hang off their enrollments.
+const testsOf = (userId: string) =>
+  db
+    .select({ id: diagnosticAttempts.id })
+    .from(diagnosticAttempts)
+    .innerJoin(enrollments, eq(enrollments.id, diagnosticAttempts.enrollmentId))
+    .where(eq(enrollments.userId, userId));
+
+// For M1 (DPDP access): every placement test, with its answers and estimates.
+export async function learnerPlacements(userId: string) {
+  const [tests, answers, estimates] = await Promise.all([
+    db.select().from(diagnosticAttempts).where(inArray(diagnosticAttempts.id, testsOf(userId))),
+    db.select().from(diagnosticResponses).where(inArray(diagnosticResponses.diagnosticId, testsOf(userId))),
+    db.select().from(diagnosticResults).where(inArray(diagnosticResults.diagnosticId, testsOf(userId))),
+  ]);
+  return { tests, answers, estimates };
+}
+
+// For M1 (DPDP erasure). A typed output is the learner's own words: it goes even when the numbers stay.
+export async function erasePlacements(userId: string, keepNumbers: boolean) {
+  if (keepNumbers) {
+    await db
+      .update(diagnosticResponses)
+      .set({ answer: sql`${diagnosticResponses.answer} - 'output'` })
+      .where(inArray(diagnosticResponses.diagnosticId, testsOf(userId)));
+    return;
+  }
+  await db.delete(diagnosticResults).where(inArray(diagnosticResults.diagnosticId, testsOf(userId)));
+  await db.delete(diagnosticResponses).where(inArray(diagnosticResponses.diagnosticId, testsOf(userId)));
+  await db.delete(diagnosticAttempts).where(inArray(diagnosticAttempts.id, testsOf(userId)));
+}

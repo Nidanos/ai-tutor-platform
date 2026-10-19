@@ -1,4 +1,4 @@
-import { and, count, eq, gte, isNotNull } from "drizzle-orm";
+import { and, count, eq, gte, inArray, isNotNull } from "drizzle-orm";
 import { countWhere } from "../../../infrastructure/database/aggregates.js";
 import { db } from "../../../infrastructure/database/index.js";
 import { exerciseAttempts, exerciseHints, hintEvents } from "../../../infrastructure/database/schema/index.js";
@@ -55,3 +55,14 @@ export async function hintStats(since: Date) {
       .where(gte(hintEvents.createdAt, since))
   )[0];
 }
+
+const attemptsOf = (userId: string) => db.select({ id: exerciseAttempts.id }).from(exerciseAttempts).where(eq(exerciseAttempts.userId, userId));
+
+// For M1 (DPDP access): every hint this learner was offered, asked for or given.
+export const learnerHints = (userId: string) => db.select().from(hintEvents).where(inArray(hintEvents.attemptId, attemptsOf(userId)));
+
+// For M1 (DPDP erasure). A live hint can quote the learner's code: its text goes even when the numbers stay.
+export const eraseHints = (userId: string, keepNumbers: boolean) =>
+  keepNumbers
+    ? db.update(hintEvents).set({ bodyMd: null }).where(inArray(hintEvents.attemptId, attemptsOf(userId)))
+    : db.delete(hintEvents).where(inArray(hintEvents.attemptId, attemptsOf(userId)));

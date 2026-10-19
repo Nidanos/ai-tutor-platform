@@ -1,4 +1,4 @@
-import { and, count, countDistinct, desc, eq, gte, inArray, ne, sql } from "drizzle-orm";
+import { and, count, countDistinct, desc, eq, gte, inArray, isNotNull, ne, sql } from "drizzle-orm";
 import { db, type Tx } from "../../../infrastructure/database/index.js";
 import {
   exerciseAttempts,
@@ -169,3 +169,29 @@ export const findLatestSubmissionId = async (attemptId: string) =>
       .orderBy(desc(submissions.createdAt))
       .limit(1)
   )[0]?.id;
+
+// For M1 (DPDP access): every attempt and submission, code included.
+export async function learnerPractice(userId: string) {
+  const [attempts, submitted] = await Promise.all([
+    db.select().from(exerciseAttempts).where(eq(exerciseAttempts.userId, userId)),
+    db.select().from(submissions).where(eq(submissions.userId, userId)),
+  ]);
+  return { attempts, submissions: submitted };
+}
+
+const submissionsOf = (userId: string) => db.select({ id: submissions.id }).from(submissions).where(eq(submissions.userId, userId));
+
+// For M1 (DPDP erasure). Code goes, and everything printed from it. Verdicts, counts and timings stay
+// only for learners who opted in to research or training.
+export async function erasePractice(userId: string, keepNumbers: boolean) {
+  if (keepNumbers) {
+    await db.update(submissions).set({ answer: null, answerPurgedAt: new Date() }).where(and(eq(submissions.userId, userId), isNotNull(submissions.answer)));
+    const runs = db.select({ id: sandboxRuns.id }).from(sandboxRuns).where(inArray(sandboxRuns.submissionId, submissionsOf(userId)));
+    await db.update(sandboxRuns).set({ compileOutput: null }).where(inArray(sandboxRuns.id, runs));
+    await db.update(runTestResults).set({ stdoutExcerpt: null, stderrExcerpt: null }).where(inArray(runTestResults.runId, runs));
+    return;
+  }
+  await db.delete(sandboxRuns).where(inArray(sandboxRuns.submissionId, submissionsOf(userId))); // their test results go with them
+  await db.delete(submissions).where(eq(submissions.userId, userId));
+  await db.delete(exerciseAttempts).where(eq(exerciseAttempts.userId, userId));
+}

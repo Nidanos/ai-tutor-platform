@@ -5,3 +5,7 @@ export const ensureEnrollment = repo.ensureEnrollment;
 
 // For M9: which course and language a session's enrollment is for.
 export const getEnrollment = async (id: string) => (await repo.findEnrollment(id))!;
+
+// For M1: the learner's own enrollments (DPDP access), and their erasure.
+export const learnerEnrollments = repo.learnerEnrollments;
+export const eraseEnrollments = repo.eraseEnrollments;

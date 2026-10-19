@@ -69,3 +69,19 @@ export const skillStats = (skillIds: string[]) =>
 
 export const clearedSince = async (since: Date) =>
   (await db.select({ n: count() }).from(masteryRecords).where(gte(masteryRecords.clearedAt, since)))[0].n;
+
+// For M1 (DPDP access): every skill score and the evidence behind it.
+export async function learnerMastery(userId: string) {
+  const [skills, evidence] = await Promise.all([
+    db.select().from(masteryRecords).where(eq(masteryRecords.userId, userId)),
+    db.select().from(evidenceEvents).where(eq(evidenceEvents.userId, userId)),
+  ]);
+  return { skills, evidence };
+}
+
+// For M1 (DPDP erasure): only numbers here, kept only for learners who opted in to research or training.
+export async function eraseMastery(userId: string, keepNumbers: boolean) {
+  if (keepNumbers) return;
+  await db.delete(evidenceEvents).where(eq(evidenceEvents.userId, userId));
+  await db.delete(masteryRecords).where(eq(masteryRecords.userId, userId));
+}

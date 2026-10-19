@@ -65,3 +65,6 @@ export async function effectiveStates(userId: string, languageCode: string) {
 // For M13: per-skill averages of effective scores, and skills cleared.
 export const skillStats = repo.skillStats;
 export const clearedSince = repo.clearedSince;
+
+// For M1: the learner's own scores and evidence (DPDP access).
+export const learnerMastery = repo.learnerMastery;

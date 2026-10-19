@@ -104,3 +104,19 @@ export const stageMoves = (since: Date) =>
     .from(fadeStageChanges)
     .where(and(isNotNull(fadeStageChanges.fromStage), gte(fadeStageChanges.createdAt, since)))
     .groupBy(fadeStageChanges.reason);
+
+// For M1 (DPDP access): each skill's help stage and every move between stages.
+export async function learnerScaffolding(userId: string) {
+  const [stages, moves] = await Promise.all([
+    db.select().from(skillScaffolding).where(eq(skillScaffolding.userId, userId)),
+    db.select().from(fadeStageChanges).where(eq(fadeStageChanges.userId, userId)),
+  ]);
+  return { stages, moves };
+}
+
+// For M1 (DPDP erasure): only stages here, kept only for learners who opted in to research or training.
+export async function eraseScaffolding(userId: string, keepNumbers: boolean) {
+  if (keepNumbers) return;
+  await db.delete(fadeStageChanges).where(eq(fadeStageChanges.userId, userId));
+  await db.delete(skillScaffolding).where(eq(skillScaffolding.userId, userId));
+}

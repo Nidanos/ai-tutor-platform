@@ -1,4 +1,4 @@
-import { and, count, desc, eq, gte, ne } from "drizzle-orm";
+import { and, count, desc, eq, gte, inArray, ne } from "drizzle-orm";
 import { sumOf } from "../../../infrastructure/database/aggregates.js";
 import { db } from "../../../infrastructure/database/index.js";
 import { learningSessions, sessionSteps } from "../../../infrastructure/database/schema/index.js";
@@ -47,3 +47,21 @@ export const sessionStats = async (since: Date) =>
       .from(learningSessions)
       .where(gte(learningSessions.startedAt, since))
   )[0];
+
+const sessionsOf = (userId: string) => db.select({ id: learningSessions.id }).from(learningSessions).where(eq(learningSessions.userId, userId));
+
+// For M1 (DPDP access): every study session and its steps.
+export async function learnerSessions(userId: string) {
+  const [sessions, steps] = await Promise.all([
+    db.select().from(learningSessions).where(eq(learningSessions.userId, userId)),
+    db.select().from(sessionSteps).where(inArray(sessionSteps.sessionId, sessionsOf(userId))),
+  ]);
+  return { sessions, steps };
+}
+
+// For M1 (DPDP erasure): only times and links here, kept only for learners who opted in to research or training.
+export async function eraseSessions(userId: string, keepNumbers: boolean) {
+  if (keepNumbers) return;
+  await db.delete(sessionSteps).where(inArray(sessionSteps.sessionId, sessionsOf(userId)));
+  await db.delete(learningSessions).where(eq(learningSessions.userId, userId));
+}

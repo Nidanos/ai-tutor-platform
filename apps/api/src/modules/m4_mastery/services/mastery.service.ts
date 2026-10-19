@@ -72,3 +72,6 @@ export async function seedFromDiagnostic(tx: Tx, { diagnosticId, reading, writin
   }
   return true;
 }
+
+// For M1: DPDP erasure.
+export const eraseMastery = repo.eraseMastery;

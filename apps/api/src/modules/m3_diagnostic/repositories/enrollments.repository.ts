@@ -19,3 +19,12 @@ export const findEnrollment = async (id: string) =>
       .from(enrollments)
       .where(eq(enrollments.id, id))
   )[0];
+
+// For M1 (DPDP access): the courses this learner joined.
+export const learnerEnrollments = (userId: string) => db.select().from(enrollments).where(eq(enrollments.userId, userId));
+
+// For M1 (DPDP erasure). The goal is the learner's own words: it goes even when the numbers stay.
+export const eraseEnrollments = (userId: string, keepNumbers: boolean) =>
+  keepNumbers
+    ? db.update(enrollments).set({ goalText: null }).where(eq(enrollments.userId, userId))
+    : db.delete(enrollments).where(eq(enrollments.userId, userId));

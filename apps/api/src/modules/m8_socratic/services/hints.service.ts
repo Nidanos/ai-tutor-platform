@@ -94,3 +94,7 @@ export async function requestHint(userId: string, exerciseId: string, learnerCod
 
 // For M13: hint use and its sources.
 export const hintStats = repo.hintStats;
+
+// For M1: the learner's own hint history (DPDP access), and their erasure.
+export const learnerHints = repo.learnerHints;
+export const eraseHints = repo.eraseHints;
