@@ -262,3 +262,7 @@ export async function generationStats(since: Date) {
     .groupBy(generationFailures.stage);
   return { bySkill, failures };
 }
+
+// Every exercise of a skill in one language (practice and placement), whatever its status.
+export const exerciseIdsOfSkill = async (skillId: string, languageCode: string) =>
+  (await db.select({ id: exercises.id }).from(exercises).where(and(eq(exercises.skillId, skillId), eq(exercises.languageCode, languageCode)))).map((e) => e.id);

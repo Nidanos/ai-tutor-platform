@@ -11,6 +11,8 @@ import {
   exerciseSecrets,
   masteryRecords,
   exerciseTests,
+  runTestResults,
+  sandboxRuns,
   submissions,
   users,
 } from "../src/infrastructure/database/schema/index.js";
@@ -59,6 +61,12 @@ const evidenceOf = (userId: string) =>
 const masteryOf = async (userId: string) => (await db.select().from(masteryRecords).where(eq(masteryRecords.userId, userId)))[0];
 const failed = (stdout: string): TestRun => ({ ...passed(stdout), stdout: "wrong" });
 const submissionRow = async (id: string) => (await db.select().from(submissions).where(eq(submissions.id, id)))[0];
+// What a submission's run kept: compiler text, and per test its error and program output.
+async function runTextOf(submissionId: string) {
+  const [run] = await db.select().from(sandboxRuns).where(eq(sandboxRuns.submissionId, submissionId));
+  const results = await db.select().from(runTestResults).where(eq(runTestResults.runId, run.id)).orderBy(runTestResults.id);
+  return { compileOutput: run.compileOutput, stderr: results.map((r) => r.stderrExcerpt), stdout: results.map((r) => r.stdoutExcerpt) };
+}
 
 describe("submissions", () => {
   it("saves and queues a submission, answering 202", async () => {
@@ -156,5 +164,47 @@ describe("submissions", () => {
     await runSubmission(await submit(api, attempt.id), true, brokenSandbox);
     await runSubmission(await submit(api, attempt.id), false, sandbox({ compile: { ok: false, output: "error" } }));
     expect(await evidenceOf(attempt.userId)).toEqual([]);
+  });
+
+  it("deletes the learner's code for a skill once it is cleared, keeping every verdict (privacy policy §2)", async () => {
+    const { attempt, api } = await learnerWithAttempt(); // rung 3
+    const early = await submit(api, attempt.id);
+    const quoting = { compile: { ok: true, output: "solution.cpp:1:5: warning: int f() {}" } }; // compilers quote the code
+    await runSubmission(early, false, sandbox({ ...quoting, tests: [{ ...failed("6"), stderr: "assert(n > 0) failed" }, passed("27")] }));
+    const pending = await submit(api, attempt.id); // still queued when the skill clears, as from another tab
+
+    // A rung-5 build solved with no hint clears the skill (ADR-0007).
+    const [{ skillId }] = await db.select({ skillId: exercises.skillId }).from(exercises).where(eq(exercises.id, attempt.exerciseId));
+    const [build] = await db.insert(exercises).values(exerciseRow(skillId, 5)).returning();
+    await db.insert(exerciseSecrets).values({ exerciseId: build.id, harnessCode: "harness", referenceSolution: "-" });
+    await db.insert(exerciseTests).values({ exerciseId: build.id, seq: 1, name: "Example", size: "small", visibility: "sample", input: "1", expectedOutput: "1" });
+    const [buildAttempt] = await db
+      .insert(exerciseAttempts)
+      .values({ userId: attempt.userId, enrollmentId: attempt.enrollmentId, exerciseId: build.id, hintCeiling: 3 })
+      .returning();
+    const clearing = await submit(api, buildAttempt.id);
+    await runSubmission(clearing, false, sandbox({ ...quoting, tests: [passed("1")] }));
+
+    expect((await masteryOf(attempt.userId)).clearedAt).not.toBeNull();
+    for (const [id, verdict] of [[early, "WA"], [clearing, "AC"]]) {
+      const row = await submissionRow(id);
+      expect(row).toMatchObject({ answer: null, verdict });
+      expect(row.answerPurgedAt).not.toBeNull();
+      expect(row.answerSha256).toMatch(/^[0-9a-f]{64}$/); // the fingerprint stays
+    }
+    const earlyResult = (await api.result(early)).body.data;
+    expect(await runTextOf(early)).toEqual({ compileOutput: null, stderr: [null, null], stdout: ["wrong", "27"] }); // program output isn't code
+    expect(earlyResult.tests[0]).toMatchObject({ verdict: "WA", output: "wrong" });
+    expect((await runTextOf(clearing)).compileOutput).toBe(quoting.compile.output); // just graded: its result stays readable
+
+    expect((await submissionRow(pending)).answer).toBe("int f() {}"); // still needed to run it
+    await runSubmission(pending, false, sandbox({ tests: [passed("6"), passed("27")] }));
+    expect((await submissionRow(pending)).answer).toBeNull(); // practice after clearing goes once graded
+    expect((await runTextOf(clearing)).compileOutput).toBeNull(); // and the previous result's compiler text goes with it
+
+    // A retried job finds the verdict saved and only purges: e.g. when the purge failed after the commit.
+    await db.update(submissions).set({ answer: "int f() {}" }).where(eq(submissions.id, early));
+    await runSubmission(clearing, false, sandbox({ tests: [] }));
+    expect((await submissionRow(early)).answer).toBeNull();
   });
 });

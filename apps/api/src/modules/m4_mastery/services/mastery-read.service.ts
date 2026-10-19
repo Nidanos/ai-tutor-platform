@@ -62,6 +62,9 @@ export async function effectiveStates(userId: string, languageCode: string) {
   );
 }
 
+// For M7: a cleared skill's code is deleted (privacy policy §2).
+export const isCleared = async (key: repo.LearnerSkill) => Boolean((await repo.findRecord(key))?.clearedAt);
+
 // For M13: per-skill averages of effective scores, and skills cleared.
 export const skillStats = repo.skillStats;
 export const clearedSince = repo.clearedSince;

@@ -1,7 +1,8 @@
 import { e2bProvider } from "../../../infrastructure/sandbox/e2b-provider.js";
 import type { SandboxProvider } from "../../../infrastructure/sandbox/sandbox-provider.js";
+import { isCleared } from "../../m4_mastery/services/mastery-read.service.js";
 import { recordEvidence } from "../../m4_mastery/services/mastery.service.js";
-import { getRunnableExercise } from "../../m6_exercises/services/exercises.service.js";
+import { exerciseIdsOfSkill, getRunnableExercise } from "../../m6_exercises/services/exercises.service.js";
 import { advanceOnSolve } from "../../m12_scaffolding/services/scaffolding.service.js";
 import * as repo from "../repositories/submissions.repository.js";
 import { excerpt, judgeTest, overallVerdict, sameOutput, type Verdict } from "./judge.js";
@@ -17,9 +18,11 @@ type Finish = Omit<repo.Outcome, "submissionId" | "attemptId" | "testsTotal">;
 // A sandbox failure is retried with a fresh sandbox; after the last try the verdict is SE.
 export async function runSubmission(submissionId: string, isLastTry: boolean, provider: SandboxProvider = e2bProvider) {
   const found = await repo.findSubmissionForRun(submissionId);
-  if (!found || found.submission.status === "completed") return; // gone, or a duplicate job
+  if (!found) return; // gone
   const { submission, attempt } = found;
   const exercise = await getRunnableExercise(submission.exerciseId);
+  // A duplicate job, or BullMQ retrying a purge that failed after the verdict was saved.
+  if (submission.status === "completed") return purgeIfCleared(submission.userId, exercise.skillId, submission.languageCode, submissionId);
   const answer = submission.answer ?? "";
   await repo.setSubmissionStatus(submissionId, "running");
 
@@ -49,6 +52,7 @@ export async function runSubmission(submissionId: string, isLastTry: boolean, pr
           if (evidence.verdict === "AC") await advanceOnSolve(tx, { userId, skillId, languageCode, rung, hintsUsed, submissionId });
         }),
     );
+    await purgeIfCleared(submission.userId, exercise.skillId, submission.languageCode, submissionId);
   };
 
   // Rung 1 is "predict the output": the answer is text, so no code runs (ADR-0002).
@@ -111,4 +115,12 @@ export async function runSubmission(submissionId: string, isLastTry: boolean, pr
       stderrExcerpt: excerpt(run.stderr),
     })),
   });
+}
+
+// Privacy policy §2: code is kept only until the learner clears its skill. Checked after every graded
+// submission, so the clearing one, every one before it and any later practice all go.
+async function purgeIfCleared(userId: string, skillId: string, languageCode: string, justGradedId: string) {
+  if (await isCleared({ userId, skillId, languageCode })) {
+    await repo.purgeSkillCode(userId, await exerciseIdsOfSkill(skillId, languageCode), justGradedId);
+  }
 }

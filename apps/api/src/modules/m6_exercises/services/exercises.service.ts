@@ -50,3 +50,6 @@ export const listPracticeIds = repo.listPracticeIds;
 
 // For M13: generation success and failure by skill and rung.
 export const generationStats = repo.generationStats;
+
+// For M7: a cleared skill's code is deleted across all its exercises (privacy policy §2).
+export const exerciseIdsOfSkill = repo.exerciseIdsOfSkill;

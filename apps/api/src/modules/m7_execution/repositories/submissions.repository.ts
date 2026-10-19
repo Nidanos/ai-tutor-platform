@@ -1,4 +1,4 @@
-import { and, count, countDistinct, desc, eq, gte, inArray, isNotNull, ne, sql } from "drizzle-orm";
+import { and, count, countDistinct, desc, eq, gte, inArray, isNotNull, ne, type SQL, sql } from "drizzle-orm";
 import { db, type Tx } from "../../../infrastructure/database/index.js";
 import {
   exerciseAttempts,
@@ -179,19 +179,41 @@ export async function learnerPractice(userId: string) {
   return { attempts, submissions: submitted };
 }
 
-const submissionsOf = (userId: string) => db.select({ id: submissions.id }).from(submissions).where(eq(submissions.userId, userId));
+const submissionsWhere = (where: SQL) => db.select({ id: submissions.id }).from(submissions).where(where);
+const runsWhere = (where: SQL) => db.select({ id: sandboxRuns.id }).from(sandboxRuns).where(inArray(sandboxRuns.submissionId, submissionsWhere(where)));
+
+// The code itself: the verdict, the counts and the code's hash stay.
+const deleteCode = (where: SQL) =>
+  db.update(submissions).set({ answer: null, answerPurgedAt: new Date() }).where(and(where, isNotNull(submissions.answer)));
+
+// Compiler and error messages quote source lines; program output only with `andOutput`.
+async function deleteRunText(where: SQL, andOutput = false) {
+  await db.update(sandboxRuns).set({ compileOutput: null }).where(inArray(sandboxRuns.id, runsWhere(where)));
+  await db
+    .update(runTestResults)
+    .set({ stderrExcerpt: null, ...(andOutput && { stdoutExcerpt: null }) })
+    .where(inArray(runTestResults.runId, runsWhere(where)));
+}
+
+// Privacy policy §2: a cleared skill's code, and the text that can quote it. Graded submissions only: one
+// still queued (another tab) needs its code to run. The one just graded keeps its compiler message, so its
+// result can still be read; that goes with the skill's next graded submission.
+export async function purgeSkillCode(userId: string, exerciseIds: string[], justGradedId: string) {
+  const graded = and(eq(submissions.userId, userId), inArray(submissions.exerciseId, exerciseIds), eq(submissions.status, "completed"))!;
+  await deleteCode(graded);
+  await deleteRunText(and(graded, ne(submissions.id, justGradedId))!);
+}
 
 // For M1 (DPDP erasure). Code goes, and everything printed from it. Verdicts, counts and timings stay
 // only for learners who opted in to research or training.
 export async function erasePractice(userId: string, keepNumbers: boolean) {
+  const theirs = eq(submissions.userId, userId);
   if (keepNumbers) {
-    await db.update(submissions).set({ answer: null, answerPurgedAt: new Date() }).where(and(eq(submissions.userId, userId), isNotNull(submissions.answer)));
-    const runs = db.select({ id: sandboxRuns.id }).from(sandboxRuns).where(inArray(sandboxRuns.submissionId, submissionsOf(userId)));
-    await db.update(sandboxRuns).set({ compileOutput: null }).where(inArray(sandboxRuns.id, runs));
-    await db.update(runTestResults).set({ stdoutExcerpt: null, stderrExcerpt: null }).where(inArray(runTestResults.runId, runs));
+    await deleteCode(theirs);
+    await deleteRunText(theirs, true);
     return;
   }
-  await db.delete(sandboxRuns).where(inArray(sandboxRuns.submissionId, submissionsOf(userId))); // their test results go with them
+  await db.delete(sandboxRuns).where(inArray(sandboxRuns.submissionId, submissionsWhere(theirs))); // their test results go with them
   await db.delete(submissions).where(eq(submissions.userId, userId));
   await db.delete(exerciseAttempts).where(eq(exerciseAttempts.userId, userId));
 }
