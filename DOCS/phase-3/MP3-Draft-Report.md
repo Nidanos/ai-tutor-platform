@@ -235,7 +235,7 @@ The budget is a student budget, so every running cost was measured or quoted, no
 | Hosting (API, worker, database, Redis) | Oracle Cloud Always Free VM in an India region; fallback Azure for Students credit | ₹0 per month |
 | Web hosting | Vercel free plan during the college phase | ₹0 |
 | Code execution | E2B, billed per second while a sandbox runs; $100 starting credit | about ₹0.01 per submission |
-| Exercise generation | Gemini 3.8 Flash (3.1 Pro on a third try), once per exercise, then frozen; its own cap of ₹300 per month | about ₹1.5 per exercise; ₹110–150 for skills 6–20 |
+| Exercise generation | Gemini 3.8 Flash (3.1 Pro on a third try), once per exercise, then frozen; its own cap of ₹300 per month | about ₹1.5 per exercise; skills 6–20 were hand-written instead, saving about ₹110–150 |
 | Live tutor hints | Gemini 3.5 Flash Lite, capped at 20 per learner per day and ₹500 per month in total | about ₹0.08 per hint (₹0.01 measured on short test prompts) |
 | Password-reset emails | Brevo free plan: 300 emails a day | ₹0 |
 
@@ -307,7 +307,7 @@ Every increment ended with automated tests and a real end-to-end run before the 
 | I2. Exercise generation | I1 | 19 Oct | Done (live runs wait for billing) |
 | N. Password reset by email | D | 19 Oct | Done (real emails once the Brevo account is set up) |
 | M. Gemini billing activation | – | 7 Nov | Planned (₹2,500 of the ₹3,000 prepayment left) |
-| I3. First live AI runs: frozen hints, generated exercises for skills 6–20 | I2, M | 7–8 Nov | Planned |
+| I3. First live AI runs: frozen hints, extra generated exercise variants | I2, M | 7–8 Nov | Planned |
 | K. Deployment, pilot, final report | H, I3, L | 5–10 Nov | Planned |
 
 **Critical path:** A → B → C → E → F → G → J → I1 → I2 → M → I3 → K. The sandbox and grading chain was the riskiest part, so it was built first. The billing activation (M) is now the one outside dependency on the path.
@@ -1391,7 +1391,7 @@ The sandbox, Gemini and the email service are replaced by **fake providers** in 
 
 ### 4.1.4 System Testing
 1. **Sandbox smoke test** (`pnpm sandbox:smoke`): six real C++ programs run on the real E2B service, and each must produce its intended verdict (AC, WA, CE, RE, TLE, MLE).
-2. **Content verification** (`pnpm exercises:verify`): every seeded exercise runs in the real sandbox; the reference must pass and the starter must fail. **66 of 66 verified** (26 practice exercises, 40 placement items).
+2. **Content verification** (`pnpm exercises:verify`): every seeded exercise runs in the real sandbox; the reference must pass and the starter must fail. **140 of 140 verified** (100 practice exercises, 40 placement items). The 74 hand-written for skills 6–20 were also each run against a common wrong answer first, which had to fail.
 3. **End-to-end learner loop** on a running server: register → log in → open exercise → submit → poll → read mastery → reopen the exercise.
 4. **End-to-end placement test** on real E2B, then the first recommendation and the fade stages; **sessions** (start, pause, resume, end); **progress**; **hints** (the whole ladder); **analytics** with a promoted admin; **generation** refused correctly while billing is off.
 5. **Password reset in a real browser:** the forgot-password form, the emailed link (printed locally), a new password, then logging in with it; the old password and the used link are refused.
@@ -1439,7 +1439,7 @@ Learner acceptance testing is planned for the pilot before the final report.
 | Integration | hints, budget, frozen hints | 10 | Live, blocked, failed, ceiling, answer, daily and monthly caps |
 | Integration | exercise generation, budget, API | 10 | Proven drafts stored; retries; weak tests rejected; Pro then fallback; budget stop; admin only; automatic queueing |
 | System | sandbox smoke (real E2B) | 6 | All six execution verdicts on real infrastructure |
-| System | content verification (real E2B) | 66 | Every seeded exercise: reference passes, starter fails |
+| System | content verification (real E2B) | 140 | Every seeded exercise: reference passes, starter fails |
 
 **Sample test case: a generated exercise whose tests can't catch a mistake is rejected**
 
@@ -1484,7 +1484,7 @@ Learner acceptance testing is planned for the pilot before the final report.
 
 ## 4.3 Test Reports and Debugging
 
-**Results:** 180 of 180 automated tests pass, the 6 of 6 real-sandbox verdicts are correct, 66 of 66 seeded exercises verify on the real sandbox, and the end-to-end runs pass (A-8, A-10).
+**Results:** 180 of 180 automated tests pass, the 6 of 6 real-sandbox verdicts are correct, 140 of 140 seeded exercises verify on the real sandbox, and the end-to-end runs pass (A-8, A-10).
 
 Debugging followed one rule: **measure, find the cause, fix the cause, add a test.** These are the defects found:
 
@@ -1522,7 +1522,7 @@ The password reset also had an independent security review (19 October): no crit
 docker compose up -d                  # PostgreSQL 16 + Redis 7
 pnpm install
 cd apps/api && cp .env.example .env   # fill DATABASE_URL, JWT_SECRET, WEB_ORIGIN, E2B_API_KEY, GEMINI_API_KEY, BREVO_API_KEY
-pnpm db:migrate && pnpm db:seed       # 14 migrations; C++ course, 20 skills, 26 practice exercises, 40 placement items
+pnpm db:migrate && pnpm db:seed       # 14 migrations; C++ course, 20 skills, 100 practice exercises, 40 placement items
 pnpm exercises:verify                 # runs every new exercise in the real sandbox before it can be served
 pnpm dev                              # API + queue worker on http://localhost:3001
 pnpm test                             # 180 automated tests
@@ -1543,7 +1543,7 @@ pnpm hints:generate                   # once billing is active (GEMINI_PAID=true
 | M3 Placement test | Adaptive reading walk with a slip check, frontier code tasks, seeding, retakes; 40 verified items | 3 |
 | M4 Mastery | Formula v1 inside the grading transaction; read views with decay; raise-only seeding | 2 |
 | M5 Recommender | Next skill, rung and exercise by fixed rules, saved with reasons | 1 |
-| M6 Exercises | Learner view; 26 verified practice exercises (first 5 skills × 5 rungs, plus one); generation proven in the sandbox, by admins and automatically | 3 |
+| M6 Exercises | Learner view; 100 verified practice exercises (all 20 skills × 5 rungs, hand-written); generation proven in the sandbox, by admins and automatically | 3 |
 | M7 Execution | Fresh offline sandbox per submission, judge, queue, retries, polling | 2 |
 | M8 Hints | Five-level ladder, live tutor with leak filter and caps, frozen fallback | 1 |
 | M9 Sessions | Start or resume, pause, resume, end; steps from the recommender; idle rules | 3 |
@@ -1554,7 +1554,7 @@ pnpm hints:generate                   # once billing is active (GEMINI_PAID=true
 
 **Real runs at this stage:** a placement test on real E2B placed a learner who knew 3 skills with 6 questions (5 reading, 1 code), graded the code in about 6 seconds and fast-tracked those 3 skills to the last fade stage; the first recommendation was then the next new skill. Sessions, progress, hints, analytics and generation were each run against the development database, and the password reset was walked through in a real browser (A-10).
 
-**Planned for the MVP (10 November):** Gemini billing activation (7 November), then the first live AI runs: live hints, the frozen hints, and generated practice exercises for skills 6–20; frontend screens (in progress); the Brevo account and sending domain for real reset emails; deployment to the cloud server; and a pilot with real learners.
+**Planned for the MVP (10 November):** Gemini billing activation (7 November), then the first live AI runs: live hints, the frozen hints, and extra generated exercise variants; frontend screens (in progress); the Brevo account and sending domain for real reset emails; deployment to the cloud server; and a pilot with real learners.
 
 ## 4.6 Users Training
 
@@ -1586,7 +1586,7 @@ The project set out to measure what a learner can *write*, not what they have wa
 
 In a real run, a correct submission was judged **AC (4 of 4 tests) in about 6 seconds**, and the learner's writing mastery for that skill moved from **0 to 0.24**, exactly as the formula predicts.
 
-Around that core, the rest of the learner's journey now works too: an adaptive **placement test** that asks an expert 26 questions instead of 40 and fast-tracks what they prove, a **recommender** that chooses the next skill, rung and exercise by explainable rules, **study sessions** that resume at the same step, an honest **progress** view, an **admin overview**, a **hint ladder** whose live tutor can never hand over the solution, **exercise generation** that stores nothing the sandbox hasn't proven, and a **password reset** that never reveals who has an account. All 25 MVP endpoints are live, backed by 180 automated tests, 66 exercises verified in the real sandbox, and a written decision record (ADR-0001 to ADR-0017) for every major choice.
+Around that core, the rest of the learner's journey now works too: an adaptive **placement test** that asks an expert 26 questions instead of 40 and fast-tracks what they prove, a **recommender** that chooses the next skill, rung and exercise by explainable rules, **study sessions** that resume at the same step, an honest **progress** view, an **admin overview**, a **hint ladder** whose live tutor can never hand over the solution, **exercise generation** that stores nothing the sandbox hasn't proven, and a **password reset** that never reveals who has an account. All 25 MVP endpoints are live, backed by 180 automated tests, 140 exercises verified in the real sandbox (100 practice exercises covering every skill and rung, and 40 placement items), and a written decision record (ADR-0001 to ADR-0017) for every major choice.
 
 ## 5.2 System Specifications
 
@@ -1602,7 +1602,7 @@ Around that core, the rest of the learner's journey now works too: an adaptive *
 ## 5.3 Limitations of the System
 
 - **No web interface yet.** The frontend is in progress; this draft's sample outputs are API responses, and screen snapshots will be added in the final report.
-- **Practice content covers 5 of 20 skills.** The 26 practice exercises cover the first five skills (plus one); skills 6–20 get theirs from exercise generation, which is built and tested but first runs once billing is active. The placement test covers all 20.
+- **One practice exercise per rung.** Every skill has five hand-written exercises, one per rung, so a learner who needs more practice at a rung retries the same task or moves up; generated variants add more once billing is active. The placement test covers all 20 skills.
 - **Live AI waits for billing.** Live hints and exercise generation are built and tested with a fake model, but stay off until the ₹3,000 prepayment is complete and activates the paid tier (the remaining ₹2,500 on 7 November); until then learners get frozen hints or a general nudge. Lessons are not built yet.
 - **Reset emails wait for setup.** Real emails need the Brevo key and the sending domain; until then they are printed in the API terminal (in development only: production refuses to start without the key).
 - **Password reset edge cases.** A login already in progress at the moment of a reset can still finish and keep its session (a window of about a tenth of a second); closing it needs a token version per user. The per-IP limits also need the deployed proxy to pass on the visitor's real address.
@@ -1855,7 +1855,7 @@ Full test run of 19 October 2026: **36 test files, 180 tests, 180 passed.**
 - ✓ exercise-draft.test.ts > exercise drafts > refuse a call statement that doesn't take the test's arguments
 - ✓ exercise-draft.test.ts > exercise drafts > prompt with the skill, what it may use, the existing titles and the last failure
 - ✓ exercise-draft.test.ts > exercise drafts > give Gemini a schema without the dialect tag
-- ✓ exercise-templates.test.ts > cpp-basics template bank > covers rungs 1–5 for each of the first five skills, once each
+- ✓ exercise-templates.test.ts > cpp-basics template bank > covers rungs 1–5 for every course skill, once each
 - ✓ exercise-templates.test.ts > cpp-basics template bank > only uses skills that exist in the course
 - ✓ exercise-templates.test.ts > cpp-basics template bank > gives rung 1 a program to read and no harness; rungs 2–5 a function to write
 - ✓ exercise-templates.test.ts > cpp-basics placement test bank > has exactly one reading item and one code task per course skill
@@ -2103,7 +2103,7 @@ Hint ladder with live AI switched off (19 Oct 2026), a rung-1 exercise
 ```
 
 ```
-Admin overview, last 30 days (19 Oct 2026, development database)
+Admin overview, last 30 days (19 Oct 2026, development database, before the full practice bank was seeded)
 learners: total 9, joined 9, ran code 4, waiting for a parent 1, AI-training opt-ins 1
 runs:     5 submissions (AC 4, WA 1), median run 50 ms, sandbox error rate 0
 content:  14 of 20 skills have no practice exercises yet; Your first program has one per rung
