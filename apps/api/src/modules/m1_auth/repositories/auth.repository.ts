@@ -1,11 +1,11 @@
-import { and, eq, gt, gte, isNull, sql } from "drizzle-orm";
+import { and, eq, gt, gte, isNull, ne, sql } from "drizzle-orm";
 import { countWhere } from "../../../infrastructure/database/aggregates.js";
 import { v7 as uuidv7 } from "uuid";
 import { db } from "../../../infrastructure/database/index.js";
 import { consents, organizations, passwordResetTokens, refreshTokens, users } from "../../../infrastructure/database/schema/index.js";
 
 // What clients may see of a user. Never the password hash.
-const publicUser = {
+export const publicUser = {
   id: users.id,
   email: users.email,
   displayName: users.displayName,
@@ -34,10 +34,22 @@ export const createLearner = (learner: NewLearner, consentKinds: ConsentKind[], 
 export const findUserByEmail = async (email: string) =>
   (await db.select().from(users).where(eq(users.email, email)))[0];
 
-export const findActiveUser = async (id: string) =>
-  (await db.select(publicUser).from(users).where(and(eq(users.id, id), eq(users.status, "active"))))[0];
+// Can use the app: active, with no deletion pending (DELETE /me ends every login until the next one).
+export const usableAccount = and(eq(users.status, "active"), isNull(users.deletionRequestedAt));
 
-export const markLoggedIn = (id: string) => db.update(users).set({ lastLoginAt: new Date() }).where(eq(users.id, id));
+export const findActiveUser = async (id: string) =>
+  (await db.select(publicUser).from(users).where(and(eq(users.id, id), usableAccount)))[0];
+
+// Logging in also cancels a pending account deletion (DELETE /me). False if the account was erased
+// after the login read it: the hourly job won that race.
+export const markLoggedIn = async (id: string) =>
+  (
+    await db
+      .update(users)
+      .set({ lastLoginAt: new Date(), deletionRequestedAt: null })
+      .where(and(eq(users.id, id), eq(users.status, "active")))
+      .returning({ id: users.id })
+  ).length > 0;
 
 export const insertRefreshToken = async (values: typeof refreshTokens.$inferInsert) =>
   (await db.insert(refreshTokens).values(values).returning({ id: refreshTokens.id }))[0].id;
@@ -47,7 +59,7 @@ export const findRefreshToken = async (tokenHash: string) =>
     await db
       .select({
         token: refreshTokens,
-        user: { id: users.id, role: users.role, orgId: users.orgId, status: users.status },
+        user: { id: users.id, role: users.role, orgId: users.orgId, status: users.status, deletionRequestedAt: users.deletionRequestedAt },
       })
       .from(refreshTokens)
       .innerJoin(users, eq(users.id, refreshTokens.userId))
@@ -71,7 +83,7 @@ export async function learnerStats(since: Date) {
   const [counts] = await db
     .select({ total: countWhere(sql`true`), joined: countWhere(gte(users.createdAt, since)), pendingParent: countWhere(eq(users.status, "pending_parent")) })
     .from(users)
-    .where(eq(users.role, "LEARNER"));
+    .where(and(eq(users.role, "LEARNER"), ne(users.status, "deleted")));
   const [consented] = await db
     .select({ researchStudy: countWhere(eq(consents.kind, "research_study")), aiTraining: countWhere(eq(consents.kind, "ai_training")) })
     .from(consents)

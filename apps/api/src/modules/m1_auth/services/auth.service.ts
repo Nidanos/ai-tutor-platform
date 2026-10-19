@@ -25,10 +25,10 @@ const REUSE_GRACE_MS = 20_000;
 const RESET_LINK_MINUTES = 30; // ADR-0017
 const RESET_EMAIL_GAP_MINUTES = 5; // at most one reset email per account in this time
 // The DOCS/legal version users agree to. Bump it when the Privacy Policy or Terms change.
-const LEGAL_VERSION = "0.1";
+export const LEGAL_VERSION = "0.1";
 
 const invalidCredentials = () => new AppError(401, "INVALID_CREDENTIALS", "Email or password is incorrect");
-const loginAgain = () => new AppError(401, "UNAUTHENTICATED", "Please log in again");
+export const loginAgain = () => new AppError(401, "UNAUTHENTICATED", "Please log in again");
 
 // A child's own "I agree" isn't valid consent (DPDP s.9): nothing is recorded until a parent approves.
 export async function register({ email, password, displayName, dateOfBirth, aiTraining, research }: RegisterInput) {
@@ -57,19 +57,19 @@ export async function login(input: { email: string; password: string }, client: 
   }
   if (user.status !== "active") throw invalidCredentials();
 
-  await repo.markLoggedIn(user.id);
+  if (!(await repo.markLoggedIn(user.id))) throw invalidCredentials();
   return issueSession({ userId: user.id, role: user.role, orgId: user.orgId }, uuidv7(), client, device);
 }
 
 // Rotation: every refresh replaces the token. An old token coming back means it was copied,
-// so the whole login (family) is revoked.
+// so the whole login (family) is revoked. So is any login of an account waiting to be deleted.
 export async function refresh(token: string | undefined, device: Device) {
   const found = token && (await repo.findRefreshToken(sha256(token)));
   if (!found || found.token.expiresAt < new Date()) throw loginAgain();
 
   const { token: row, user } = found;
   const inGrace = row.replacedById && row.revokedAt && Date.now() - row.revokedAt.getTime() < REUSE_GRACE_MS;
-  if ((row.revokedAt && !inGrace) || user.status !== "active") {
+  if ((row.revokedAt && !inGrace) || user.status !== "active" || user.deletionRequestedAt) {
     await repo.revokeFamily(row.familyId);
     throw loginAgain();
   }

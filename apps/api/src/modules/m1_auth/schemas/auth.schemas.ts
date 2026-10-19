@@ -8,12 +8,14 @@ const mustAccept = (doc: string) => z.literal(true, { error: `You must accept th
 // NIST rules: length matters, forced symbols don't. The 128 cap stops huge strings being hashed.
 // Unknown fields (like "role") are stripped, so nobody can sign up as ADMIN.
 const newPassword = z.string().min(8).max(128);
+export const displayName = z.string().trim().min(1).max(80);
 
 export const registerBody = z
   .object({
-    email,
+    // .invalid is reserved (RFC 2606): erased accounts use it, so a sign-up taking one could block an erasure.
+    email: email.refine((e) => !e.toLowerCase().endsWith(".invalid"), "Enter a real email address"),
     password: newPassword,
-    displayName: z.string().trim().min(1).max(80),
+    displayName,
     dateOfBirth: z.iso.date().refine((d) => d >= "1900-01-01" && d <= today(), "Enter a real date of birth"),
     acceptTerms: mustAccept("Terms of Service"),
     acceptPrivacy: mustAccept("Privacy Policy"),
