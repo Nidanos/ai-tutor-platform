@@ -1,0 +1,101 @@
+.page {
+    min-height: 100vh;
+    background: #f8fafc;
+    color: #1e293b;
+    padding: 0 1rem 4rem;
+}
+
+.nav {
+    max-width: 46rem;
+    margin: 0 auto;
+    padding: 1.25rem 0;
+    display: flex;
+    justify-content: space-between;
+    gap: 1rem;
+    flex-wrap: wrap;
+    font-size: 0.9rem;
+}
+
+.nav a {
+    color: #4338ca;
+}
+
+.doc {
+    max-width: 46rem;
+    margin: 0 auto;
+    background: #fff;
+    border: 1px solid #e2e8f0;
+    border-radius: 1rem;
+    padding: 2rem clamp(1rem, 4vw, 3rem);
+    line-height: 1.65;
+}
+
+.doc h1 {
+    font-size: 1.9rem;
+    margin: 0 0 1rem;
+}
+
+.doc h2 {
+    font-size: 1.25rem;
+    margin: 2rem 0 0.5rem;
+}
+
+.doc h3 {
+    font-size: 1.05rem;
+    margin: 1.5rem 0 0.4rem;
+}
+
+.doc p,
+.doc li {
+    margin: 0.5rem 0;
+}
+
+.doc ul,
+.doc ol {
+    padding-left: 1.4rem;
+}
+
+.doc a {
+    color: #4338ca;
+    text-decoration: underline;
+}
+
+.doc blockquote {
+    margin: 1rem 0;
+    padding: 0.75rem 1rem;
+    border-left: 4px solid #6366f1;
+    background: #eef2ff;
+    border-radius: 0.5rem;
+}
+
+.doc table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 1rem 0;
+    font-size: 0.92rem;
+    display: block;
+    overflow-x: auto;
+}
+
+.doc th,
+.doc td {
+    border: 1px solid #e2e8f0;
+    padding: 0.45rem 0.6rem;
+    text-align: left;
+    vertical-align: top;
+}
+
+.doc th {
+    background: #f1f5f9;
+}
+
+.doc hr {
+    border: 0;
+    border-top: 1px solid #e2e8f0;
+    margin: 2rem 0;
+}
+
+.doc code {
+    font-family: "Courier New", monospace;
+    font-size: 0.9em;
+}
