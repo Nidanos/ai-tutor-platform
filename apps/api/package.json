@@ -16,7 +16,8 @@
     "sandbox:smoke": "tsx src/scripts/sandbox-smoke.ts",
     "exercises:verify": "tsx src/scripts/verify-exercises.ts",
     "hints:generate": "tsx src/scripts/generate-hints.ts",
-    "user:admin": "tsx src/scripts/make-admin.ts"
+    "user:admin": "tsx src/scripts/make-admin.ts",
+    "demo:walk": "tsx src/scripts/demo-walk.ts"
   },
   "dependencies": {
     "@ai-tutor/types": "workspace:*",
