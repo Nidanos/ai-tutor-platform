@@ -1,0 +1,53 @@
+# Every push to main and every pull request: types, the API tests, and the web build must pass.
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+# A newer push to the same branch cancels the run still going.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  check:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    # The same images as docker-compose.yml. The tests make their own database (ai_tutor_test) next to this one.
+    services:
+      postgres:
+        image: pgvector/pgvector:pg16
+        env:
+          POSTGRES_USER: ai_tutor
+          POSTGRES_PASSWORD: ci-only-password
+          POSTGRES_DB: ai_tutor_db
+        ports: ["5432:5432"]
+        options: --health-cmd "pg_isready -U ai_tutor" --health-interval 5s --health-timeout 5s --health-retries 10
+      redis:
+        image: redis:7-alpine
+        ports: ["6379:6379"]
+        options: --health-cmd "redis-cli ping" --health-interval 5s --health-timeout 5s --health-retries 10
+    # Throwaway values for this run only. No real keys: the tests use fake sandbox, AI and email providers.
+    env:
+      DATABASE_URL: postgres://ai_tutor:ci-only-password@localhost:5432/ai_tutor_db
+      JWT_SECRET: ci-only-secret-not-used-anywhere-else
+      WEB_ORIGIN: http://localhost:3000
+      REDIS_URL: redis://localhost:6379
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+      - uses: pnpm/action-setup@v6 # pnpm's version comes from packageManager in package.json
+        with:
+          cache: true
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm typecheck
+      - run: pnpm --filter @ai-tutor/api test
+      # Also fails if the Terms or Privacy page would publish a draft line or an unfilled blank.
+      - run: pnpm --filter @ai-tutor/web build
