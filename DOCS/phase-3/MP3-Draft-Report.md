@@ -1,6 +1,6 @@
 # AI Tutor: An Evidence-Based Adaptive Learning System with Deliberate Scaffolding Withdrawal
 
-> **Draft report for Review 3 (Implementation, Testing and Draft Report), 23 October 2026.** Status as of 19 October 2026.
+> **Draft report for Review 3 (Implementation, Testing and Draft Report), 23 October 2026.** Status as of 20 October 2026.
 > Prepared to the MCA-269 "Format of Project Report" and the Annexure-IV chapter scheme. Typesetting rules (Times New Roman 12, 1.5 spacing, margins 3.0/2.0/2.54/2.54 cm, blank page before each chapter) are applied in the final printed copy.
 
 ---
@@ -258,8 +258,8 @@ One design decision is a direct result of this study. The first design kept one 
 - **Legal.** The system stores personal data, so it is designed for India's **Digital Personal Data Protection Act, 2023**:
   - consent at sign-up, recorded with the policy version;
   - separate opt-ins for AI training and research, adults only;
-  - learners under 18 are held until a parent approves;
-  - learner code is never sent to the AI with a name or email;
+  - during the pilot, sign-up is for adults only, because a child's account needs a parent's approval and that flow comes later;
+  - learner code is never sent to the AI with a name or email, and is deleted once the learner clears that skill;
   - account emails (password reset, deletion notice) go through Brevo (EU), which receives only the email address;
   - learners can correct, download or delete their data, and switch the opt-ins on and off; a deletion waits 7 days (logging in cancels it), then keeps anonymous numbers only for learners who opted in;
   - the Terms of Service and Privacy Policy are published at `/terms` and `/privacy`, built from the same texts learners accept;
@@ -315,6 +315,7 @@ Every increment ended with automated tests and a real end-to-end run before the 
 | I2. Exercise generation | I1 | 19 Oct | Done (live runs wait for billing) |
 | N. Password reset by email | D | 19 Oct | Done (real emails once the Brevo account is set up) |
 | O. Data rights, skill details, Terms and Privacy pages | D | 19 Oct | Done (the Settings screens are part of H) |
+| P. CI, code purge, adults-only pilot sign-up, guided demo walk | O | 20 Oct | Done |
 | M. Gemini billing activation | – | 7 Nov | Planned (₹2,500 of the ₹3,000 prepayment left) |
 | I3. First live AI runs: frozen hints, extra generated exercise variants | I2, M | 7–8 Nov | Planned |
 | K. Deployment, pilot, final report | H, I3, L | 5–10 Nov | Planned |
@@ -1213,7 +1214,7 @@ All input enters through the REST API, and **every request body is validated by 
 
 | Input | Fields | Validation |
 |---|---|---|
-| Register | email, password, displayName, dateOfBirth, acceptTerms, acceptPrivacy, aiTraining?, research? | Email ≤ 254 characters, case-insensitive; password 8–128 characters (NIST: no forced symbols); name 1–80; date of birth a real date, not in the future; both acceptances must be `true`; opt-ins refused for under-18s; `.invalid` addresses refused (erased accounts use them); unknown fields such as `role` are stripped |
+| Register | email, password, displayName, dateOfBirth, acceptTerms, acceptPrivacy, aiTraining?, research? | Email ≤ 254 characters, case-insensitive; password 8–128 characters (NIST: no forced symbols); name 1–80; date of birth a real date, not in the future; both acceptances must be `true`; under-18s refused during the pilot (shown next to the date of birth); `.invalid` addresses refused (erased accounts use them); unknown fields such as `role` are stripped |
 | Login | email, password, client (web or mobile) | Same email rules; failed logins throttled per email and per IP |
 | Forgot password | email | Same email rules; the same reply whether or not the account exists; 5 requests per IP per 15 minutes, and at most one email per account every 5 minutes |
 | Reset password | token, password | Token 20–200 characters; password as for sign-up; a used, expired or replaced link gives `400 RESET_LINK_INVALID`; 10 per IP per 15 minutes |
@@ -1423,7 +1424,7 @@ flowchart TB
 
 ## 4.1 Testing Methodology
 
-Tests are automated with **Vitest** and **Supertest** and run against a **separate test database** (`ai_tutor_test`), which is rebuilt from the migrations on every run. That way the tests prove the real migrations, not a hand-made copy. Each test creates its own users and data with random names, so tests never depend on each other.
+Tests are automated with **Vitest** and **Supertest** and run against a **separate test database** (`ai_tutor_test`), which is rebuilt from the migrations on every run. That way the tests prove the real migrations, not a hand-made copy. Each test creates its own users and data with random names, so tests never depend on each other. **GitHub Actions** runs the type checks, all these tests on a fresh database and the web build on every push and pull request (`.github/workflows/ci.yml`), so nothing that breaks them reaches `main` unnoticed.
 
 ### 4.1.1 Unit Testing
 Pure functions are tested with constructed inputs:
@@ -1443,7 +1444,7 @@ Pure functions are tested with constructed inputs:
 ### 4.1.3 Integration Testing
 HTTP-level tests call the real Express app with real requests:
 - **auth:** register, login, refresh, logout, theft detection, throttling, CSRF, consent, and per-IP limits that trust only our own proxy;
-- **submissions:** submit, idempotency, ownership, judging, retries;
+- **submissions:** submit, idempotency, ownership, judging, retries, and deleting a cleared skill's code (privacy policy §2);
 - **exercises:** secrets never leak; attempts, enrollment and fade start; the skill's description and reading links;
 - **mastery and fade:** read views, the decay maths, stage advance;
 - **recommender:** first step, moving up rungs, skipping skills without content, course complete;
@@ -1465,7 +1466,8 @@ The sandbox, Gemini and the email service are replaced by **fake providers** in 
 4. **End-to-end placement test** on real E2B, then the first recommendation and the fade stages; **sessions** (start, pause, resume, end); **progress**; **hints** (the whole ladder); **analytics** with a promoted admin; **generation** refused correctly while billing is off.
 5. **Password reset in a real browser:** the forgot-password form, the emailed link (printed locally), a new password, then logging in with it; the old password and the used link are refused.
 6. **Data rights on the running server:** correct, opt in, download, then delete with the password (the email printed locally), and the erasure of that account as the hourly job does it (A-10). The server registers the hourly job once, and its first run completes.
-7. **Manual API tests** with curl, for authentication and consent, by a team member.
+7. **Guided walk** (`pnpm demo:walk`): one new learner through sign-up, the placement test, an exercise on the real sandbox (a wrong then a right answer), a hint, progress, the data download and deletion (A-10). It is also the smoke test after a deploy.
+8. **Manual API tests** with curl, for authentication and consent, by a team member.
 
 ### 4.1.5 White-Box and Black-Box Testing
 - **White box:** unit tests cover every branch of the judge and formula, and database-rule tests target specific constraints.
@@ -1485,7 +1487,7 @@ Learner acceptance testing is planned for the pilot before the final report.
 
 ## 4.2 Test Data and Test Cases
 
-**Table 8: Automated test suites (203 tests in 38 files, all passing on 19 Oct 2026)**
+**Table 8: Automated test suites (204 tests in 38 files, all passing on 20 Oct 2026)**
 
 | Level | Suite | Tests | What it proves |
 |---|---|---|---|
@@ -1499,11 +1501,11 @@ Learner acceptance testing is planned for the pilot before the final report.
 | Unit | exercise banks | 6 | Practice and placement banks complete and well-formed |
 | Unit | exercise drafts | 5 | Draft rules, conversion to the bank's format, prompt contents |
 | Module | 9 schema suites | 16 | Every key constraint refuses bad data |
-| Integration | auth + consent | 17 | Login flows, token theft, throttling, CSRF; DPDP consent and under-18 hold; client IP only from our own proxy |
+| Integration | auth + consent | 17 | Login flows, token theft, throttling, CSRF; DPDP consent; under-18s refused during the pilot; client IP only from our own proxy |
 | Integration | password reset | 9 | Same reply for every email; token stored as a hash; one email per 5 minutes; one use, even at once; expiry; newest link only; every login ended; per-IP limit |
 | Integration | data rights | 15 | Correction; opt-ins on and off, adults only; the download from every module, no secrets; deletion with the password, every login ended, cancelled by logging in; limits |
 | Integration | account erasure | 4 | Every learning row erased, or only anonymous numbers kept with an opt-in; grace period respected; every table pointing at a learner accounted for |
-| Integration | submissions | 10 | 202 + polling, idempotency tied to its attempt, hidden tests private, CE/SE rules |
+| Integration | submissions | 11 | 202 + polling, idempotency tied to its attempt, hidden tests private, CE/SE rules, a cleared skill's code deleted |
 | Integration | exercises API + verification | 12 | No secrets or rung-1 answers in responses; skill details; bad content rejected; wrong solutions must fail |
 | Integration | mastery API, scaffolding fade | 7 | Reading and writing apart; decay on read; stage advance |
 | Integration | recommendations API | 4 | First step, rung up, skip skills without content, course done |
@@ -1566,7 +1568,7 @@ Learner acceptance testing is planned for the pilot before the final report.
 
 ## 4.3 Test Reports and Debugging
 
-**Results:** 203 of 203 automated tests pass, the 6 of 6 real-sandbox verdicts are correct, 140 of 140 seeded exercises verify on the real sandbox, and the end-to-end runs pass (A-8, A-10).
+**Results:** 204 of 204 automated tests pass, the 6 of 6 real-sandbox verdicts are correct, 140 of 140 seeded exercises verify on the real sandbox, and the end-to-end runs pass (A-8, A-10).
 
 Debugging followed one rule: **measure, find the cause, fix the cause, add a test.** These are the defects found:
 
@@ -1613,7 +1615,8 @@ cd apps/api && cp .env.example .env   # fill DATABASE_URL, JWT_SECRET, WEB_ORIGI
 pnpm db:migrate && pnpm db:seed       # 15 migrations; C++ course, 20 skills, 100 practice exercises, 40 placement items
 pnpm exercises:verify                 # runs every new exercise in the real sandbox before it can be served
 pnpm dev                              # API + queue worker on http://localhost:3001
-pnpm test                             # 203 automated tests
+pnpm test                             # 204 automated tests (CI runs them on every push)
+pnpm demo:walk                        # one learner through the whole loop on a running API
 pnpm sandbox:smoke                    # real-sandbox check of all six verdicts
 pnpm user:admin <email>               # make the first admin (for analytics)
 pnpm hints:generate                   # once billing is active (GEMINI_PAID=true): freeze hints 1–4
@@ -1622,17 +1625,17 @@ pnpm hints:generate                   # once billing is active (GEMINI_PAID=true
 
 ## 4.5 Implementation
 
-**Status at Review 3 (19 October 2026):**
+**Status at Review 3 (20 October 2026):**
 
 | Module | Built | Endpoints live |
 |---|---|---|
-| M1 Accounts, consent and data rights | Register, login, refresh, logout, me; forgot and reset password by email; date of birth; consent kinds; under-18 hold; correct, opt in and out, download, delete (7-day grace, hourly erasure) | 13 |
+| M1 Accounts, consent and data rights | Register, login, refresh, logout, me; forgot and reset password by email; date of birth; consent kinds; adults only during the pilot; correct, opt in and out, download, delete (7-day grace, hourly erasure) | 13 |
 | M2 Skill graph | C++ basics course: 20 skills, 23 prerequisites, further-reading links (seed); each skill's description and links shown with its exercises and progress | – |
 | M3 Placement test | Adaptive reading walk with a slip check, frontier code tasks, seeding, retakes; 40 verified items | 3 |
 | M4 Mastery | Formula v1 inside the grading transaction; read views with decay; raise-only seeding | 2 |
 | M5 Recommender | Next skill, rung and exercise by fixed rules, saved with reasons | 1 |
 | M6 Exercises | Learner view; 100 verified practice exercises (all 20 skills × 5 rungs, hand-written); generation proven in the sandbox, by admins and automatically | 3 |
-| M7 Execution | Fresh offline sandbox per submission, judge, queue, retries, polling | 2 |
+| M7 Execution | Fresh offline sandbox per submission, judge, queue, retries, polling; a cleared skill's code deleted | 2 |
 | M8 Hints | Five-level ladder, live tutor with leak filter and caps, frozen fallback | 1 |
 | M9 Sessions | Start or resume, pause, resume, end; steps from the recommender; idle rules | 3 |
 | M11 Progress | Every skill, reading and writing apart, fade stage, status | 1 |
@@ -1657,7 +1660,8 @@ pnpm hints:generate                   # once billing is active (GEMINI_PAID=true
 - **Decisions** are recorded as ADRs, so the reason for each choice survives the people who made it.
 - **The mastery formula is versioned** (`m4-v1` is stored on every evidence row), so it can be tuned later from calibration data without making old numbers unexplainable.
 - **Costs are watched:** every LLM call is logged with its estimated cost, with hard monthly caps; sandboxes are billed per second and killed after each run.
-- **Data protection:** account erasure runs every hour (built); the other retention jobs come next (3 years inactive with a 48-hour warning, the code purge when a skill is cleared, deleting sign-in records after a year). A test fails if a new table points at a learner without being exported and erased. A breach-response plan sets the 6-hour CERT-In and 72-hour Board deadlines, and backups run nightly.
+- **Data protection:** account erasure runs every hour, and a learner's code is deleted once they clear its skill (both built); the other retention jobs come next (3 years inactive with a 48-hour warning, deleting sign-in records after a year). A test fails if a new table points at a learner without being exported and erased. A breach-response plan sets the 6-hour CERT-In and 72-hour Board deadlines, and backups run nightly.
+- **Every push and pull request** runs the type checks, the tests on a fresh database and the web build (GitHub Actions).
 - **Dependencies** are pinned to exact versions; upgrades are deliberate and tested.
 
 ---
@@ -1674,7 +1678,7 @@ The project set out to measure what a learner can *write*, not what they have wa
 
 In a real run, a correct submission was judged **AC (4 of 4 tests) in about 6 seconds**, and the learner's writing mastery for that skill moved from **0 to 0.24**, exactly as the formula predicts.
 
-Around that core, the rest of the learner's journey now works too: an adaptive **placement test** that asks an expert 26 questions instead of 40 and fast-tracks what they prove, a **recommender** that chooses the next skill, rung and exercise by explainable rules, **study sessions** that resume at the same step, an honest **progress** view, an **admin overview**, a **hint ladder** whose live tutor can never hand over the solution, **exercise generation** that stores nothing the sandbox hasn't proven, a **password reset** that never reveals who has an account, and **data rights**: learners can correct, download and delete their own data, and only those who opted in leave anonymous numbers behind. All 31 MVP endpoints are live, backed by 203 automated tests, 140 exercises verified in the real sandbox (100 practice exercises covering every skill and rung, and 40 placement items), and a written decision record (ADR-0001 to ADR-0018) for every major choice.
+Around that core, the rest of the learner's journey now works too: an adaptive **placement test** that asks an expert 26 questions instead of 40 and fast-tracks what they prove, a **recommender** that chooses the next skill, rung and exercise by explainable rules, **study sessions** that resume at the same step, an honest **progress** view, an **admin overview**, a **hint ladder** whose live tutor can never hand over the solution, **exercise generation** that stores nothing the sandbox hasn't proven, a **password reset** that never reveals who has an account, and **data rights**: learners can correct, download and delete their own data, and only those who opted in leave anonymous numbers behind. All 31 MVP endpoints are live, backed by 204 automated tests run on every push, 140 exercises verified in the real sandbox (100 practice exercises covering every skill and rung, and 40 placement items), and a written decision record (ADR-0001 to ADR-0018) for every major choice.
 
 ## 5.2 System Specifications
 
@@ -1694,7 +1698,8 @@ Around that core, the rest of the learner's journey now works too: an adaptive *
 - **Live AI waits for billing.** Live hints and exercise generation are built and tested with a fake model, but stay off until the ₹3,000 prepayment is complete and activates the paid tier (the remaining ₹2,500 on 7 November); until then learners get frozen hints or a general nudge. Lessons are not built yet.
 - **Account emails wait for setup.** Real reset and deletion emails need the Brevo key and the sending domain; until then they are printed in the API terminal (in development only: production refuses to start without the key).
 - **Password reset edge cases.** A login already in progress at the moment of a reset can still finish and keep its session (a window of about a tenth of a second); closing it needs a token version per user. The per-IP limits trust only our own proxy; the Vercel and Caddy setup that passes on the visitor's real address is written down (ADR-0008) and is checked at deployment.
-- **Data rights screens and the rest of retention.** The data-rights API is built, but not yet the Settings screens. The email address and date of birth are changed by email, not in the app. The code purge when a skill is cleared, the 3-year inactivity job and the yearly clean-up of sign-in records are still to build, so for now code stays until the account is deleted. After a deletion request, an access token still works on the learning endpoints until it expires (at most 15 minutes).
+- **Data rights screens and the rest of retention.** The data-rights API is built, but not yet the Settings screens. The email address and date of birth are changed by email, not in the app. The 3-year inactivity job and the yearly clean-up of sign-in records are still to build. After a deletion request, an access token still works on the learning endpoints until it expires (at most 15 minutes).
+- **Adults only during the pilot.** Under-18s can't sign up until the parent-approval flow is built.
 - **Legal pages carry working values.** The company name, the domain and the Grievance Officer's postal address are placeholders until Nidanos is registered, and a lawyer-reviewed version replaces both texts before public launch.
 - **The judge sees only output.** A determined learner can sometimes avoid a prerequisite (for example by rewriting a struct to use a vector); the tasks are designed so the natural solution uses it.
 - **Placement length.** An expert answers 26 questions (about 28 minutes); a placement seed unlocks the next skills for about 4 days (syntactic skills) before one Build per skill confirms them.
@@ -1707,7 +1712,7 @@ Around that core, the rest of the learner's journey now works too: an adaptive *
 
 - More languages (Java, Python) on the same language-independent engine, and more courses (DSA, frontend, backend).
 - The parent-approval flow for under-18 learners, with identity verification as the DPDP Rules require, and a parent acting on a child's data rights.
-- The remaining retention jobs: the code purge when a skill is cleared, 3 years inactive, a year's sign-in records, and unapproved child sign-ups.
+- The remaining retention jobs: 3 years inactive, and a year's sign-in records.
 - Changing the password, email address or date of birth while logged in, and verifying the email address at sign-up.
 - Calibration of the mastery model from real data (held-out exercises), and spaced-revision scheduling (M10).
 - Frozen lessons with a diagram and a worked example per skill, and the brute-force/time-limit check for DSA-sized generated exercises.
@@ -1750,7 +1755,7 @@ flowchart TD
   FP --> RP["New password"]
   RP --> LI
   R -->|18 or over| LI
-  R -->|under 18| P["Waiting for<br/>parent<br/>approval"]
+  R -->|under 18| P["Refused for now:<br/>the pilot is<br/>adults only"]
   LI --> D["Dashboard:<br/>next step,<br/>progress"]
   D --> DG["Placement test<br/>(first visit)"]
   DG --> D
@@ -1840,8 +1845,7 @@ flowchart LR
 | any | No | any | 400, sign-up refused |
 | Yes | Yes | No | Active account; consents: data processing, terms |
 | Yes | Yes | Yes | Active account; also the chosen opt-ins |
-| No | Yes | No | Account held `pending_parent`; **no consent recorded** |
-| No | Yes | Yes | 400: opt-ins are for adults only |
+| No | any | any | 400 next to the date of birth: the pilot is adults only, and **nothing is saved** |
 
 **Does a submission count, and what does it do?**
 
@@ -1896,7 +1900,7 @@ After the third failed try (or when the month's budget is spent), the job falls 
 | exercises | id, skill_id, language_code, rung, variant_seed, content_version, status, title, prompt_md, starter_code, time_limit_ms, memory_limit_mb | content key unique; rung 1–5; limits in range |
 | exercise_secrets | exercise_id, harness_code, reference_solution | never read by learner-facing queries |
 | exercise_attempts | id, user_id, exercise_id, status, hint_level, hint_ceiling, ce_count, submission_count | one active per learner and exercise; hint_level ≤ hint_ceiling |
-| submissions | id, attempt_id, answer (≤ 64 KB), answer_sha256, idempotency_key, status, verdict, tests_passed, counts_as_attempt | idempotency key unique |
+| submissions | id, attempt_id, answer (≤ 64 KB, deleted once the skill is cleared), answer_sha256, idempotency_key, status, verdict, tests_passed, counts_as_attempt | idempotency key unique |
 | sandbox_runs / run_test_results | run status, verdict, compile output, wall time, peak memory; per-test verdict, time, memory, output excerpt | one result per run and test |
 | mastery_records | (user_id, skill_id, language_code), reading_score, writing_score, evidence times, cleared_at, limit_streak, decay_lambda | scores 0–1; row locked while updated |
 | evidence_events | user, skill, dimension, submission_id, verdict, rung, hints_used, weight, score_before, score_after, formula_version | exactly one source; never counted twice |
@@ -1909,7 +1913,7 @@ After the third failed try (or when the month's budget is spent), the job falls 
 
 ## A-8 Test Reports
 
-Full test run of 19 October 2026: **38 test files, 203 tests, 203 passed.**
+Full test run of 20 October 2026: **38 test files, 204 tests, 204 passed.**
 
 - ✓ account-api.test.ts > PATCH /me > corrects the name and time zone, and renames the hidden personal organisation with the name
 - ✓ account-api.test.ts > PATCH /me > rejects an unknown time zone, a blank name, an empty body and other fields
@@ -1947,8 +1951,8 @@ Full test run of 19 October 2026: **38 test files, 203 tests, 203 passed.**
 - ✓ auth.test.ts > consent at sign-up > records the required consents plus only the opt-ins chosen
 - ✓ auth.test.ts > consent at sign-up > refuses sign-up without accepting the Terms
 - ✓ auth.test.ts > consent at sign-up > refuses a date of birth in the future
-- ✓ auth.test.ts > consent at sign-up > holds a minor for parental approval, with no consent recorded
-- ✓ auth.test.ts > consent at sign-up > refuses AI-training or research opt-ins from a minor
+- ✓ auth.test.ts > consent at sign-up > refuses under-18s during the pilot, next to the date of birth, and saves nothing
+- ✓ auth.test.ts > consent at sign-up > still keeps an account waiting for a parent from logging in
 - ✓ auth.test.ts > consent at sign-up > counts age in whole years, turning 18 on the birthday
 - ✓ curriculum.test.ts > curriculum schema > rejects a skill that requires itself
 - ✓ curriculum.test.ts > curriculum schema > rejects a duplicate edge even when it applies to every language (null)
@@ -2114,6 +2118,7 @@ Full test run of 19 October 2026: **38 test files, 203 tests, 203 passed.**
 - ✓ submissions.test.ts > submissions > turns an AC into writing mastery, saved with its ledger row
 - ✓ submissions.test.ts > submissions > penalises only the first wrong answer of an attempt
 - ✓ submissions.test.ts > submissions > records no evidence for SE or an early compile error
+- ✓ submissions.test.ts > submissions > deletes the learner's code for a skill once it is cleared, keeping every verdict (privacy policy §2)
 
 **Real-sandbox smoke test:**
 ```
@@ -2182,9 +2187,9 @@ Real responses captured during testing (IDs shortened):
 {"success":true,"data":{"user":{"email":"adult@test.com","displayName":"Adult","role":"LEARNER",
  "dateOfBirth":"2000-05-01","status":"active"}}}
 
-// Register (12 years old), then log in
-{"success":true,"data":{"user":{"email":"kid@test.com","status":"pending_parent"}}}
-{"success":false,"error":{"code":"PARENT_APPROVAL_PENDING","message":"A parent or guardian needs to approve this account first"}}
+// Register (15 years old) during the pilot: refused, next to the date of birth, and nothing saved
+{"success":false,"error":{"code":"VALIDATION_ERROR","message":"Invalid request",
+ "details":[{"code":"custom","path":["dateOfBirth"],"message":"AI-Tutor is open to adults (18 and over) for now"}]}}
 
 // Submission result: wrong answer (return n % 10)
 {"verdict":"WA","testsPassed":1,"testsTotal":4,"tests":[
@@ -2264,6 +2269,20 @@ POST /auth/forgot-password → 202 "If an account uses that email, a reset link 
   link: http://localhost:3000/reset-password#token=…
 POST /auth/reset-password → 204; log in with the new password → dashboard; old password → 401
 same link again → 400 RESET_LINK_INVALID "This reset link is invalid or has expired. Ask for a new one."
+```
+
+```
+Guided walk on the running server, real E2B (20 Oct 2026; pnpm demo:walk)
+▶ Sign up: 15 years old → 400 "AI-Tutor is open to adults (18 and over) for now"; adult → 201 active; log in → 200
+▶ Placement test: question 1 reading, Your first program; "I don't know" → completed, all 20 skills from the beginning
+▶ What next: Your first program, rung 1 of 5 (new_skill)
+▶ Open "Sum of digits" (Functions, rung 3): 1 sample test shown, hidden tests stay on the server, up to 5 hints
+▶ Wrong answer: WA, 1 of 4 tests; sample "Example" expected "6", got "0"; hidden "Zero" AC, "All nines" WA, "Largest input" WA
+▶ Hint: level 1 of 5 (generic): Re-read the task and list what goes in and what must come out…
+▶ Right answer: AC, 4 of 4 tests; Functions reading 0.00, writing 0.20 (one hint used, so less credit)
+▶ Progress: total 20, locked 19, ready 1, in progress 0, cleared 0, review due 0
+▶ Download my data: 200, attachment; filename=ai-tutor-my-data.json, 11 sections, 5 named providers
+▶ Delete my account: 202, erased after 7 days; the same token now → 401
 ```
 
 ```
