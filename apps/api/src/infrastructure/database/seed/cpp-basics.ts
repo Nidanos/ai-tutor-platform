@@ -11,7 +11,7 @@ export type SkillSeed = {
   description: string;
   type: "syntactic" | "conceptual";
   difficulty: number;
-  needs: string[]; // prerequisite slugs
+  needs: string[]; // prerequisite slugs; "course/slug" for a skill of another course
   resources: ResourceSeed[];
 };
 
@@ -21,7 +21,7 @@ const learncpp = (lesson: string, title: string): ResourceSeed => ({
   kind: "article",
 });
 
-const cppref = (page: string, title: string): ResourceSeed => ({
+export const cppref = (page: string, title: string): ResourceSeed => ({
   title: `cppreference: ${title}`,
   url: `https://en.cppreference.com/cpp/${page}`,
   kind: "docs",

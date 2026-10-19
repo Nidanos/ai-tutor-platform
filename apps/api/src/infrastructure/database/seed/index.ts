@@ -2,6 +2,7 @@ import { eq } from "drizzle-orm";
 import { db } from "../index.js";
 import { courseLanguages, courses, fadeSchedules, fadeStages, languages } from "../schema/index.js";
 import { cppBasicsSkills } from "./cpp-basics.js";
+import { dsaSkills } from "./dsa.js";
 import { courseRows, DEFAULT_LANGUAGE, defaultFadeStages, languageRows } from "./data.js";
 import { seedSkills } from "./seed-skills.js";
 import { cppDiagnosticReading } from "./cpp-diagnostic-reading.js";
@@ -31,6 +32,7 @@ await db
   .onConflictDoNothing();
 
 await seedSkills("cpp-basics", cppBasicsSkills);
+await seedSkills("dsa", dsaSkills); // after C++ basics: its skills build on them
 await seedExercises("cpp-basics", cppPracticeBank);
 await seedExercises("cpp-basics", [...cppDiagnosticReading, ...cppDiagnosticWriting], "diagnostic");
 
