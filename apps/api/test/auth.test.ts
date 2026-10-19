@@ -5,7 +5,7 @@ import { describe, expect, it } from "vitest";
 import { app } from "../src/app.js";
 import { env } from "../src/config/env.js";
 import { db } from "../src/infrastructure/database/index.js";
-import { consents, refreshTokens } from "../src/infrastructure/database/schema/index.js";
+import { consents, refreshTokens, users } from "../src/infrastructure/database/schema/index.js";
 import { ageOn } from "../src/modules/m1_auth/services/age.js";
 import { sha256 } from "../src/shared/auth/tokens.js";
 import { uniq } from "./helpers.js";
@@ -148,18 +148,19 @@ describe("consent at sign-up", () => {
     await register({ ...newAccount(), dateOfBirth: yearsAgo(-1) }).expect(400);
   });
 
-  it("holds a minor for parental approval, with no consent recorded", async () => {
-    const account = newAccount(12);
-    const res = await register(account).expect(201);
-    expect(res.body.data.user.status).toBe("pending_parent");
-    expect(await consentKindsOf(res.body.data.user.id)).toEqual([]);
-
-    const login = await client().post(`${AUTH}/login`).send({ email: account.email, password: PASSWORD }).expect(403);
-    expect(login.body.error.code).toBe("PARENT_APPROVAL_PENDING");
+  it("refuses under-18s during the pilot, next to the date of birth, and saves nothing", async () => {
+    const account = { ...newAccount(17), research: true };
+    const res = await register(account).expect(400);
+    expect(res.body.error.details).toEqual([expect.objectContaining({ path: ["dateOfBirth"], message: "AI-Tutor is open to adults (18 and over) for now" })]);
+    expect(await db.$count(users, eq(users.email, account.email))).toBe(0);
   });
 
-  it("refuses AI-training or research opt-ins from a minor", async () => {
-    await register({ ...newAccount(12), research: true }).expect(400);
+  it("still keeps an account waiting for a parent from logging in", async () => {
+    const account = newAccount();
+    const res = await register(account).expect(201);
+    await db.update(users).set({ status: "pending_parent" }).where(eq(users.id, res.body.data.user.id));
+    const login = await client().post(`${AUTH}/login`).send({ email: account.email, password: PASSWORD }).expect(403);
+    expect(login.body.error.code).toBe("PARENT_APPROVAL_PENDING");
   });
 
   it("counts age in whole years, turning 18 on the birthday", () => {

@@ -64,8 +64,9 @@ describe("forgot password", () => {
 
   it("answers unknown and inactive accounts exactly like a real one, and mails only the real one", async () => {
     const { email } = await learner();
-    const minor = await register("2014-01-01"); // waiting for a parent, so not active
-    const replies = await Promise.all([email, minor, `${uniq()}@nobody.dev`].map((e) => forgot(e).expect(202)));
+    const waiting = await register();
+    await db.update(users).set({ status: "pending_parent" }).where(eq(users.email, waiting)); // not active
+    const replies = await Promise.all([email, waiting, `${uniq()}@nobody.dev`].map((e) => forgot(e).expect(202)));
     for (const reply of replies) expect(reply.body).toEqual(replies[0].body);
 
     await vi.waitFor(() => expect(sendMail).toHaveBeenCalled());

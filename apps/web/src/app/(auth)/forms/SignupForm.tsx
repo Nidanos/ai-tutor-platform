@@ -7,7 +7,7 @@ import Button from "../common/Button";
 import { getStoredValue, storeValue } from "../utils/formStorage";
 import SignupFields from "./SignupFields";
 import SignupConsents from "./SignupConsents";
-import { validateSignup } from "./signupValidation";
+import { isAdult, validateSignup } from "./signupValidation";
 import { registerUser } from "./signupService";
 import type { SignupErrors, SignupFormData } from "./signupTypes";
 
@@ -45,13 +45,9 @@ export default function SignupForm() {
     if (Object.keys(validation).length) return;
     setIsLoading(true);
     try {
-      const result = await registerUser(data);
-      if (result.user.status === "pending_parent") {
-        setStatus("Account created. Parent approval is required.");
-      } else {
-        setStatus("Account created successfully. Redirecting to login...");
-        window.setTimeout(() => router.push("/login?registered=1"), 900);
-      }
+      await registerUser(data);
+      setStatus("Account created successfully. Redirecting to login...");
+      window.setTimeout(() => router.push("/login?registered=1"), 900);
     } catch (error) {
       setStatus(error instanceof Error ? error.message : "Registration failed.");
     } finally {
@@ -71,9 +67,7 @@ export default function SignupForm() {
         setShowPassword={setShowPassword}
         setShowConfirmPassword={setShowConfirmPassword} />
       <SignupConsents {...data} errors={errors}
-        showOptionalConsent={data.dateOfBirth !== "" &&
-          new Date(data.dateOfBirth).getTime() <=
-          new Date(new Date().setFullYear(new Date().getFullYear() - 18)).getTime()}
+        showOptionalConsent={isAdult(data.dateOfBirth)}
         onTermsChange={(v) => update("acceptTerms", v)}
         onPrivacyChange={(v) => update("acceptPrivacy", v)}
         onAiTrainingChange={(v) => update("aiTraining", v)}

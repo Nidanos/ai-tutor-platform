@@ -14,7 +14,6 @@ import {
 import { AppError } from "../../../shared/errors/app-error.js";
 import * as repo from "../repositories/auth.repository.js";
 import type { RegisterInput } from "../schemas/auth.schemas.js";
-import { isAdult } from "./age.js";
 import { resetEmail } from "./reset-email.js";
 
 type Client = "web" | "mobile";
@@ -30,17 +29,15 @@ export const LEGAL_VERSION = "0.1";
 const invalidCredentials = () => new AppError(401, "INVALID_CREDENTIALS", "Email or password is incorrect");
 export const loginAgain = () => new AppError(401, "UNAUTHENTICATED", "Please log in again");
 
-// A child's own "I agree" isn't valid consent (DPDP s.9): nothing is recorded until a parent approves.
+// Sign-up is for adults (the schema refuses under-18s for the pilot), so the account starts active.
 export async function register({ email, password, displayName, dateOfBirth, aiTraining, research }: RegisterInput) {
-  const adult = isAdult(dateOfBirth);
-  const consentKinds: repo.ConsentKind[] = adult ? ["data_processing", "terms"] : [];
-  if (adult && aiTraining) consentKinds.push("ai_training");
-  if (adult && research) consentKinds.push("research_study");
+  const consentKinds: repo.ConsentKind[] = ["data_processing", "terms"];
+  if (aiTraining) consentKinds.push("ai_training");
+  if (research) consentKinds.push("research_study");
 
   const passwordHash = await hashPassword(password);
-  const status = adult ? "active" : "pending_parent";
   try {
-    return await repo.createLearner({ email, passwordHash, displayName, dateOfBirth, status }, consentKinds, LEGAL_VERSION);
+    return await repo.createLearner({ email, passwordHash, displayName, dateOfBirth }, consentKinds, LEGAL_VERSION);
   } catch (err) {
     if (isUniqueViolation(err)) throw new AppError(409, "EMAIL_TAKEN", "This email is already registered");
     throw err;

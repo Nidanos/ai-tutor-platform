@@ -16,16 +16,16 @@ export const registerBody = z
     email: email.refine((e) => !e.toLowerCase().endsWith(".invalid"), "Enter a real email address"),
     password: newPassword,
     displayName,
-    dateOfBirth: z.iso.date().refine((d) => d >= "1900-01-01" && d <= today(), "Enter a real date of birth"),
+    dateOfBirth: z.iso
+      .date()
+      .refine((d) => d >= "1900-01-01" && d <= today(), { error: "Enter a real date of birth", abort: true })
+      // The pilot is for adults: a child's account needs a parent's approval first (DPDP s.9), and that flow isn't built.
+      .refine(isAdult, "AI-Tutor is open to adults (18 and over) for now"),
     acceptTerms: mustAccept("Terms of Service"),
     acceptPrivacy: mustAccept("Privacy Policy"),
-    // Optional, off by default, adults only (DOCS/legal/privacy-policy.md, section 3).
+    // Optional, off by default (DOCS/legal/privacy-policy.md, section 3).
     aiTraining: z.boolean().default(false),
     research: z.boolean().default(false),
-  })
-  .refine((b) => isAdult(b.dateOfBirth) || !(b.aiTraining || b.research), {
-    message: "Only adults can opt in to AI training or research",
-    path: ["aiTraining"],
   });
 
 export type RegisterInput = z.infer<typeof registerBody>;
