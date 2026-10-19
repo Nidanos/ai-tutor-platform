@@ -1,6 +1,7 @@
 import cookieParser from "cookie-parser";
 import express from "express";
 import helmet from "helmet";
+import { env } from "./config/env.js";
 import { authRouter } from "./modules/m1_auth/routes/auth.routes.js";
 import { diagnosticRouter } from "./modules/m3_diagnostic/routes/diagnostic.routes.js";
 import { masteryRouter } from "./modules/m4_mastery/routes/mastery.routes.js";
@@ -17,8 +18,9 @@ import { checkOrigin } from "./shared/middlewares/check-origin.js";
 
 export const app = express();
 
-// The web app reaches us through the Next.js proxy: trust its one hop for the real client IP.
-app.set("trust proxy", 1);
+// Per-IP rate limits use req.ip. Only our own proxy (Caddy, on this machine or its private network) may set it through
+// X-Forwarded-For. `next dev` passes on whatever the browser sends, so local dev trusts nobody (ADR-0008).
+app.set("trust proxy", env.NODE_ENV === "development" ? false : "loopback, uniquelocal");
 app.use(helmet());
 app.use(express.json({ limit: "100kb" }));
 app.use(cookieParser());

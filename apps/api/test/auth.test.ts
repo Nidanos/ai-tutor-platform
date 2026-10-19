@@ -106,6 +106,29 @@ describe("auth", () => {
     for (let i = 0; i < 5; i++) await attempt().expect(401);
     await attempt().expect(429);
   });
+
+  it("counts a too-long email by its first 254 characters, so junk can't grow the limiter's memory", async () => {
+    const junk = `${uniq()}${"x".repeat(300)}`;
+    const attempt = (n: number) => client().post(`${AUTH}/login`).send({ email: `${junk}${n}@test.dev`, password: "wrong password" });
+    for (let i = 0; i < 5; i++) await attempt(i).expect(400);
+    await attempt(5).expect(429);
+  });
+
+  it("answers 400, not 500, when the email isn't a string", async () => {
+    // String() throws on this object, so it must not reach the limiter's key unchecked.
+    await client().post(`${AUTH}/login`).send({ email: { toString: 1 }, password: PASSWORD }).expect(400);
+  });
+});
+
+describe("client IP for the per-IP limits", () => {
+  // req.ip, the limiters' key, for a request claiming X-Forwarded-For 6.6.6.6, by who connected to us.
+  const ipFrom = (peer: string) =>
+    Object.create(app.request, { socket: { value: { remoteAddress: peer } }, headers: { value: { "x-forwarded-for": "6.6.6.6" } } }).ip;
+
+  it("comes from our own proxy, never from a caller on the internet", () => {
+    expect(ipFrom("172.18.0.2")).toBe("6.6.6.6"); // Caddy on the Docker network
+    expect(ipFrom("203.0.113.9")).toBe("203.0.113.9"); // a direct caller can't choose its IP
+  });
 });
 
 describe("consent at sign-up", () => {

@@ -19,8 +19,9 @@ export const registerByIp = limiter(60 * MINUTE, 5);
 export const refreshByIp = limiter(MINUTE, 30);
 
 // Counts only failed logins for one email: slows guessing one person's password. Throttles, never locks.
+// Runs before validation: a non-string email must not crash it, and the cap (longest valid email, 254) stops huge keys.
 export const loginFailuresByEmail = limiter(15 * MINUTE, 5, {
-  keyGenerator: (req) => String(req.body?.email ?? "").toLowerCase(),
+  keyGenerator: (req) => (typeof req.body?.email === "string" ? req.body.email.slice(0, 254).toLowerCase() : ""),
   skipSuccessfulRequests: true,
 });
 
