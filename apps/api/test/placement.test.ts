@@ -88,7 +88,7 @@ describe("placement walk", () => {
         }
       }
     }
-  });
+  }, 30_000); // walks all 1,422 runs: about 3 s alone, over the 5 s default while 35 other files run beside it
 
   it("rescues a typed slip when the next skill is right, and confirms it when that is wrong too", () => {
     const slipped = take({ knows: everything, guesses: true, slips: new Set(["program-structure"]) });
