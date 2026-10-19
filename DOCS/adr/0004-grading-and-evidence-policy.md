@@ -54,7 +54,7 @@ TLE/MLE:  as WA, penalty 0.15/20 doubling per consecutive TLE/MLE, capped at 0.1
 About five good solves (rungs 2→5) take a new skill from 0 to 0.72, just past the 0.7 prerequisite threshold. Code: `m4_mastery/services/mastery-formula.ts` (pure, unit-tested). The verdict and its evidence are saved in one transaction, with the mastery row locked.
 
 ## Template bank and verification *(built 16 Oct; resolves Q10c)*
-- **MVP bank:** the first 5 C++ skills × rungs 1–5 = **25 hand-written exercises** (`seed/cpp-templates.ts`), plus "Sum of digits". More come from LLM generation; the bank is the fallback.
+- **MVP bank:** all 20 C++ basics skills × rungs 1–5 = **100 hand-written exercises** (`seed/cpp-practice-bank.ts`). Skills 6–20 were added on 19 Oct; each exercise uses only its skill and that skill's prerequisites, and was also checked in the sandbox against common wrong answers before seeding. LLM generation adds variants; the bank is the fallback.
 - **Rungs** follow the synopsis ladder: 1 Predict · 2 Diagnose · 3 Complete · 4 Extend · 5 Build. Rungs 2–5 use a `void solve(...)` box: inputs arrive as parameters, and the frozen harness owns `main()`.
 - **Verification** (`m6_exercises/services/verify-exercise.ts`, run with `pnpm exercises:verify`): an exercise is served only if, in the real sandbox, the **reference passes every test** and the **starter code fails at least one** (the tests can tell a solution from a non-solution). Rung 1 runs the program and checks its output. Passing exercises are marked `verified`, failing ones `rejected`.
 - **Seeded content is frozen:** to change an exercise, add a new variant.

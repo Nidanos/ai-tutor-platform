@@ -24,7 +24,7 @@
 | Fallback | After 3 tries, or when the budget is spent: `fell_back`, pointing at a hand-written exercise of the same skill and rung if one exists (FR-M6-03). An automatic retry of that skill and rung waits a day |
 
 ## Costs (Oct 2026 prices)
-About ₹1.5 per generated exercise: about ₹0.8 for the Flash draft, about ₹0.5 for its frozen hints, about ₹0.05 of sandbox runs. A Pro try is about ₹2.5. Skills 6–20 (75 exercises) cost about ₹110–150, once.
+About ₹1.5 per generated exercise: about ₹0.8 for the Flash draft, about ₹0.5 for its frozen hints, about ₹0.05 of sandbox runs. A Pro try is about ₹2.5. Generating skills 6–20 (75 exercises) would have cost about ₹110–150; they were hand-written instead on 19 Oct (ADR-0004), so generation adds variants rather than filling gaps.
 
 ## Notes
 - Analytics shows generation outcomes per skill and rung, failures by stage, and both monthly spends against their caps (ADR-0014).

@@ -28,4 +28,4 @@ The recommender (`GET /recommendations/next`) uses fixed rules, never an LLM (FR
 
 ## Consequences
 - The thresholds (0.5, 0.65 / 0.45 / 0.25) and weights are starting values, to be tuned with pilot data. Changing them means a new `m5-vN`.
-- Exercises for skills 6–20 come from generation; until then those skills are skipped or returned without an exercise.
+- Every skill has a hand-written exercise for each rung (100, ADR-0004), and generation adds variants. A skill with nothing left to serve is still skipped or returned without an exercise.
