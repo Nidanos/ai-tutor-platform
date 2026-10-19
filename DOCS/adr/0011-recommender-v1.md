@@ -25,6 +25,7 @@ The recommender (`GET /recommendations/next`) uses fixed rules, never an LLM (FR
 - "Recency" (FR-M5-03) is covered only indirectly, through decay and review urgency. Add an explicit term if the pilot shows learners bouncing between skills.
 - Reviews open as ordinary practice attempts until M10 (review scheduling) is built.
 - Recommendation status (`accepted`, `completed`) isn't updated yet; the rows are the audit trail.
+- *(20 Oct)* A prerequisite can come from another course (DSA builds on C++ basics). With nothing open because of one, `GET /recommendations/next` returns `waitingFor`: those skills, for the skills that would be next (ADR-0001).
 
 ## Consequences
 - The thresholds (0.5, 0.65 / 0.45 / 0.25) and weights are starting values, to be tuned with pilot data. Changing them means a new `m5-vN`.

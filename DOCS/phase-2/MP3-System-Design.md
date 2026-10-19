@@ -1763,7 +1763,7 @@ Rate limits: login 20 per IP and 5 failures per email per 15 minutes; register 5
 
 - pnpm monorepo: `apps/api` (Express 5 + TypeScript 6), `apps/web` (Next.js 16, React 19), `packages/types`, `packages/config`. Exact pinned versions, Node 22.
 - Local infrastructure via `docker compose`: PostgreSQL 16 with pgvector, Redis 7, with secrets in `.env`; settings validated with zod at startup.
-- **Database:** all 38 MVP tables (section 5) plus `password_reset_tokens`, as Drizzle schema files with 15 versioned migrations, plus an idempotent seed: the C++ basics course (20 skills, 23 prerequisites, further-reading links), 100 practice exercises (every skill × rungs 1–5) and 40 placement items.
+- **Database:** all 38 MVP tables (section 5) plus `password_reset_tokens`, as Drizzle schema files with 15 versioned migrations, plus an idempotent seed: the C++ basics course (20 skills, 23 prerequisites, further-reading links), 100 practice exercises (every skill × rungs 1–5) and 40 placement items; and the DSA skill graph (49 skills in 8 groups, basics to advanced, 97 prerequisites of which 19 point into C++ basics, 31 further-reading links; ADR-0001, 20 Oct). DSA's lessons, exercises and placement items come next.
 - **Auth (M1):** register, login, refresh, logout and me (section 7.3): argon2id passwords, 15-minute JWT, rotating refresh tokens with theft detection, httpOnly cookies for web and Bearer tokens for mobile, rate limits and a CSRF origin check. Forgot and reset password (ADR-0017): a one-use, 30-minute link emailed through Brevo and stored only as a hash; a reset logs the account out everywhere.
 - **Consent at sign-up (DPDP):** date of birth, required Terms and Privacy consents, optional AI-training and research opt-ins; during the pilot, sign-up is for adults only (the parent-approval flow comes later). A learner's code is deleted once they clear its skill (20 Oct).
 - **Execution (M7):** `POST /submissions` (202 + idempotency key) and `GET /submissions/:id/result` (polling); a BullMQ worker runs each submission in a fresh, offline E2B sandbox (clang 19), and a pure judge gives AC/WA/CE/RE/TLE/MLE/SE. Checked end to end on real E2B: about 6 s per submission.
@@ -1790,7 +1790,7 @@ Rate limits: login 20 per IP and 5 failures per email per 15 minutes; register 5
 
 | Item | Needed by |
 | --- | --- |
-| DSA and C++ skill list and edges, with further-reading links | Seed data (Phase 3) |
+| DSA exercises (5 rungs per skill, large generated tests with a brute-force check) and placement items | DSA practice (the skill graph is seeded, 20 Oct) |
 | Whether a skill's fade stage can step back after repeated bottom-outs | M12 |
 | Hosting provider within budget | Deployment |
 | First ADMIN account (seed from environment variables) | Analytics page |

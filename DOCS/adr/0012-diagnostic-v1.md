@@ -52,6 +52,8 @@ Unit tests run every one of the **711** knowledge states the graph allows. With 
 - One reading and one writing item per skill. A corrected item supersedes the old one once verified (newest wins).
 - No goal is set here yet (enrollment `goal_skill_id`), so M5's goal weight stays 0 until goal-setting is built.
 
+- *(20 Oct)* The test covers its own course: prerequisites from another course (C++ basics, for DSA) are left out of the walk. That course has its own placement test, and the recommender still enforces them.
+
 ## Open (Ashwani's to decide)
 - Should a fast-tracked skill ever step back a stage (e.g. 3 failed Builds)? v1 never steps back (as ADR-0007).
 - Should retakes have a cooldown (e.g. 24 h)? v1: 3 attempts, no cooldown.

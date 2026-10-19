@@ -30,6 +30,8 @@
 | `in_progress` | Open, with evidence |
 | `ready` | Open, never practised |
 
+*(20 Oct)* `GET /progress` also returns `outside`: prerequisites from another course (C++ basics, for DSA), with that course and the learner's status there (`cleared`, `in_progress` or `not_started`).
+
 ## Not in v1
 - Exercise attempts aren't linked to session steps (`session_step_id` stays null); a step is done when its exercise is solved, wherever it was solved.
 - No per-session history endpoint; the rows are kept for research.

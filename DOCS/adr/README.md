@@ -26,11 +26,15 @@ Last updated: 19 Oct 2026. These record decisions Ashwani has made. Where no dec
 ## Open decisions (Ashwani's to make)
 | # | Question | Blocks |
 |---|---|---|
-| - | The DSA skill list, edges and resources (C++ basics done: 20 skills, 14 Oct) | Seed data, recommender |
-| - | Source to cross-check the DSA skill list (university syllabi) | DSA seed |
 | Q13 | One sentence: why Node suits this backend (see the note below) | Synopsis §5.2 rewrite |
 | - | Whether a skill's fade stage can step back (also for diagnostic fast-tracks) | M12 |
 | - | A cooldown between placement retakes (v1: 3 attempts, none) | M3 |
+
+## Resolved on 20 Oct
+| # | Question | Answer | Where |
+|---|---|---|---|
+| - | The DSA skill list, edges and resources | 49 skills in 8 groups, basics to advanced, building on C++ basics across courses | ADR-0001 |
+| - | Source to cross-check the DSA skill list | GGSIPU MCA-102 and MCA-201, then widened to working knowledge | ADR-0001 |
 
 ## Resolved on 13 Oct
 | # | Question | Answer | Where |

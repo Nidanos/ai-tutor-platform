@@ -186,7 +186,7 @@ type FadeState = {
 
 ## 4e. What to do next (live, 17 Oct)
 
-`GET /api/v1/recommendations/next?course=cpp-basics&language=cpp` (both optional; those are the defaults) → `200 { recommendation }`
+`GET /api/v1/recommendations/next?course=cpp-basics&language=cpp` (both optional; those are the defaults; the other course is `dsa`) → `200 { recommendation, waitingFor }`
 
 ```ts
 type Recommendation = {
@@ -195,12 +195,13 @@ type Recommendation = {
   rung: 1 | 2 | 3 | 4 | 5;
   reason: "new_skill" | "review";   // show "Review" for reviews
   exerciseId: string | null;         // null: no exercise ready for this skill yet
-} | null;                            // null: the course is done
+} | null;                            // null: the course is done, or waits on another course (below)
+type WaitingFor = Array<{ skill: { id: string; slug: string; name: string }; course: { slug: string } }>;
 ```
 
 - **Dashboard "What next" card:** call this, show the skill name, the rung ("Level 2 of 5") and, for reviews, a "Review" badge. The button opens `/exercise/{exerciseId}`, which calls `GET /exercises/:id` (that starts the attempt).
 - If the learner has an unfinished attempt, this returns **the same exercise** again, so it doubles as "continue where you left off".
-- `exerciseId: null`: show "New exercises for this skill are being prepared" (the server has queued one; ask again in a minute). `recommendation: null`: show "Course complete".
+- `exerciseId: null`: show "New exercises for this skill are being prepared" (the server has queued one; ask again in a minute). `recommendation: null` with an empty `waitingFor`: show "Course complete". With `waitingFor` (20 Oct): DSA builds on C++ basics, so show "First finish these in C++ basics: Loops, Vectors…" with a button that switches to that course.
 - `404 COURSE_NOT_FOUND` for an unknown course.
 
 ## 4f. Placement test (live, 18 Oct)
@@ -287,6 +288,8 @@ type Progress = {
     stage: number | null;                           // fade stage, null if never opened
     status: "locked" | "ready" | "in_progress" | "cleared" | "review_due";
   }>;
+  // Prerequisites from another course (DSA's come from C++ basics): draw them as small nodes at the edge.
+  outside: Array<{ skill: { id: string; slug: string; name: string }; course: { slug: string }; status: "cleared" | "in_progress" | "not_started" }>;
 };
 ```
 

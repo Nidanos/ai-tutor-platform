@@ -21,6 +21,25 @@ The 7 Sep drafts (now in `DOCS/archive/2026-09-07-js-react-drafts/`) set the v1 
 | Visual | AI-generated diagrams and flowcharts | Format still open (see `README.md`) |
 | Video | **None** *(14 Oct)* | Not offered: third-party video can't sit behind a paywall. Removed in migration 0011 |
 
+## The DSA skill list *(decided 20 Oct)*
+Ashwani asked for DSA "from the basics to advanced", as working knowledge rather than only a syllabus. The list is in `apps/api/src/infrastructure/database/seed/dsa.ts`: **49 skills in 8 groups**, with 97 prerequisite edges, 19 of them to C++ basics skills.
+
+| Group | Skills |
+|---|---|
+| Foundations | Complexity analysis, Recursion |
+| Searching and sorting | Linear and binary search, Simple sorts, Merge sort, Quick sort and quickselect, Counting/radix/bucket sort, Binary search on the answer |
+| Array, string and math techniques | Prefix sums, Two pointers, Hashing, Sliding window, Matrices and grids, String techniques, String matching, Bit manipulation, Number theory, Combinatorics |
+| Linear data structures | Linked lists, Linked list techniques, Stacks, Queues and deques, Monotonic stacks and queues, Designing data structures |
+| Trees | Binary trees, Tree problems, Binary search trees, Balanced search trees, Heaps, Tries, Fenwick trees, Segment trees |
+| Graphs | Graphs and representations, BFS, DFS, Topological sort, Disjoint set union, Shortest paths, Minimum spanning trees, Bridges and SCCs, Maximum flow and matching |
+| Algorithm design | Greedy, Backtracking, DP basics, DP on sequences, Knapsack DP, DP on grids and intervals, Advanced DP |
+| Putting it together | Problem solving from constraints |
+
+- **Cross-checked** against GGSIPU MCA-102 (Data and File Structures) and MCA-201 (Design and Analysis of Algorithms), then widened with what working engineers use (string matching, Fenwick and segment trees, monotonic stacks, designing data structures, network flow, advanced DP, a problem-solving capstone).
+- **Left out of exercises:** file organisation and external sorting, Strassen, branch and bound, and NP-completeness. They are theory without a fair function-sized exercise; lessons can cover them.
+- **Prerequisites across courses:** a seed writes `cpp-basics/<slug>` (for example, Linked lists needs C++ pointers). The recommender holds a DSA skill back until its C++ prerequisite is cleared or written well enough; the placement test covers its own course only; progress names the outside prerequisites; and with nothing open, `GET /recommendations/next` lists the C++ skills to finish first (`waitingFor`) instead of calling the course done.
+- **Links** are cppreference pages, where one fits (31 links), checked to resolve. Lessons are AI-written and personalised (next part); exercises and placement items follow in batches, with large generated tests and a brute force that must time out (ADR-0004).
+
 ## Consequences
 - The seed data in `DOCS/reference/ai-tutor-mvp.ts` (JS→React) is obsolete.
 - The submitted PDFs in `DOCS/phase-1-submitted/` are the source of truth for Phase 1.
