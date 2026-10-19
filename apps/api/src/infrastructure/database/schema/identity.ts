@@ -4,7 +4,8 @@ import { citext, createdAt, id, timestamps, tz } from "./columns.js";
 
 export const orgKind = pgEnum("org_kind", ["personal", "institution"]);
 export const userRole = pgEnum("user_role", ["LEARNER", "AUTHOR", "ADMIN"]);
-export const userStatus = pgEnum("user_status", ["active", "disabled", "pending_parent"]);
+// deleted: erased after DELETE /me; the row stays, anonymous, because consent records point at it.
+export const userStatus = pgEnum("user_status", ["active", "disabled", "pending_parent", "deleted"]);
 export const clientKind = pgEnum("client_kind", ["web", "mobile"]);
 // data_processing and terms are required at sign-up; parental unlocks a minor; the rest are optional opt-ins (DOCS/legal).
 export const consentKind = pgEnum("consent_kind", ["research_study", "data_processing", "terms", "parental", "ai_training"]);
@@ -32,6 +33,7 @@ export const users = pgTable(
     status: userStatus().notNull().default("active"),
     emailVerifiedAt: tz(),
     lastLoginAt: tz(),
+    deletionRequestedAt: tz(), // DELETE /me; logging in clears it, else the account is erased 7 days later
     ...timestamps,
   },
   (t) => [
