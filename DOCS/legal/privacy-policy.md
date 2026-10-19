@@ -18,7 +18,7 @@ You can read this notice on its own; it doesn't depend on any other document.
 | **Who else sees it** | Only the service providers that run [PRODUCT] for us (section 5) |
 | **Where it lives** | Servers in India. Code runs and AI hints may be processed abroad (section 6) |
 | **Your rights** | See, correct, download or delete your data, withdraw consent, and complain (section 8) |
-| **Under 18?** | A parent or guardian must approve your account (section 7) |
+| **Under 18?** | A parent or guardian must approve your account (section 7). During the pilot, accounts are for adults only |
 
 ## 2. The data we collect, and why
 | Data | Examples | Why we need it |
@@ -68,6 +68,8 @@ Our database is hosted **in India**. Some providers in section 5, like the code 
 
 ## 7. Children (under 18)
 Anyone can learn on [PRODUCT], but **if you are under 18, a parent or legal guardian must approve your account first**. Until then we don't process your learning data.
+
+**During the pilot, accounts are for adults (18 and over) only.** The rest of this section applies once parent approval is ready.
 
 - At sign-up you enter your date of birth. If you're under 18, we email your parent or guardian, who approves from their own adult account. We'll add stronger identity checks before May 2027, as the DPDP Rules require.
 - For children we **never** show ads, use their data for **AI training or research**, or track them for anything except teaching them what their parent approved.

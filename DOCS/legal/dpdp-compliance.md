@@ -14,7 +14,7 @@
 |---|---|---|---|
 | 1 | Standalone, plain-language notice (Rule 3) | [privacy-policy.md](privacy-policy.md) | Draft |
 | 2 | Consent: free, specific, informed, unbundled; withdrawal as easy as giving (s.6) | Separate tick boxes per purpose (built: register, migration 0012); opt-ins switch on and off with `PUT`/`DELETE /me/consents/:kind` (built, ADR-0018); the Settings screen (to build) | API built |
-| 3 | Children: verifiable parental consent; no tracking or ads (s.9, Rule 10) | [parental-consent.md](parental-consent.md) | To build |
+| 3 | Children: verifiable parental consent; no tracking or ads (s.9, Rule 10) | [parental-consent.md](parental-consent.md) | To build (until then, sign-up refuses under-18s: the pilot is adults only) |
 | 4 | Reasonable security safeguards (s.8(5), Rule 6) | Section 7 | Partly built |
 | 5 | Breach notice to the Board and each affected user (s.8(6), Rule 7) | [breach-response-plan.md](breach-response-plan.md) | Draft |
 | 6 | Erase when the purpose ends; 48-hour warning (s.8(7), Rule 8) | Section 4 | Account delete built; other jobs to build |
@@ -53,8 +53,8 @@
 | Job | Rule | Status |
 |---|---|---|
 | Inactivity | 3 years without sign-in → email 48 hours before → anonymise. Signing in cancels it. | To build |
-| Code purge | `answer` emptied when the skill is cleared (`submissions.answer_purged_at` is ready) | To build |
-| Pending child sign-ups | Not approved in 7 days → delete | To build |
+| Code purge | `answer`, and the compiler and error text that can quote it, emptied as soon as the clearing submission is graded, and any later code for that skill once graded (`answer_purged_at`). Program output and verdicts stay | **Built** (20 Oct, ADR-0007) |
+| Pending child sign-ups | Not approved in 7 days → delete | Not needed while sign-up refuses under-18s |
 | Security logs | Delete `refresh_tokens` and `password_reset_tokens` rows 1 year after expiry | To build |
 | **Account delete (anonymise)** | `DELETE /me` with the password; 7 days later (logging in cancels it) an hourly job erases email, name, password hash, DOB and all code, and ends every token. Sign-in records (tokens' times, IP, device) stay 1 year under the anonymous ID (Rule 6 logs), then go with the security-log job. Progress numbers stay only if the user opted in to research or training, otherwise they are deleted. Consent rows stay, revoked, under the anonymous user ID | **Built** (ADR-0018) |
 

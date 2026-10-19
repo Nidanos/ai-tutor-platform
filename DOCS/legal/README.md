@@ -14,8 +14,8 @@ Drafts tailored to Nidanos. **They are not legal advice.** A lawyer should revie
 | Topic | Decision |
 |---|---|
 | Who | Nidanos (to be registered); product name to be decided (`[PRODUCT]`) |
-| Users | Individual learners plus colleges and coaching institutes. **India only.** Open to all ages |
-| Under 18 | A parent's adult account approves; stronger ID check before May 2027; minors excluded from AI training and research |
+| Users | Individual learners plus colleges and coaching institutes. **India only.** Open to all ages (the pilot: adults only) |
+| Under 18 | A parent's adult account approves; stronger ID check before May 2027; minors excluded from AI training and research. Until that flow is built, sign-up refuses under-18s |
 | Money | Free beta; paid later with 30 days' notice; 7-day refund on first purchase |
 | Data location | India-region hosting; sandbox and AI providers may process abroad, with no identity sent |
 | Optional uses | AI model training and research (college study + papers): separate opt-ins, adults only, default off |

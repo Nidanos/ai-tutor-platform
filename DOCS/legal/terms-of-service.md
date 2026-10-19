@@ -8,6 +8,7 @@ These terms are an agreement between you and **Nidanos** (run by its founders un
 ## 1. Who can use [PRODUCT]
 - **Anyone, of any age, in India.** [PRODUCT] is offered for users in India only.
 - **Under 18:** a parent or guardian must approve the account and accept these terms for you. They are responsible for your use of [PRODUCT].
+- **During the pilot**, accounts are for adults (18 and over) only. Learners under 18 can join once parent approval is ready.
 - **Institutions** (colleges, coaching centres) that buy accounts for their learners sign a separate agreement, and these terms also apply to each learner.
 
 ## 2. Your account
