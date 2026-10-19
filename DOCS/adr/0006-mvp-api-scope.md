@@ -1,7 +1,7 @@
-# ADR-0006: The MVP builds 25 REST APIs; the ~98-operation spec stays the long-term plan
+# ADR-0006: The MVP builds 31 REST APIs; the ~98-operation spec stays the long-term plan
 
 - **Status:** Accepted
-- **Date:** Sep 2026, updated 13 Oct 2026 (was 18 APIs); status column updated 18 Oct; PATCH /sessions/:id added 19 Oct (23 APIs); forgot/reset password added 19 Oct (25 APIs)
+- **Date:** Sep 2026, updated 13 Oct 2026 (was 18 APIs); status column updated 18 Oct; PATCH /sessions/:id added 19 Oct (23 APIs); forgot/reset password added 19 Oct (25 APIs); data rights added 19 Oct (31 APIs)
 - **Decided by:** Ashwani Kumar Puri
 
 ## Decision
@@ -18,6 +18,7 @@ Base path: `/api/v1`. Live endpoints are documented for the frontend in `DOCS/ap
 | Hints | POST /exercises/:id/hints | **Live** (19 Oct; live AI once billing is on, ADR-0015) |
 | Sessions | POST /sessions · GET /sessions/active · **PATCH /sessions/:id** | **Live** (19 Oct) |
 | Progress | GET /progress | **Live** (19 Oct) |
+| Data rights | PATCH /me · GET /me/data · DELETE /me · GET /me/consents · PUT /me/consents/:kind · DELETE /me/consents/:kind | **Live** (19 Oct, ADR-0018) |
 | Fade | **GET /scaffolding/state** | **Live** |
 | Analytics | **GET /analytics/overview** (admin only) | **Live** (19 Oct) |
 
@@ -38,3 +39,4 @@ Base path: `/api/v1`. Live endpoints are documented for the frontend in `DOCS/ap
 ## Resolved 19 Oct
 - **M9 pause, resume and end (FR-M9-01):** one endpoint, `PATCH /sessions/:id { status }` (ADR-0013).
 - **Password reset (FR-M1-05, a Should):** `POST /auth/forgot-password` and `POST /auth/reset-password` (ADR-0017), making 25 APIs.
+- **Data rights (DPDP Act s.6, s.11–12):** the six `/me` endpoints (ADR-0018), making 31 APIs. The DPDP doc (§5) had listed them as to build.

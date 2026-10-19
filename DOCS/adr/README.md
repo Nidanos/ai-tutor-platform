@@ -21,6 +21,7 @@ Last updated: 19 Oct 2026. These record decisions Ashwani has made. Where no dec
 | [0015](0015-hints-v1.md) | Hints: live tutor first (3.5 Flash Lite), frozen fallback, leak filter, caps, paid-tier safety switch | Accepted, built |
 | [0016](0016-exercise-generation-v1.md) | Exercise generation: admin + automatic, ₹300/month, wrong answers must fail, Flash twice then Pro | Accepted, built |
 | [0017](0017-password-reset-v1.md) | Password reset: Brevo email, one-use 30-minute link in the #fragment, logged out everywhere | Accepted, built |
+| [0018](0018-data-rights-v1.md) | Data rights: correct, download, opt in and out, delete with the password after 7 days, anonymous numbers only with an opt-in | Accepted, built |
 
 ## Open decisions (Ashwani's to make)
 | # | Question | Blocks |

@@ -13,12 +13,12 @@
 | # | Obligation | How | Status |
 |---|---|---|---|
 | 1 | Standalone, plain-language notice (Rule 3) | [privacy-policy.md](privacy-policy.md) | Draft |
-| 2 | Consent: free, specific, informed, unbundled; withdrawal as easy as giving (s.6) | Separate tick boxes per purpose (built: register, migration 0012); a withdraw button in Settings (to build) | Partly built |
+| 2 | Consent: free, specific, informed, unbundled; withdrawal as easy as giving (s.6) | Separate tick boxes per purpose (built: register, migration 0012); opt-ins switch on and off with `PUT`/`DELETE /me/consents/:kind` (built, ADR-0018); the Settings screen (to build) | API built |
 | 3 | Children: verifiable parental consent; no tracking or ads (s.9, Rule 10) | [parental-consent.md](parental-consent.md) | To build |
 | 4 | Reasonable security safeguards (s.8(5), Rule 6) | Section 7 | Partly built |
 | 5 | Breach notice to the Board and each affected user (s.8(6), Rule 7) | [breach-response-plan.md](breach-response-plan.md) | Draft |
-| 6 | Erase when the purpose ends; 48-hour warning (s.8(7), Rule 8) | Section 4 | To build |
-| 7 | Rights: access, correction, erasure, nomination, grievance (s.11–14) | Section 5 | To build |
+| 6 | Erase when the purpose ends; 48-hour warning (s.8(7), Rule 8) | Section 4 | Account delete built; other jobs to build |
+| 7 | Rights: access, correction, erasure, nomination, grievance (s.11–14) | Section 5 | API built (nomination and grievance by email) |
 | 8 | Published contact for questions (s.8(9)) | Aditi Tanwar, `grievance@[DOMAIN]` | Draft |
 | 9 | Processor contracts (s.8(2)) | Section 6 | To do |
 | 10 | Keep logs at least 1 year (Rule 6) | Section 4 | To build |
@@ -49,22 +49,22 @@
 | `ai_training` | Optional, default off | Adults only |
 | `research_study` | Optional, default off | Adults only |
 
-## 4. Retention and erasure jobs (to build)
-| Job | Rule |
-|---|---|
-| Inactivity | 3 years without sign-in → email 48 hours before → anonymise. Signing in cancels it. |
-| Code purge | Already in the design: `answer` emptied when the skill is cleared |
-| Pending child sign-ups | Not approved in 7 days → delete |
-| Security logs | Delete `refresh_tokens` and `password_reset_tokens` rows 1 year after expiry |
-| **Account delete (anonymise)** | Erase email, name, password hash, DOB and all code. Delete tokens. Keep progress numbers only if the user opted in to research or training, otherwise delete them. Keep consent rows under the anonymous user ID |
+## 4. Retention and erasure jobs
+| Job | Rule | Status |
+|---|---|---|
+| Inactivity | 3 years without sign-in → email 48 hours before → anonymise. Signing in cancels it. | To build |
+| Code purge | `answer` emptied when the skill is cleared (`submissions.answer_purged_at` is ready) | To build |
+| Pending child sign-ups | Not approved in 7 days → delete | To build |
+| Security logs | Delete `refresh_tokens` and `password_reset_tokens` rows 1 year after expiry | To build |
+| **Account delete (anonymise)** | `DELETE /me` with the password; 7 days later (logging in cancels it) an hourly job erases email, name, password hash, DOB and all code, and ends every token. Sign-in records (tokens' times, IP, device) stay 1 year under the anonymous ID (Rule 6 logs), then go with the security-log job. Progress numbers stay only if the user opted in to research or training, otherwise they are deleted. Consent rows stay, revoked, under the anonymous user ID | **Built** (ADR-0018) |
 
 ## 5. Rights procedure
-| Request | Endpoint *(to build)* | Manual path |
+| Request | Endpoint *(built, ADR-0018)* | Manual path |
 |---|---|---|
 | Access (summary + data) | `GET /me/data` (JSON download) | Email → verify identity from the account email → send within 30 days |
-| Correction | `PATCH /me` | Email |
-| Erasure | `DELETE /me` | Email → confirm → anonymise |
-| Withdraw consent | `DELETE /me/consents/:kind` | Email |
+| Correction | `PATCH /me` (name, time zone) | Email (email address, date of birth) |
+| Erasure | `DELETE /me` (password, then 7 days) | Email → confirm → anonymise |
+| Withdraw consent | `DELETE /me/consents/:kind` (opt-ins; the rest by deleting the account) | Email |
 | Nomination | none yet | Email: record the nominee in the grievance log |
 | Grievance | none | `grievance@[DOMAIN]` → acknowledge within 48h → resolve within 30 days (legal maximum 90) → log it |
 
@@ -104,8 +104,8 @@ The Board weighs the size of the business and our good faith, so a documented, h
 ## 9. Before launch
 - [ ] Lawyer reviews the Privacy Policy, Terms and parental flow, including a written opinion on s.9(3)
 - [x] Consent kinds and DOB at register (Part 2 of the build, 14 Oct)
-- [ ] `GET /me/data`, `PATCH /me`, `DELETE /me`, consent withdrawal
-- [ ] Retention jobs (section 4)
+- [x] `GET /me/data`, `PATCH /me`, `DELETE /me`, consent withdrawal (API, 19 Oct; the Settings screens are to build)
+- [ ] Retention jobs (section 4) other than account delete
 - [ ] Vendor DPAs accepted and the providers page published
 - [ ] `privacy@`, `grievance@`, `support@` and `security@` mailboxes live
 - [ ] Breach plan rehearsed once

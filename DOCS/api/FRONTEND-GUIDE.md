@@ -2,7 +2,7 @@
 
 For Aman and Aditi. How the web app talks to the backend. Last updated 19 Oct 2026.
 
-**Status:** all 25 endpoints are live (section 7).
+**Status:** all 31 endpoints are live (section 7).
 
 ## 1. Run the backend locally (once)
 
@@ -374,6 +374,37 @@ type GenerationJob = {
 - `503 GENERATION_UNAVAILABLE` until billing is on; `503 GENERATION_BUDGET_REACHED` when this month's ₹300 is spent.
 - Learners never call these: the recommender queues missing exercises by itself.
 
+## 4l. Your data and account (live, 19 Oct)
+
+For the Settings pages (ADR-0018). Base path: `/api/v1/me`; every call needs a login.
+
+| Method + path | Body | Success | Errors |
+| --- | --- | --- | --- |
+| `PATCH /me` | `{ displayName?, timezone? }`, at least one | `200 { user }` | `400 VALIDATION_ERROR` |
+| `GET /me/consents` | none | `200 { consents: [{ kind, policyVersion, grantedAt }] }` (live ones only) | none |
+| `PUT /me/consents/:kind` | none. `kind` is `ai_training` or `research_study` | `204` (already on: also `204`) | `403 ADULTS_ONLY`, `400 VALIDATION_ERROR` for any other kind, `429` (30 switches an hour) |
+| `DELETE /me/consents/:kind` | none, same kinds | `204` (already off: also `204`) | `400 VALIDATION_ERROR`, `429` |
+| `GET /me/data` | none | `200`: a JSON **file**, not the usual envelope | `429 RATE_LIMITED` (5 an hour) |
+| `DELETE /me` | `{ password }` | `202 { eraseAfter }` (ISO date), cookies cleared | `403 WRONG_PASSWORD`, `429 RATE_LIMITED` (5 tries per 15 minutes) |
+
+- **Profile:** name (same rule as sign-up) and time zone. For the list use `Intl.supportedValuesOf("timeZone")`, and suggest the browser's own zone. The list may call India's zone `Asia/Calcutta` while the user has `Asia/Kolkata`: both are valid, so add the user's current value to the list if it is missing. Email and date of birth are read-only here (changes go to `privacy@` by email).
+- **Privacy:** two switches, "Use my data to improve AI-Tutor's models" and "Include my data in research", on when that kind is in `GET /me/consents`. Each switch calls `PUT` or `DELETE` at once. Show them only to adults, as at sign-up. Link to `/privacy`.
+- **Download my data:** the file skips the envelope, so `api()` can't read it. Use this:
+
+```ts
+// api("/auth/me") first, so an expired session is refreshed before the download.
+export async function downloadMyData() {
+  await api("/auth/me");
+  const res = await fetch("/api/v1/me/data");
+  if (!res.ok) throw new ApiError(res.status, (await res.json()).error);
+  const link = Object.assign(document.createElement("a"), { href: URL.createObjectURL(await res.blob()), download: "ai-tutor-my-data.json" });
+  link.click();
+  URL.revokeObjectURL(link.href);
+}
+```
+
+- **Delete account:** a red button opens a dialog. Say: "Your account will be deleted after 7 days. Log in before then to cancel. Your name, email and code are erased." Ask for the password. On `202`, clear the user and go to `/` with "Your account will be deleted after {eraseAfter as a local date}. Logging in before then cancels it." The email we send says the same. On `403 WRONG_PASSWORD`, show the message under the field. After a `202`, every other device is logged out too: its next call gets `401` and the refresh fails, so it goes to `/login` as usual.
+
 ## 5. Screens and flow
 
 | Moment | Do this |
@@ -384,6 +415,7 @@ type GenerationJob = {
 | Any call returns `401` | Call `POST /refresh` **once**, then retry the call. If refresh fails, clear the user and go to `/login` |
 | Logout | `POST /logout`, clear the user, go to `/login` |
 | Forgot password | `POST /forgot-password` → show `message`. The emailed link opens `/reset-password`; on `204` go to `/login`, on `RESET_LINK_INVALID` link to `/forgot-password` (both pages built) |
+| Settings | Profile, privacy switches, download and delete: section 4l |
 | `429` | Show the message and disable the button for a few seconds |
 | Admin pages | Hide them unless `user.role === "ADMIN"`. The server checks roles too; hiding is only for UX |
 
@@ -440,7 +472,7 @@ await api("/auth/logout", { method: "POST" });
 
 ## 7. Planned endpoints
 
-All 25 MVP endpoints are live. Live AI (hints and generation) switches on once Gemini billing is active (7 November).
+All 31 MVP endpoints are live. Live AI (hints and generation) switches on once Gemini billing is active (7 November).
 
 ## 8. Error codes
 
@@ -455,6 +487,8 @@ All 25 MVP endpoints are live. Live AI (hints and generation) switches on once G
 | `PARENT_APPROVAL_PENDING` | 403 | Under-18 account not yet approved by a parent | Show "Waiting for your parent or guardian to approve" |
 | `BAD_ORIGIN` | 403 | Request didn't come from our site | Bug: you called the API directly instead of through `/api` |
 | `EMAIL_TAKEN` | 409 | Email already registered | Link to login |
+| `WRONG_PASSWORD` | 403 | The password typed to delete the account is wrong | Show the message under the field |
+| `ADULTS_ONLY` | 403 | Under-18s can't opt in to AI training or research | Hide the switches for them |
 | `RESET_LINK_INVALID` | 400 | The reset link was used, expired, replaced by a newer one, or is wrong | Show the message and a link to `/forgot-password` |
 | `EXERCISE_NOT_FOUND` / `SKILL_NOT_FOUND` | 404 | Doesn't exist, or isn't ready | Show "Not found" and a link back |
 | `COURSE_NOT_FOUND` | 404 | No such course in that language | Bug: check the course slug and language |
