@@ -94,8 +94,8 @@ Page numbers are added in the printed copy.
 | 6 | Sequence diagram: submit code |
 | 7 | State diagram: submission |
 | 8 | Activity diagram: next-step selection |
-| 9 | ER diagram: overview, and attempts and execution |
-| 10 | DFD level 0, level 1, and level 2 (execute and grade) |
+| 9 | Table groups (overview); ER diagrams: attempts and submissions, and execution |
+| 10 | DFD level 0, level 1 (in two parts), and level 2 (execute and grade) |
 | 11 | System planning (PERT/Gantt) |
 | 12 | Deployment diagram |
 | 13 | Menu flow diagram |
@@ -387,7 +387,7 @@ Five rules hold the design together:
 **Figure 1: System architecture**
 
 ```mermaid
-flowchart LR
+flowchart TB
   B["Browser: Next.js + Monaco editor"]
   MOB["Mobile app (next year)"]
   API["API: Express 5"]
@@ -418,33 +418,39 @@ The learner registers, takes a diagnostic, solves exercises, asks for hints, vie
 **Figure 2: Use case diagram**
 
 ```mermaid
+---
+config:
+  flowchart:
+    nodeSpacing: 15
+    rankSpacing: 30
+---
 flowchart LR
   Learner["Actor: Learner"]
   Author["Actor: Author"]
   Admin["Actor: Admin"]
-  Clock["Actor: Scheduler (time)"]
+  Clock["Actor: Scheduler<br/>(time)"]
   subgraph SYS["AI Tutor system"]
-    U1(["Register, then log in"])
-    U2(["Choose course, language, goal"])
+    U1(["Register, then<br/>log in"])
+    U2(["Choose course,<br/>language, goal"])
     U3(["Take diagnostic"])
-    U4(["Start, pause, resume session"])
+    U4(["Start, pause,<br/>resume session"])
     U5(["Solve exercise"])
     U6(["Ask for a hint"])
     U7(["View progress"])
     U8(["Do a review"])
-    U9(["Seed skill graph and resources"])
-    U10(["Manage template exercises"])
+    U9(["Seed skill graph<br/>and resources"])
+    U10(["Manage template<br/>exercises"])
     U11(["View analytics"])
-    U12(["Set fade schedule"])
-    U13(["Generate and verify exercise"])
+    U12(["Set fade<br/>schedule"])
+    U13(["Generate and<br/>verify exercise"])
     U14(["Grade submission"])
-    U15(["Decay check, schedule reviews"])
-    U16(["Advance fade stage"])
-    U17(["Reset a forgotten password"])
+    U15(["Decay check,<br/>schedule reviews"])
+    U16(["Advance fade<br/>stage"])
+    U17(["Reset a<br/>forgotten<br/>password"])
   end
   Gemini["Actor: Gemini"]
   E2B["Actor: E2B"]
-  Brevo["Actor: Brevo (email)"]
+  Brevo["Actor: Brevo<br/>(email)"]
   Learner --- U1 & U2 & U3 & U4 & U5 & U6 & U7 & U8 & U17
   Author --- U9 & U10
   Admin --- U11 & U12
@@ -463,6 +469,17 @@ flowchart LR
 **Figure 5: Register, then log in.** Registration does not log the user in. The user logs in separately and receives a 15-minute access token plus a rotating 30-day refresh token.
 
 ```mermaid
+---
+config:
+  sequence:
+    actorMargin: 20
+    width: 110
+    wrap: true
+    messageMargin: 22
+    boxMargin: 5
+    noteMargin: 5
+    mirrorActors: false
+---
 sequenceDiagram
   autonumber
   actor U as User
@@ -493,6 +510,17 @@ sequenceDiagram
 **Figure 16: Forgot and reset password, as built (ADR-0017).** The reply is the same for every email and all the work happens after it, so neither the reply nor its timing shows who has an account. The token travels in the link's `#fragment`, which browsers never send to a server, and only its SHA-256 hash is stored. The reset is one transaction: it marks the link used (only if it is still unused), ends the account's other links, saves the new argon2id hash and revokes every session.
 
 ```mermaid
+---
+config:
+  sequence:
+    actorMargin: 20
+    width: 110
+    wrap: true
+    messageMargin: 22
+    boxMargin: 5
+    noteMargin: 5
+    mirrorActors: false
+---
 sequenceDiagram
   autonumber
   actor U as User
@@ -518,6 +546,17 @@ sequenceDiagram
 **Figure 6: Submit code.** This is the central flow of the system. The API saves the submission and answers `202` at once; a worker grades it in a fresh sandbox and saves the verdict, the mastery evidence and any fade advance in **one database transaction**.
 
 ```mermaid
+---
+config:
+  sequence:
+    actorMargin: 20
+    width: 110
+    wrap: true
+    messageMargin: 22
+    boxMargin: 5
+    noteMargin: 5
+    mirrorActors: false
+---
 sequenceDiagram
   autonumber
   actor L as Learner
@@ -575,7 +614,7 @@ stateDiagram-v2
 **Figure 8: Activity diagram, next-step selection, as built (recommender m5-v1, ADR-0011).** No LLM is involved; every pick is saved with its reasons.
 
 ```mermaid
-flowchart LR
+flowchart TB
   A["Candidates: prerequisites met and not cleared, plus cleared skills due for review"] --> F{"Any?"}
   F -->|no| G(["Course complete"])
   F -->|yes| H["Score and sort: in progress, review urgency, goal"]
@@ -589,6 +628,17 @@ flowchart LR
 **Figure 14: Request a hint, as built (ADR-0015).** One level per request, never above the fade stage's ceiling. The live tutor comes first; the frozen hint is the fallback.
 
 ```mermaid
+---
+config:
+  sequence:
+    actorMargin: 20
+    width: 110
+    wrap: true
+    messageMargin: 22
+    boxMargin: 5
+    noteMargin: 5
+    mirrorActors: false
+---
 sequenceDiagram
   autonumber
   actor L as Learner
@@ -618,94 +668,100 @@ sequenceDiagram
 **Figure 15: Placement test, as built (ADR-0012).** Reading questions walk the skill graph easiest-first; code tasks are asked only on the frontier of what was read correctly.
 
 ```mermaid
+---
+config:
+  flowchart:
+    nodeSpacing: 15
+    rankSpacing: 30
+---
 flowchart TD
-  S([Start or resume the test]) --> W["Next skill: fewest prerequisites first"]
-  W --> B{"Was a prerequisite missed?"}
+  S([Start or resume the test]) --> W["Next skill: fewest<br/>prerequisites<br/>first"]
+  W --> B{"Was a prerequisite<br/>missed?"}
   B -->|yes| W
-  B -->|no| R["Ask: what does this program print?"]
+  B -->|no| R["Ask: what does<br/>this program<br/>print?"]
   R --> A{"Answer"}
-  A -->|right| P["Pass it and all its prerequisites"]
-  A -->|I don't know| X["Miss: skip everything built on it"]
-  A -->|typed wrong| SU["Suspect: its next dependent is the check question"]
+  A -->|right| P["Pass it and all<br/>its prerequisites"]
+  A -->|I don't know| X["Miss: skip<br/>everything built<br/>on it"]
+  A -->|typed wrong| SU["Suspect: its next<br/>dependent is the<br/>check question"]
   P --> W
   X --> W
   SU --> W
-  W -->|no skill left to ask| F["Code tasks on the frontier, run in the sandbox in the background"]
-  F --> C["Complete: wait for the last runs, at most 120 s"]
-  C --> E(["Seed reading and writing at 0.85, raise-only; skills proven in code start on the last fade stage"])
+  W -->|no skill left to ask| F["Code tasks on the<br/>frontier, run in<br/>the sandbox in the<br/>background"]
+  F --> C["Complete: wait for<br/>the last runs, at<br/>most 120 s"]
+  C --> E(["Seed reading and<br/>writing at 0.85,<br/>raise-only; skills<br/>proven in code<br/>start on the last<br/>fade stage"])
 ```
 
 ### 3.2.4 Class Diagrams
 
-**Figure 3: Domain model**
+**Figure 3: Domain model** (attribute names only; their types are in the ER diagrams and the data dictionary, A-7)
 
 ```mermaid
 classDiagram
-  direction LR
+  direction TB
   class User {
-    +uuid id
-    +string email
-    +Role role
+    +id
+    +email
+    +role
   }
   class Enrollment {
-    +string languageCode
-    +string goalText
+    +languageCode
+    +goalText
   }
   class Course {
-    +string slug
+    +slug
   }
   class Skill {
-    +string slug
-    +SkillType type
-    +number decayLambda
+    +slug
+    +type
+    +decayLambda
   }
   class MasteryRecord {
-    +number readingScore
-    +number writingScore
-    +Date clearedAt
-    +int limitStreak
-    +effectiveReading(now) number
-    +effectiveWriting(now) number
+    +readingScore
+    +writingScore
+    +clearedAt
+    +limitStreak
+    +effectiveReading()
+    +effectiveWriting()
   }
   class EvidenceEvent {
-    +Dimension dimension
-    +number weight
-    +number scoreBefore
-    +number scoreAfter
+    +dimension
+    +weight
+    +scoreBefore
+    +scoreAfter
   }
   class Exercise {
-    +int rung
-    +string contentVersion
-    +isServable() bool
+    +rung
+    +contentVersion
+    +isServable()
   }
   class ExerciseAttempt {
-    +AttemptContext context
-    +int hintLevel
-    +int hintCeiling
-    +int ceCount
-    +canAskHint() bool
+    +context
+    +hintLevel
+    +hintCeiling
+    +ceCount
+    +canAskHint()
   }
   class Submission {
-    +Verdict verdict
-    +bool countsAsAttempt
+    +verdict
+    +countsAsAttempt
   }
   class LearningSession {
-    +SessionStatus status
+    +status
     +pause()
     +resume()
     +finish()
   }
   class SessionStep {
-    +int seq
+    +seq
   }
   class Recommendation {
-    +number totalScore
-    +object scoreBreakdown
+    +totalScore
+    +scoreBreakdown
   }
   class SkillScaffolding {
-    +int currentStage
-    +ceiling() Limits
-    +advanceOn(submission) bool
+    +currentStage
+    +ceiling()
+    +advanceOn()
   }
   User "1" --> "*" Enrollment : enrolls
   Enrollment "*" --> "1" Course : in
@@ -725,58 +781,58 @@ classDiagram
   SkillScaffolding "*" --> "1" Skill : for
 ```
 
-**Figure 4: Services and adapters, as built.** Two interfaces keep the outside services replaceable: `SandboxProvider` (only one class knows about E2B) and `LlmProvider` (only one class knows about Gemini). Tests replace both with fakes. Modules call each other's services, never each other's tables.
+**Figure 4: Services and adapters, as built (method parameters left out for space).** Two interfaces keep the outside services replaceable: `SandboxProvider` (only one class knows about E2B) and `LlmProvider` (only one class knows about Gemini). Tests replace both with fakes. Modules call each other's services, never each other's tables.
 
 ```mermaid
 classDiagram
-  direction TB
+  direction LR
   class SandboxProvider {
     <<interface>>
-    +run(request) RunResult
+    +run() RunResult
   }
   class E2BProvider
   class Judge {
-    +judgeTest(run, expected, limits) Verdict
-    +overallVerdict(verdicts) Verdict
+    +judgeTest() Verdict
+    +overallVerdict() Verdict
   }
   class RunSubmission {
-    +runSubmission(submissionId, isLastTry, provider)
+    +runSubmission()
   }
   class ExercisesService {
-    +getServableExercise(id) Exercise
-    +getRunnableExercise(id) RunnableExercise
+    +getServableExercise() Exercise
+    +getRunnableExercise() RunnableExercise
   }
   class AttemptsService {
-    +openAttempt(userId, exercise) Attempt
+    +openAttempt() Attempt
   }
   class MasteryService {
-    +recordEvidence(tx, evidence)
+    +recordEvidence()
   }
   class MasteryFormula {
-    +applyEvidence(before, streak, evidence) Update
-    +effectiveScore(score, lambda, evidenceAt) number
+    +applyEvidence() Update
+    +effectiveScore() number
   }
   class ScaffoldingService {
-    +getStage(key, courseId) Stage
-    +advanceOnSolve(tx, solve)
+    +getStage() Stage
+    +advanceOnSolve()
   }
   class LlmProvider {
     <<interface>>
-    +generate(request) LlmResult
+    +generate() LlmResult
   }
   class GeminiProvider
   class HintsService {
-    +requestHint(userId, exerciseId, code) Hint
+    +requestHint() Hint
   }
   class SolutionFilter {
-    +checkHint(reply, context) FilterResult
+    +checkHint() FilterResult
   }
   class DiagnosticService {
     +start() +answer() +complete()
   }
   class Placement {
-    +nextItem(placement) Item
-    +estimate(placement) Results
+    +nextItem() Item
+    +estimate() Results
   }
   E2BProvider ..|> SandboxProvider
   GeminiProvider ..|> LlmProvider
@@ -820,73 +876,45 @@ The schema has **42 tables in 9 groups**: 39 are built (14 migrations), and 3 co
 
 ### 3.3.1 ERD
 
-**Figure 9a: Overview of the table groups**
+**Figure 9a: Overview of the table groups.** Each box is one group of tables and the module that owns it; an arrow points from a group to the groups that refer to it. The full ERD with all 42 tables is in the Phase 2 design document (section 5).
 
 ```mermaid
-erDiagram
-  organizations ||--o{ users : "members"
-  users ||--o{ refresh_tokens : ""
-  users ||--o{ password_reset_tokens : ""
-  users ||--o{ enrollments : ""
-  courses ||--o{ enrollments : ""
-  courses ||--o{ course_languages : ""
-  languages ||--o{ course_languages : ""
-  courses ||--o{ skills : ""
-  courses ||--o{ skill_graph_changes : ""
-  skills ||--o{ skill_prerequisites : ""
-  skills ||--o{ skill_resources : ""
-  skills ||--o{ concept_chunks : ""
-  skills ||--o{ diagnostic_items : ""
-  enrollments ||--o{ diagnostic_attempts : ""
-  diagnostic_attempts ||--o{ diagnostic_responses : ""
-  diagnostic_items ||--o{ diagnostic_responses : ""
-  diagnostic_attempts ||--o{ diagnostic_results : ""
-  users ||--o{ mastery_records : ""
-  skills ||--o{ mastery_records : ""
-  users ||--o{ evidence_events : ""
-  submissions |o--o{ evidence_events : ""
-  users ||--o{ review_items : ""
-  skills ||--o{ exercises : ""
-  exercises ||--|| exercise_secrets : ""
-  exercises ||--o{ exercise_tests : ""
-  exercises ||--o{ exercise_hints : ""
-  generation_jobs |o--o| exercises : ""
-  generation_jobs ||--o{ generation_failures : ""
-  users ||--o{ exercise_attempts : ""
-  exercises ||--o{ exercise_attempts : ""
-  exercise_attempts ||--o{ submissions : ""
-  submissions ||--o{ sandbox_runs : ""
-  sandbox_runs ||--o{ run_test_results : ""
-  exercise_attempts ||--o{ hint_events : ""
-  enrollments ||--o{ learning_sessions : ""
-  learning_sessions ||--o{ session_steps : ""
-  recommendations ||--o| session_steps : ""
-  session_steps |o--o| exercise_attempts : ""
-  enrollments ||--o{ recommendations : ""
-  fade_schedules ||--|{ fade_stages : ""
-  users ||--o{ skill_scaffolding : ""
-  skills ||--o{ skill_scaffolding : ""
-  fade_stages ||--o{ skill_scaffolding : ""
-  users ||--o{ fade_stage_changes : ""
-  users ||--o{ calibration_records : ""
-  users ||--o{ consents : ""
-  users |o--o{ audit_log : ""
-  llm_calls {
-    bigint id PK "no FKs, logs every Gemini call"
-  }
+---
+config:
+  flowchart:
+    nodeSpacing: 12
+    rankSpacing: 30
+---
+flowchart TB
+  G1["<b>Identity and consent (M1)</b><br/>organizations<br/>users<br/>refresh_tokens<br/>password_reset_tokens<br/>consents"]
+  G2["<b>Courses and skill graph (M2)</b><br/>languages<br/>courses<br/>course_languages<br/>skills<br/>skill_prerequisites<br/>skill_resources<br/>skill_graph_changes<br/>concept_chunks"]
+  G3["<b>Enrollment and placement (M1, M3)</b><br/>enrollments<br/>diagnostic_items<br/>diagnostic_attempts<br/>diagnostic_responses<br/>diagnostic_results"]
+  G4["<b>Mastery and reviews (M4, M10)</b><br/>mastery_records<br/>evidence_events<br/>review_items"]
+  G5["<b>Exercises and generation (M6)</b><br/>exercises<br/>exercise_secrets<br/>exercise_tests<br/>exercise_hints<br/>generation_jobs<br/>generation_failures"]
+  G6["<b>Attempts and execution (M7)</b><br/>exercise_attempts<br/>submissions<br/>sandbox_runs<br/>run_test_results"]
+  G7["<b>Sessions, hints, recommendations (M5, M8, M9)</b><br/>learning_sessions<br/>session_steps<br/>recommendations<br/>hint_events"]
+  G8["<b>Scaffolding fade (M12)</b><br/>fade_schedules<br/>fade_stages<br/>skill_scaffolding<br/>fade_stage_changes"]
+  G9["<b>Analytics, research, cost (M13)</b><br/>calibration_records<br/>llm_calls<br/>audit_log"]
+  G1 --> G3
+  G2 --> G3
+  G2 --> G5
+  G5 --> G6
+  G1 --> G6
+  G6 --> G4
+  G1 & G2 --> G4
+  G1 & G2 --> G8
+  G3 --> G7
+  G7 <--> G6
+  G1 --> G9
 ```
 
-**Figure 9b: Attempts and execution**, the tables used by the submit flow
+**Figure 9b: Attempts and submissions**, the tables the submit flow writes first
 
 ```mermaid
 erDiagram
   users ||--o{ exercise_attempts : "works on"
   exercises ||--o{ exercise_attempts : "attempted in"
   exercise_attempts ||--o{ submissions : "submits"
-  submissions ||--o{ sandbox_runs : "executed by"
-  exercises ||--o{ sandbox_runs : "verification runs"
-  sandbox_runs ||--o{ run_test_results : "per test"
-  exercise_tests ||--o{ run_test_results : "result of"
   exercise_attempts {
     uuid id PK
     uuid user_id FK
@@ -922,6 +950,16 @@ erDiagram
     boolean counts_as_attempt
     timestamptz created_at
   }
+```
+
+**Figure 9c: Execution**, one sandbox run per submission (or verification) and one result per test
+
+```mermaid
+erDiagram
+  submissions ||--o{ sandbox_runs : "executed by"
+  exercises ||--o{ sandbox_runs : "verification runs"
+  sandbox_runs ||--o{ run_test_results : "per test"
+  exercise_tests ||--o{ run_test_results : "result of"
   sandbox_runs {
     uuid id PK
     enum purpose "submission verification timing"
@@ -976,45 +1014,36 @@ flowchart LR
   P0 -->|reset links, address only| EM
 ```
 
-**Figure 10b: Level 1 (the 13 processes)**
+**Figure 10b: Level 1, part 1 of 2: the learning loop** (processes 3, 4, 5, 6, 7, 9, 10 and 12)
 
 ```mermaid
-flowchart LR
+---
+config:
+  flowchart:
+    nodeSpacing: 20
+    rankSpacing: 30
+---
+flowchart TB
   L["Learner"]
-  AU["Author"]
   AD["Admin"]
   GEM["Gemini"]
   SBX["E2B"]
-  EM["Brevo"]
-  P1(("1 Manage accounts"))
-  P2(("2 Manage skill graph"))
-  P3(("3 Run diagnostic"))
-  P4(("4 Update mastery"))
-  P5(("5 Recommend next step"))
-  P6(("6 Generate and verify exercises"))
-  P7(("7 Execute and grade"))
-  P8(("8 Give hints"))
-  P9(("9 Run session"))
-  P10(("10 Schedule reviews"))
-  P11(("11 Show progress"))
-  P12(("12 Control fade"))
-  P13(("13 Analyse and calibrate"))
-  D1[("D1 Accounts")]
-  D2[("D2 Skill graph")]
-  D3[("D3 Diagnostics")]
-  D4[("D4 Mastery and evidence")]
+  P3(("3 Run<br/>diagnostic"))
+  P4(("4 Update<br/>mastery"))
+  P5(("5 Recommend<br/>next step"))
+  P6(("6 Generate<br/>and verify<br/>exercises"))
+  P7(("7 Execute<br/>and grade"))
+  P9(("9 Run<br/>session"))
+  P10(("10 Schedule<br/>reviews"))
+  P12(("12 Control<br/>fade"))
+  D2[("D2 Skill<br/>graph")]
+  D3[("D3<br/>Diagnostics")]
+  D4[("D4 Mastery<br/>and evidence")]
   D5[("D5 Exercises")]
-  D6[("D6 Attempts and submissions")]
-  D7[("D7 Hint log")]
+  D6[("D6 Attempts<br/>and<br/>submissions")]
   D8[("D8 Sessions")]
-  D9[("D9 Review queue")]
-  D10[("D10 Fade state per skill")]
-  D11[("D11 Analytics and logs")]
-  L -->|sign-up, login, password reset| P1
-  P1 --> D1
-  P1 -->|reset link| EM
-  AU -->|skills, edges, resources| P2
-  P2 --> D2
+  D9[("D9 Review<br/>queue")]
+  D10[("D10 Fade<br/>state per<br/>skill")]
   L -->|answers| P3
   P3 --> D3
   P3 -->|initial scores| P4
@@ -1040,14 +1069,48 @@ flowchart LR
   P7 --> D6
   P7 -->|evidence| P4
   P7 -->|verdict| L
+  P7 -->|AC, rung, hints used| P12
+  AD -->|schedule| P12
+  P12 --> D10
+```
+
+**Figure 10b: Level 1, part 2 of 2: accounts, content, hints and reports** (processes 1, 2, 8, 11 and 13). A data store shown in both parts is the same store.
+
+```mermaid
+---
+config:
+  flowchart:
+    nodeSpacing: 20
+    rankSpacing: 30
+---
+flowchart TB
+  L["Learner"]
+  AU["Author"]
+  AD["Admin"]
+  GEM["Gemini"]
+  EM["Brevo"]
+  P1(("1 Manage<br/>accounts"))
+  P2(("2 Manage<br/>skill graph"))
+  P8(("8 Give hints"))
+  P11(("11 Show<br/>progress"))
+  P13(("13 Analyse<br/>and<br/>calibrate"))
+  D1[("D1 Accounts")]
+  D2[("D2 Skill<br/>graph")]
+  D4[("D4 Mastery<br/>and evidence")]
+  D6[("D6 Attempts<br/>and<br/>submissions")]
+  D7[("D7 Hint log")]
+  D10[("D10 Fade<br/>state per<br/>skill")]
+  D11[("D11<br/>Analytics<br/>and logs")]
+  L -->|sign-up, login, password reset| P1
+  P1 --> D1
+  P1 -->|reset link| EM
+  AU -->|skills, edges, resources| P2
+  P2 --> D2
   L -->|hint request| P8
   D10 -->|ceiling| P8
   P8 -->|prompt| GEM
   P8 --> D7
   P8 -->|one level| L
-  P7 -->|AC, rung, hints used| P12
-  AD -->|schedule| P12
-  P12 --> D10
   D2 --> P11
   D4 --> P11
   P11 -->|progress view| L
@@ -1061,20 +1124,26 @@ flowchart LR
 **Figure 10c: Level 2, process 7 (execute and grade)**
 
 ```mermaid
-flowchart LR
+---
+config:
+  flowchart:
+    nodeSpacing: 20
+    rankSpacing: 30
+---
+flowchart TB
   L["Learner"]
   SBX["E2B"]
-  P71(("7.1 Accept submission"))
-  P72(("7.2 Queue job"))
-  P73(("7.3 Compile and run"))
-  P74(("7.4 Classify verdict"))
-  P75(("7.5 Apply evidence policy"))
-  P76(("7.6 Report result"))
-  P4(("4 Update mastery"))
-  P12(("12 Control fade"))
+  P71(("7.1 Accept<br/>submission"))
+  P72(("7.2 Queue<br/>job"))
+  P73(("7.3 Compile<br/>and run"))
+  P74(("7.4 Classify<br/>verdict"))
+  P75(("7.5 Apply<br/>evidence<br/>policy"))
+  P76(("7.6 Report<br/>result"))
+  P4(("4 Update<br/>mastery"))
+  P12(("12 Control<br/>fade"))
   Q[("Q1 Job queue")]
   D5[("D5 Exercises")]
-  D6[("D6 Attempts and submissions")]
+  D6[("D6 Attempts<br/>and<br/>submissions")]
   L -->|code| P71
   P71 --> D6
   P71 --> P72
@@ -1250,22 +1319,34 @@ A live hint is blocked if it holds 25 % or more of the code only the solution ha
 **Figure 12: Deployment**, as decided for the MVP (ADR-0010)
 
 ```mermaid
-flowchart LR
-  B["Browser"] -->|HTTPS| V["Vercel: Next.js web + /api proxy"]
-  V -->|/api| C["Oracle Cloud VM, India: Caddy HTTPS"]
+---
+config:
+  flowchart:
+    nodeSpacing: 20
+    rankSpacing: 30
+    subGraphTitleMargin:
+      top: 4
+      bottom: 14
+---
+flowchart TB
+  B["Browser"] -->|HTTPS| V["Vercel<br/>Next.js web + /api proxy"]
   M["Mobile app (later)"] -->|Bearer token| C
+  V -->|/api| C["Oracle Cloud VM, India<br/>Caddy HTTPS"]
   subgraph VM["Docker Compose on the VM"]
-    API["API + queue worker (Node 22)"]
+    API["API + queue worker<br/>(Node 22)"]
     PG[("PostgreSQL 16")]
     RD[("Redis 7")]
+  end
+  subgraph EXT["Outside services"]
+    E2B["E2B sandboxes, internet off<br/>code + tests, no identity"]
+    G["Google Gemini API<br/>content and hints"]
+    BR["Brevo email (EU)<br/>reset emails, address only"]
   end
   C --> API
   API --> PG
   API --> RD
-  API -->|"code + tests, no identity"| E2B["E2B sandboxes, internet off"]
-  API -->|"content and hints"| G["Google Gemini API"]
-  API -->|"reset emails, address only"| BR["Brevo email (EU)"]
-  PG -.->|"nightly encrypted backup"| L["Staging laptop (Ubuntu 24.04)"]
+  API --> EXT
+  PG -.->|nightly encrypted backup| L["Staging laptop<br/>(Ubuntu 24.04)"]
 ```
 
 
@@ -1565,59 +1646,92 @@ Around that core, the rest of the learner's journey now works too: an adaptive *
 **Figure 13: Planned screen flow**
 
 ```mermaid
+---
+config:
+  flowchart:
+    nodeSpacing: 12
+    rankSpacing: 30
+---
 flowchart TD
-  L["Landing"] --> R["Sign up: name, email, password, date of birth, 2 consents"]
+  L["Landing"] --> R["Sign up: name,<br/>email,<br/>password, date<br/>of birth, 2<br/>consents"]
   L --> LI["Log in"]
-  LI --> FP["Forgot password"]
+  LI --> FP["Forgot<br/>password"]
   FP --> RP["New password"]
   RP --> LI
   R -->|18 or over| LI
-  R -->|under 18| P["Waiting for parent approval"]
-  LI --> D["Dashboard: next step, progress"]
-  D --> DG["Placement test (first visit)"]
+  R -->|under 18| P["Waiting for<br/>parent<br/>approval"]
+  LI --> D["Dashboard:<br/>next step,<br/>progress"]
+  D --> DG["Placement test<br/>(first visit)"]
   DG --> D
-  D --> SS["Start studying: session steps"]
+  D --> SS["Start<br/>studying:<br/>session steps"]
   SS --> EX
-  D --> EX["Exercise: prompt, editor, Submit, Hint"]
-  EX --> RS["Result: verdict, sample test details"]
+  D --> EX["Exercise:<br/>prompt,<br/>editor,<br/>Submit, Hint"]
+  EX --> RS["Result:<br/>verdict,<br/>sample test<br/>details"]
   RS --> EX
   RS --> D
-  D --> PR["Progress: reading and writing per skill, fade stage"]
+  D --> PR["Progress:<br/>reading and<br/>writing per<br/>skill, fade<br/>stage"]
   D --> RV["Reviews due"]
-  D --> AD["Admin: analytics (admins only)"]
+  D --> AD["Admin:<br/>analytics<br/>(admins only)"]
 ```
 
 ## A-2 Structure Chart
 
+The chart is in two parts: what handles a request, and what runs in the background. A module used by several callers is drawn under each of them.
+
+**Part 1: handling a request**
+
 ```mermaid
-flowchart TD
-  APP["Express app"] --> AUTH["M1 auth routes"]
-  APP --> EXR["M6 exercises routes"]
-  APP --> SUB["M7 submissions routes"]
-  APP --> MAS["M4 mastery routes"]
-  APP --> FAD["M12 scaffolding routes"]
-  APP --> DIA["M3 placement routes"] --> DS["M3 diagnostic service"] --> PL["Placement rules (pure)"]
-  DS --> MS
-  DS --> FS
-  APP --> REC["M5 recommendation routes"] --> RS["M5 recommender service"] --> RR["Recommend rules (pure)"]
-  APP --> SES["M9 session routes"] --> SV["M9 sessions service"] --> RS
-  APP --> PRG["M11 progress routes"] --> RR
-  APP --> HIN["M8 hint routes"] --> HS["M8 hints service"] --> LLM["LLM provider (Gemini)"]
-  HS --> LF["Leak filter (pure)"]
-  APP --> ANA["M13 analytics routes (admin)"]
-  EXR --> GEN["M6 generation (admin)"] --> GQ["Generation queue"] --> GW["Worker: runGeneration"]
-  GW --> LLM
-  GW --> SP
-  RS --> GEN
-  EXR --> EXS["M6 exercises service"] --> SK["M2 skills service"]
-  EXR --> ATS["M7 attempts service"] --> EN["M3 enrollments service"]
-  ATS --> FS["M12 scaffolding service"]
-  SUB --> SS["M7 submissions service"] --> Q["Queue (BullMQ)"]
-  Q --> W["Worker: runSubmission"]
+---
+config:
+  flowchart:
+    nodeSpacing: 10
+    rankSpacing: 30
+---
+flowchart LR
+  APP["Express app"]
+  APP --> AUTH["M1 auth routes"] --> ML["Mail (Brevo)"]
+  APP --> DIA["M3 placement<br/>routes"] --> DS["M3 diagnostic<br/>service"]
+  DS --> PL["Placement rules<br/>(pure)"]
+  DS --> MS1["M4 mastery<br/>service"]
+  DS --> FS1["M12 scaffolding<br/>service"]
+  APP --> MAS["M4 mastery<br/>routes"]
+  APP --> REC["M5<br/>recommendation<br/>routes"] --> RS["M5 recommender<br/>service"]
+  RS --> RR["Recommend rules<br/>(pure)"]
+  RS --> GEN2["M6 generation<br/>(automatic)"]
+  APP --> EXR["M6 exercises<br/>routes"]
+  EXR --> EXS["M6 exercises<br/>service"] --> SK["M2 skills<br/>service"]
+  EXR --> ATS["M7 attempts<br/>service"]
+  ATS --> EN["M3 enrollments<br/>service"]
+  ATS --> FS2["M12 scaffolding<br/>service"]
+  EXR --> GEN["M6 generation<br/>(admin)"] --> GQ[["Generation queue"]]
+  APP --> SUB["M7 submissions<br/>routes"] --> SS["M7 submissions<br/>service"] --> Q[["Submission queue"]]
+  APP --> HIN["M8 hint routes"] --> HS["M8 hints service"]
+  HS --> LF["Leak filter<br/>(pure)"]
+  HS --> LLM["LLM provider<br/>(Gemini)"]
+  APP --> SES["M9 session<br/>routes"] --> SV["M9 sessions<br/>service"] --> RS2["M5 recommender<br/>service"]
+  APP --> PRG["M11 progress<br/>routes"] --> RR2["Recommend rules<br/>(pure)"]
+  APP --> FAD["M12 scaffolding<br/>routes"] --> FS3["M12 scaffolding<br/>service"]
+  APP --> ANA["M13 analytics<br/>routes (admin)"]
+```
+
+**Part 2: background jobs**
+
+```mermaid
+---
+config:
+  flowchart:
+    nodeSpacing: 12
+    rankSpacing: 30
+---
+flowchart LR
+  Q[["Submission queue"]] --> W["Worker: runSubmission"]
   W --> SP["Sandbox provider (E2B)"]
   W --> J["Judge (pure)"]
   W --> MS["M4 mastery service"] --> F["Formula (pure)"]
-  W --> FS
+  W --> FS["M12 scaffolding service"]
+  GQ[["Generation queue"]] --> GW["Worker: runGeneration"]
+  GW --> LLM["LLM provider (Gemini)"]
+  GW --> SP
 ```
 
 ## A-6 Decision Tables
