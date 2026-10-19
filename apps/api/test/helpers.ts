@@ -3,17 +3,33 @@ import { db } from "../src/infrastructure/database/index.js";
 import {
   courseLanguages,
   courses,
+  diagnosticAttempts,
+  diagnosticItems,
+  diagnosticResponses,
+  diagnosticResults,
   enrollments,
+  evidenceEvents,
   exerciseAttempts,
   exercises,
+  exerciseTests,
   fadeSchedules,
+  fadeStageChanges,
   fadeStages,
+  hintEvents,
   languages,
+  learningSessions,
+  masteryRecords,
   organizations,
+  recommendations,
+  runTestResults,
+  sandboxRuns,
+  sessionSteps,
   skills,
+  submissions,
   users,
 } from "../src/infrastructure/database/schema/index.js";
 import { defaultFadeStages } from "../src/infrastructure/database/seed/data.js";
+import { getStage } from "../src/modules/m12_scaffolding/services/scaffolding.service.js";
 import { signAccessToken } from "../src/shared/auth/tokens.js";
 
 // Random suffix so tests never collide and never need cleanup.
@@ -105,4 +121,54 @@ export async function bearerFor(userId: string) {
 export async function addDefaultFadeSchedule(courseId: string) {
   const [schedule] = await db.insert(fadeSchedules).values({ courseId, name: "Default", isDefault: true }).returning();
   await db.insert(fadeStages).values(defaultFadeStages.map((stage) => ({ scheduleId: schedule.id, ...stage })));
+}
+
+export const LEARNER_CODE = "int main() { return 42; }";
+
+// A learner with rows in every table of learning data, each linked the way the app links them:
+// for the DPDP export and erasure tests.
+export async function createLearnerWithHistory() {
+  const { id: enrollmentId, userId, courseId } = await createEnrollment();
+  await db.update(enrollments).set({ goalText: "Pass my placement interview" }).where(eq(enrollments.id, enrollmentId));
+  const { id: skillId } = await createSkill(courseId);
+  const { id: exerciseId } = await createExercise(skillId);
+  const key = { userId, skillId, languageCode: "cpp" };
+
+  const [rec] = await db
+    .insert(recommendations)
+    .values({ enrollmentId, skillId, rung: 3, reason: "new_skill", totalScore: 1, scoreBreakdown: {}, candidatesSnapshot: [], algorithmVersion: "test", exerciseId })
+    .returning();
+  const [session] = await db.insert(learningSessions).values({ userId, enrollmentId }).returning();
+  const [step] = await db.insert(sessionSteps).values({ sessionId: session.id, seq: 1, kind: "exercise", recommendationId: rec.id, exerciseId }).returning();
+  const [attempt] = await db.insert(exerciseAttempts).values({ userId, enrollmentId, exerciseId, sessionStepId: step.id, hintCeiling: 3 }).returning();
+  const [submission] = await db
+    .insert(submissions)
+    .values({ attemptId: attempt.id, userId, exerciseId, languageCode: "cpp", answer: LEARNER_CODE, answerSha256: "x", idempotencyKey: uniq(), status: "completed", verdict: "WA" })
+    .returning();
+  const [run] = await db
+    .insert(sandboxRuns)
+    .values({ purpose: "submission", submissionId: submission.id, exerciseId, solutionKind: "learner", languageCode: "cpp", toolchainVersion: "1", compileOutput: LEARNER_CODE })
+    .returning();
+  const [test] = await db.insert(exerciseTests).values({ exerciseId, seq: 1, name: "t1", size: "small", visibility: "hidden", input: "1", expectedOutput: "1" }).returning();
+  await db.insert(runTestResults).values({ runId: run.id, testId: test.id, verdict: "WA", stdoutExcerpt: "41" });
+  await db.insert(hintEvents).values({ attemptId: attempt.id, level: 1, kind: "delivered", bodyMd: "Look at `return 42;`" });
+
+  await db.insert(masteryRecords).values({ ...key, decayLambda: 0.05, writingScore: 0.4 });
+  await db.insert(evidenceEvents).values({ ...key, dimension: "writing", submissionId: submission.id, weight: 1, scoreBefore: 0, scoreAfter: 0.4, formulaVersion: "test" });
+  await addDefaultFadeSchedule(courseId);
+  await getStage(key, courseId);
+  await db.insert(fadeStageChanges).values({ ...key, fromStage: 1, toStage: 2, submissionId: submission.id, reason: "solved" });
+
+  // Placement: a reading answer the learner typed, and a writing one graded through a submission.
+  const [diagnostic] = await db.insert(diagnosticAttempts).values({ enrollmentId, attemptNo: 1 }).returning();
+  const items = await db
+    .insert(diagnosticItems)
+    .values((["reading", "writing"] as const).map((dimension) => ({ skillId, languageCode: "cpp", dimension, difficulty: 1, promptMd: "?", payload: {}, contentVersion: "v1" })))
+    .returning();
+  await db.insert(diagnosticResponses).values([
+    { diagnosticId: diagnostic.id, itemId: items[0].id, seq: 1, answer: { output: "42" }, isCorrect: true },
+    { diagnosticId: diagnostic.id, itemId: items[1].id, seq: 2, answer: {}, isCorrect: false, submissionId: submission.id },
+  ]);
+  await db.insert(diagnosticResults).values({ diagnosticId: diagnostic.id, skillId, estReading: 1, estWriting: 0, confidence: 0.5 });
+  return { userId, enrollmentId, sessionId: session.id, attemptId: attempt.id, submissionId: submission.id, runId: run.id, diagnosticId: diagnostic.id };
 }
