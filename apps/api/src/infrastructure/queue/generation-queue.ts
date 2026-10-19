@@ -1,10 +1,7 @@
 import { Queue, Worker } from "bullmq";
-import { env } from "../../config/env.js";
+import { connection } from "./connection.js";
 
 const QUEUE = "generation";
-
-const { hostname, port } = new URL(env.REDIS_URL);
-const connection = { host: hostname, port: Number(port) || 6379 };
 
 // Created on first use, so importing this module (e.g. in tests) doesn't open a Redis connection.
 let queue: Queue | undefined;
