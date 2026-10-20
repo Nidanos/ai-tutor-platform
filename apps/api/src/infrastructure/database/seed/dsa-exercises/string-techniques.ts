@@ -1,10 +1,10 @@
 import { predict, printCall, TASK, type ExerciseTemplate } from "../cpp-templates.js";
 import { GEN, limits } from "./harness.js";
 
-// Text inputs and a short way to print long text.
+// Text inputs.
 const TEXT = String.raw`
 namespace gen {
-// A letter-and-count code like "a3b1z9", with pairs letter pairs.
+// A letter-and-count code like "a3b1z9", made of the given number of pairs.
 std::string runCode(std::uint64_t seed, int pairs) {
     state = seed;
     std::string s;
@@ -19,12 +19,6 @@ std::string nearPalindrome(std::uint64_t seed, int n) {
     std::string s = half + std::string(half.rbegin(), half.rend());
     s.insert(s.begin() + between(0, (long long)s.size()), char('a' + between(0, 2)));
     return s;
-}
-void showText(const std::string& s) {
-    if (s.size() <= 60) { std::cout << s << "\n"; return; }
-    std::uint64_t h = 1469598103934665603ULL;
-    for (char c : s) h = (h ^ (unsigned char)c) * 1099511628211ULL;
-    std::cout << "length " << s.size() << ", hash " << h << "\n";
 }
 }  // namespace gen
 `;

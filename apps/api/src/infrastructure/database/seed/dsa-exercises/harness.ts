@@ -62,8 +62,47 @@ template <class T> void show(const std::vector<T>& v) {
     for (const T& x : v) h = (h ^ (std::uint64_t)(long long)x) * 1099511628211ULL;
     std::cout << "size " << v.size() << ", hash " << h << "\n";
 }
+void showText(const std::string& s) {
+    if (s.size() <= 60) {
+        std::cout << s << "\n";
+        return;
+    }
+    std::uint64_t h = 1469598103934665603ULL;
+    for (char c : s) h = (h ^ (unsigned char)c) * 1099511628211ULL;
+    std::cout << "length " << s.size() << ", hash " << h << "\n";
+}
 }  // namespace gen
 `;
+
+// Lists for exercises whose starter defines \`struct ListNode { int value; ListNode* next; };\`.
+export const LIST = String.raw`
+namespace gen {
+ListNode* list(const std::vector<int>& v) {
+    ListNode* head = nullptr;
+    for (auto it = v.rbegin(); it != v.rend(); ++it) head = new ListNode{*it, head};
+    return head;
+}
+// The list with its last node linked back to the node at position loopTo (0-based); -1 for no loop.
+ListNode* cyclic(const std::vector<int>& v, int loopTo) {
+    ListNode* head = list(v);
+    if (loopTo < 0 || !head) return head;
+    ListNode *tail = head, *target = head;
+    while (tail->next) tail = tail->next;
+    for (int i = 0; i < loopTo; i++) target = target->next;
+    tail->next = target;
+    return head;
+}
+void showList(const ListNode* p) {  // stops after 3,000,000 nodes, in case of a loop
+    std::vector<int> values;
+    for (; p && values.size() < 3000000; p = p->next) values.push_back(p->value);
+    show(values);
+}
+// Calls f with the values turned into a list, then the other arguments.
+template <class F, class... Rest> auto withList(F f, const std::vector<int>& v, Rest... rest) { return f(list(v), rest...); }
+}  // namespace gen
+`;
+
+export const LIST_NODE = "struct ListNode {  // keep this as it is: the tests build lists from it\n    int value;\n    ListNode* next;\n};";
 
 // Each test prints the vector the learner's function returns.
 export const showCall = (fn: string) => (args: string) => `gen::show(${fn}(${args}));`;
