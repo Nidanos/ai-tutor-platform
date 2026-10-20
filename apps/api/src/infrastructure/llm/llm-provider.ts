@@ -11,6 +11,9 @@ export type LlmRequest = {
   thinking?: "minimal" | "low"; // more thinking costs more; content that is kept gets "low" (default "minimal")
   jsonSchema?: object; // set: the reply is JSON matching this schema
   ref?: { type: string; id: string }; // what the call was for, kept in the cost log
+  timeoutMs?: number; // long content (a lesson) takes longer than a hint
+  // Content without any learner data may run before billing is on, on an explicit request only (ADR-0019).
+  allowFreeTier?: boolean;
 };
 
 export type LlmResult = { text: string; callId: number };

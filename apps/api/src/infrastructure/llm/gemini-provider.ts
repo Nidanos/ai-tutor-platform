@@ -32,12 +32,12 @@ const costInr = (model: string, input: number, output: number) => {
 export const geminiProvider: LlmProvider = {
   async generate(req: LlmRequest) {
     if (!env.GEMINI_API_KEY) throw new Error("GEMINI_API_KEY is not set");
-    if (env.GEMINI_PAID !== "true") throw new Error("GEMINI_PAID is not \"true\": no calls until billing is on (privacy policy §5)");
+    if (env.GEMINI_PAID !== "true" && !req.allowFreeTier) throw new Error("GEMINI_PAID is not \"true\": no calls until billing is on (privacy policy §5)");
     const started = Date.now();
     const res = await fetch(`${API}/${req.model}:generateContent`, {
       method: "POST",
       headers: { "x-goog-api-key": env.GEMINI_API_KEY, "Content-Type": "application/json" },
-      signal: AbortSignal.timeout(TIMEOUT_MS),
+      signal: AbortSignal.timeout(req.timeoutMs ?? TIMEOUT_MS),
       body: JSON.stringify({
         systemInstruction: { parts: [{ text: req.system }] },
         contents: [{ role: "user", parts: [{ text: req.prompt }] }],
