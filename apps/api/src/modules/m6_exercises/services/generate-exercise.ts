@@ -4,7 +4,7 @@ import { spentThisMonthInr } from "../../../infrastructure/llm/llm-log.js";
 import type { LlmProvider } from "../../../infrastructure/llm/llm-provider.js";
 import { e2bProvider } from "../../../infrastructure/sandbox/e2b-provider.js";
 import type { SandboxProvider } from "../../../infrastructure/sandbox/sandbox-provider.js";
-import { getSkill, getSkillGraph, prerequisitesOf } from "../../m2_skills/services/skills.service.js";
+import { getAncestorNames, getSkill } from "../../m2_skills/services/skills.service.js";
 import * as repo from "../repositories/exercises.repository.js";
 import { draftSchema, GENERATION_PROMPT_VERSION, type GenerationContext, generationPrompt, jsonSchemaFor, SYSTEM, toTemplate } from "./exercise-draft.js";
 import { verifyContent } from "./verify-exercise.js";
@@ -81,10 +81,9 @@ export async function runGeneration(jobId: string, llm: LlmProvider = geminiProv
   if (!job || !["queued", "generating", "verifying"].includes(job.status)) return undefined; // gone, or a duplicate run
 
   const skill = await getSkill(job.skillId);
-  const graph = await getSkillGraph(skill.courseId, job.languageCode);
   let context: GenerationContext = {
     skill: { slug: skill.slug, name: skill.name, description: skill.description },
-    prerequisites: prerequisitesOf(graph, skill.id).map((s) => s.name),
+    prerequisites: await getAncestorNames(skill.id, job.languageCode), // across courses: DSA may use C++ basics
     rung: job.rung,
     existingTitles: await repo.listTitlesForSkill(skill.id),
   };

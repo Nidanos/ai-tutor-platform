@@ -1,4 +1,4 @@
-import { and, eq, inArray, isNull, or } from "drizzle-orm";
+import { and, eq, inArray, isNull, or, sql } from "drizzle-orm";
 import { db, type Tx } from "../../../infrastructure/database/index.js";
 import { courseLanguages, courses, skillPrerequisites, skillResources, skills } from "../../../infrastructure/database/schema/index.js";
 
@@ -53,6 +53,20 @@ export async function listSkillGraph(courseId: string, languageCode: string) {
       ),
     );
   return nodes.map((n) => ({ ...n, prerequisites: edges.filter((e) => e.skillId === n.id).map(({ id, minMastery }) => ({ id, minMastery })) }));
+}
+
+// Every skill below this one, in any course (DSA's reach into C++ basics), easiest first: what a
+// learner of this skill already knows.
+export async function listAncestorNames(skillId: string, languageCode: string) {
+  const applies = sql`(language_code is null or language_code = ${languageCode})`;
+  const { rows } = await db.execute<{ name: string }>(sql`
+    with recursive below(id) as (
+      select prerequisite_id from skill_prerequisites where skill_id = ${skillId} and ${applies}
+      union
+      select p.prerequisite_id from skill_prerequisites p join below b on p.skill_id = b.id where ${applies}
+    )
+    select s.name from skills s join below on below.id = s.id order by s.difficulty, s.name`);
+  return rows.map((r) => r.name);
 }
 
 // A skill's further-reading links for this language (null = any language), active ones only, in order.

@@ -4,6 +4,7 @@ import { db } from "../src/infrastructure/database/index.js";
 import { courses, skillPrerequisites, skills } from "../src/infrastructure/database/schema/index.js";
 import type { SkillSeed } from "../src/infrastructure/database/seed/cpp-basics.js";
 import { seedSkills } from "../src/infrastructure/database/seed/seed-skills.js";
+import { getAncestorNames } from "../src/modules/m2_skills/services/skills.service.js";
 import { createCourse, createSkill, PG, pgError, uniq } from "./helpers.js";
 
 const seed = (slug: string, needs: string[] = []): SkillSeed => ({ slug, name: slug, description: "-", type: "conceptual", difficulty: 1, needs, resources: [] });
@@ -35,6 +36,7 @@ describe("curriculum schema", () => {
     const edges = await db.select().from(skillPrerequisites).where(inArray(skillPrerequisites.skillId, [lists, deques]));
     expect(edges.filter((e) => e.skillId === lists).map((e) => e.prerequisiteId)).toEqual([await idOf(basics, "pointers")]);
     expect(edges.filter((e) => e.skillId === deques).map((e) => e.prerequisiteId)).toEqual([lists]);
+    expect(await getAncestorNames(deques, "cpp")).toEqual(["linked-lists", "pointers"]); // everything below, across courses
 
     await expect(seedSkills(advanced, [seed("trees", [`${basics}/recursion`])])).rejects.toThrow(`${basics}/recursion`);
   });
