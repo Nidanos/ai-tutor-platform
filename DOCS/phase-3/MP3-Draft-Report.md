@@ -1,6 +1,6 @@
 # AI Tutor: An Evidence-Based Adaptive Learning System with Deliberate Scaffolding Withdrawal
 
-> **Draft report for Review 3 (Implementation, Testing and Draft Report), 23 October 2026.** Status as of 20 October 2026.
+> **Draft report for Review 3 (Implementation, Testing and Draft Report), 23 October 2026.** Status as of 20 October 2026: all 33 endpoints live, 235 automated tests passing, and 300 exercises and 207 lessons proven in the real sandbox.
 > Prepared to the MCA-269 "Format of Project Report" and the Annexure-IV chapter scheme. Typesetting rules (Times New Roman 12, 1.5 spacing, margins 3.0/2.0/2.54/2.54 cm, blank page before each chapter) are applied in the final printed copy.
 
 ---
@@ -82,6 +82,8 @@ Page numbers are added in the printed copy.
 | 12 | Hint ladder and where each hint comes from |
 | 13 | Exercise generation: how a job runs |
 | 14 | Data rights: what each request does, and what erasure keeps |
+| 15 | Lessons: what each one holds and the gates it passes |
+| 16 | Speed tests in the DSA exercise bank |
 
 ## List of Figures
 
@@ -90,7 +92,7 @@ Page numbers are added in the printed copy.
 | 1 | System architecture |
 | 2 | Use case diagram |
 | 3 | Class diagram: domain model |
-| 4 | Class diagram: services and adapters |
+| 4 | Class diagrams: services and adapters (running code and mastery; the AI and the placement test) |
 | 5 | Sequence diagram: register, then log in |
 | 6 | Sequence diagram: submit code |
 | 7 | State diagram: submission |
@@ -104,6 +106,8 @@ Page numbers are added in the printed copy.
 | 15 | Activity diagram: placement test |
 | 16 | Sequence diagram: forgot and reset password |
 | 17 | Sequence diagram: delete an account |
+| 18 | Sequence diagram: open a lesson |
+| 19 | Activity diagram: verify an exercise with generated speed tests |
 
 ## List of Symbols and Abbreviations
 
@@ -128,9 +132,9 @@ Page numbers are added in the printed copy.
 
 **2. Problems with the Existing System.** Today a self-taught programmer learns "manually": they pick a video course, watch it in order, copy the instructor's code, tick lessons as complete and, when stuck, ask an AI assistant for the answer. Nothing records what they can actually *write*. Completion is measured instead of capability, the order is the same for everyone, help is unlimited and never withdrawn, and nothing schedules revision before a skill is forgotten.
 
-**3. Description of the Proposed System.** A web-based, online system that keeps a separate **reading** and **writing** mastery score for every skill, updates them **only from code that was actually executed and graded**, chooses the next step from a prerequisite graph, and **withdraws help on a schedule** until the learner can work alone. Learner code runs in an isolated cloud sandbox; an LLM writes lessons, exercises and hints, but never grades and never decides what comes next.
+**3. Description of the Proposed System.** A web-based, online system that keeps a separate **reading** and **writing** mastery score for every skill, updates them **only from code that was actually executed and graded**, chooses the next step from a prerequisite graph, teaches each skill with a short lesson written for the learner's level, and **withdraws help on a schedule** until the learner can work alone. Learner code runs in an isolated cloud sandbox. Every lesson and exercise is proven in that sandbox and frozen before any learner sees it. An LLM writes hints and can add content, but never grades and never decides what comes next. Two courses are built: C++ basics (20 skills) and Data Structures and Algorithms (49 skills, from the basics to advanced).
 
-**4. Functional Modules and Users.** Users: **Learner**, **Author** (maintains the skill graph and templates), **Admin** (analytics). Thirteen modules: M1 Accounts, consent and data rights, M2 Skill graph, M3 Diagnostic, M4 Mastery model, M5 Recommender, M6 Exercises, M7 Execution and grading, M8 Hint ladder, M9 Sessions, M10 Revision, M11 Progress, M12 Scaffolding fade, M13 Analytics.
+**4. Functional Modules and Users.** Users: **Learner**, **Author** (maintains the skill graph and templates), **Admin** (analytics). Thirteen modules: M1 Accounts, consent and data rights, M2 Skill graph, M3 Diagnostic, M4 Mastery model, M5 Recommender, M6 Exercises and lessons, M7 Execution and grading, M8 Hint ladder, M9 Sessions, M10 Revision, M11 Progress, M12 Scaffolding fade, M13 Analytics.
 
 **5. Tools/Platforms.**
 - **5.1 Hardware:** development on a laptop with a 4-core or better processor, 8–16 GB RAM, 256 GB SSD. Production: one cloud VM (4 ARM cores, 24 GB RAM, Oracle Cloud Always Free) plus managed sandboxes.
@@ -191,20 +195,23 @@ The "manual" way (a learner, a playlist and an unrestricted AI chat) cannot do w
 A web application in which the learner:
 1. takes a short adaptive placement test, so that skills they already know are fast-tracked;
 2. is given the next step (skill, level and exercise) by fixed rules, in study sessions they can pause and resume;
-3. opens an exercise matched to their level (five rungs, from *predict the output* to *build from a blank page*);
-4. writes code in an in-browser editor and submits it;
-5. has it compiled and run in an isolated sandbox against hidden tests, getting one of seven verdicts;
-6. sees their reading and writing mastery change from that evidence;
-7. asks for hints one level at a time, and gets less help over time as they succeed with few hints;
-8. can correct, download or delete their own data at any time, and switch the optional AI-training and research uses on and off.
+3. reads that skill's lesson, written for their level (new, building or strong): an explanation, a diagram, a worked example with its exact output, common mistakes and a predict-the-output check;
+4. opens an exercise matched to their level (five rungs, from *predict the output* to *build from a blank page*);
+5. writes code in an in-browser editor and submits it;
+6. has it compiled and run in an isolated sandbox against hidden tests, getting one of seven verdicts; in the DSA course, large hidden tests also check that the solution is fast enough;
+7. sees their reading and writing mastery change from that evidence;
+8. asks for hints one level at a time, and gets less help over time as they succeed with few hints;
+9. can correct, download or delete their own data at any time, and switch the optional AI-training and research uses on and off.
 
-The system is **deterministic where it matters**: grading, mastery, placement and next-step choice are fixed rules in code. The LLM only produces content: exercises and stored hints are verified and frozen before any learner sees them, and live hints about the learner's own code pass a filter that blocks anything resembling the solution.
+Two courses are seeded: **C++ basics** (20 skills, from a first program to the standard library) and **Data Structures and Algorithms** (49 skills in 8 groups, from complexity analysis to network flow and advanced dynamic programming, building on the C++ course).
+
+The system is **deterministic where it matters**: grading, mastery, placement and next-step choice are fixed rules in code. Content is proven before use: lessons and exercises are run in the sandbox and frozen, stored hints are verified, and live hints about the learner's own code pass a filter that blocks anything resembling the solution.
 
 ## 1.6 Importance of the Work
 
 - **For learners**, especially students preparing Data Structures and Algorithms in C++ for placements: an honest picture of what they can write, and practice that builds independence instead of dependence.
 - **For institutions**: a measure of real coding ability rather than course completion.
-- **Technically**, the project combines several areas from the semester: database design (42-table schema with integrity constraints), software engineering (layered modules, ADRs, automated tests), security (authentication, sandboxing, India's DPDP Act 2023) and AI (LLM content under strict guardrails).
+- **Technically**, the project combines several areas from the semester: database design (a 44-table schema with integrity constraints), software engineering (layered modules, ADRs, automated tests), security (authentication, sandboxing, India's DPDP Act 2023) and AI (LLM content under strict guardrails).
 
 
 ---
@@ -228,6 +235,8 @@ The hard technical parts were proven early by building them, not just by plannin
 | Trusting AI-written exercises | Stored only after the sandbox proves them: the reference passes, the starter fails, and 3 wrong answers fail | Tests with a fake model and sandbox, including weak tests being rejected (section 4.2) |
 | Account recovery without revealing accounts | The same reply for every email, with all the work done after it; a one-use, 30-minute link stored only as a hash; at most one email per account every 5 minutes | 9 tests and an independent security review (section 4.3) |
 | Deleting an account without losing what the law keeps | Each module erases its own rows, children first; consent proof and a year of sign-in records stay under an anonymous ID; a test lists every table that points at a learner and fails on a new one | 19 tests, a run on the real database and a second security review (section 4.3) |
+| Lessons that are correct | Both programs of every lesson run in the real sandbox and must print exactly the output the lesson states; a leak filter stops a lesson from solving its skill's exercises; a generated lesson also passes a claim-by-claim fact check | 207 lessons frozen this way; the sandbox caught every wrong stated output before freezing (section 4.3) |
+| Speed tests that tell fast from slow | Large tests built from a seed, with the expected output taken from the reference; a brute-force solution must agree on a medium test and time out on a large one | 160 DSA exercises verified on the real sandbox (section 4.2) |
 | Team skills | The stack (TypeScript, React, Node, SQL) matches the semester courses | Working code in the repository |
 
 ### 2.1.2 Economic Feasibility
@@ -240,10 +249,11 @@ The budget is a student budget, so every running cost was measured or quoted, no
 | Web hosting | Vercel free plan during the college phase | ₹0 |
 | Code execution | E2B, billed per second while a sandbox runs; $100 starting credit | about ₹0.01 per submission |
 | Exercise generation | Gemini 3.8 Flash (3.1 Pro on a third try), once per exercise, then frozen; its own cap of ₹300 per month | about ₹1.5 per exercise; skills 6–20 were hand-written instead, saving about ₹110–150 |
-| Live tutor hints | Gemini 3.5 Flash Lite, capped at 20 per learner per day and ₹500 per month in total | about ₹0.08 per hint (₹0.01 measured on short test prompts) |
+| Lessons | 207 hand-written for both courses and frozen; generation with a fact check is ready for later courses, with its own cap of ₹300 per month | ₹0 so far; about ₹0.6 per generated lesson plus ₹0.15 for its check |
+| Live tutor hints and lesson notes | Gemini 3.5 Flash Lite, capped at 20 per learner per day and ₹500 per month in total | about ₹0.08 per hint (₹0.01 measured on short test prompts) |
 | Account emails (password reset, deletion notice) | Brevo free plan: 300 emails a day | ₹0 |
 
-One cost was found only when paying: a new Google Cloud billing account in India must prepay **₹3,000** in total before the paid Gemini tier activates (₹500 paid on 18 October, ₹2,500 due on 7 November). Until then the key stays on the free tier, where prompts may be used by Google, so live hints are switched off by a setting until billing is active (7 November 2026, section 4.5).
+One cost was found only when paying: a new Google Cloud billing account in India must prepay **₹3,000** in total before the paid Gemini tier activates (₹500 paid on 18 October, ₹2,500 due on 7 November). Until then the key stays on the free tier, where prompts may be used by Google, so live hints are switched off by a setting until billing is active (7 November 2026, section 4.5). The free tier also turned out to allow only 20 Flash calls a day and no Pro calls, about 9 lessons a day. So all the lessons were written by hand, which also kept them in the repository, reviewable and identical in every environment (ADR-0019).
 
 One design decision is a direct result of this study. The first design kept one sandbox alive for a whole learner session. Because E2B bills every second a sandbox is alive, that would cost about **₹4.60** for a 30-minute session. Creating a fresh sandbox per submission costs about **₹0.25** for the same session, roughly 18 times less, so the design was changed (ADR-0003).
 
@@ -251,7 +261,7 @@ One design decision is a direct result of this study. The first design kept one 
 
 - **Learners** need only a browser. There's no installation; the code editor and compiler run online.
 - **The team** can run the whole system locally with three commands (section 4.4). The server is the same Docker Compose setup, so operating it needs no special skills.
-- **Authors** add skills and exercises as data (seed files), not code changes.
+- **Authors** add skills, lessons and exercises as data (seed files), not code changes. A lesson is a Markdown file, and an exercise a short C++ template.
 
 ### 2.1.4 Other Feasibility Dimensions
 
@@ -264,8 +274,8 @@ One design decision is a direct result of this study. The first design kept one 
   - learners can correct, download or delete their data, and switch the opt-ins on and off; a deletion waits 7 days (logging in cancels it), then keeps anonymous numbers only for learners who opted in;
   - the Terms of Service and Privacy Policy are published at `/terms` and `/privacy`, built from the same texts learners accept;
   - data is stored in India.
-- **Licensing.** No third-party course content is copied. Skill names and descriptions are our own, and external tutorials appear only as links.
-- **Schedule.** All 31 MVP endpoints (the 23 planned, plus forgot and reset password, and six for data rights) were live by Review 3 (section 4.5); the frontend, deployment, the first live AI runs (once billing is active on 7 November) and the pilot are planned up to 10 November 2026.
+- **Licensing.** No third-party course content is copied. Skill names, descriptions, lessons and exercises are our own, and external references appear only as links.
+- **Schedule.** All 33 endpoints (the 23 planned, plus forgot and reset password, six for data rights and two for lessons) were live by Review 3 (section 4.5). The rest of the DSA exercise bank, the DSA placement test, the frontend, deployment, the first live AI runs (once billing is active on 7 November) and the pilot are planned up to 10 November 2026.
 
 ## 2.2 Analysis Methodology
 
@@ -287,12 +297,15 @@ One design decision is a direct result of this study. The first design kept one 
 14. Exercise generation.
 15. Password reset by email, and per-IP limits that trust only our own proxy.
 16. Data rights (correct, download, delete), skill details with each exercise, and the Terms and Privacy pages.
+17. The DSA course's skill graph, with prerequisites that reach into the C++ course.
+18. Personalised lessons: three frozen levels per skill and a short live note, with all 207 lessons written and proven in the sandbox.
+19. The DSA exercise bank: generated speed tests and a brute-force check (in progress, 160 of 245 exercises).
 
 Every increment ended with automated tests and a real end-to-end run before the next one began. Larger designs (the placement test, hints, generation) were also reviewed by adversarial checks that tried to break them, and the holes they found were fixed before the code was committed (Table 9).
 
 **Analysis tools used:**
 - **Requirements:** the SRS from Phase 1, numbered as FR-Mx-yy and NFR-xx.
-- **Decisions:** each one recorded as an Architecture Decision Record (ADR-0001 to ADR-0018), with the options compared and the reason for the choice. For example, ADR-0003 compares Judge0, Piston and E2B on compiler version, memory-limit support, network isolation and cost.
+- **Decisions:** each one recorded as an Architecture Decision Record (ADR-0001 to ADR-0020), with the options compared and the reason for the choice. For example, ADR-0003 compares Judge0, Piston and E2B on compiler version, memory-limit support, network isolation and cost.
 - **Measurement before optimisation:** timings were measured step by step before anything was changed.
 
 **Pilot baseline.** The planned "Phase 0" (running the whole loop on paper with a learner before coding) was **not carried out**. It was replaced by a measured baseline of one anonymised pilot learner (Learner A: reading 10/11, writing 0/4), which confirmed the central design choice of separate reading and writing scores. A pilot with real learners on the finished system is planned before the final report.
@@ -316,11 +329,15 @@ Every increment ended with automated tests and a real end-to-end run before the 
 | N. Password reset by email | D | 19 Oct | Done (real emails once the Brevo account is set up) |
 | O. Data rights, skill details, Terms and Privacy pages | D | 19 Oct | Done (the Settings screens are part of H) |
 | P. CI, code purge, adults-only pilot sign-up, guided demo walk | O | 20 Oct | Done |
+| Q. DSA course: skill graph of 49 skills | J | 20 Oct | Done |
+| R. Personalised lessons: 3 levels per skill, live note, 207 hand-written lessons | Q, I1 | 20 Oct | Done (live notes wait for billing) |
+| S. DSA exercise bank: 245 exercises with speed tests | R | 20 Oct–2 Nov | In progress (160 of 245 verified) |
+| T. DSA placement test items | S | 3–5 Nov | Planned |
 | M. Gemini billing activation | – | 7 Nov | Planned (₹2,500 of the ₹3,000 prepayment left) |
-| I3. First live AI runs: frozen hints, extra generated exercise variants | I2, M | 7–8 Nov | Planned |
-| K. Deployment, pilot, final report | H, I3, L | 5–10 Nov | Planned |
+| I3. First live AI runs: frozen hints, live notes, extra generated exercise variants | I2, R, M | 7–8 Nov | Planned |
+| K. Deployment, pilot, final report | H, I3, L, T | 5–10 Nov | Planned |
 
-**Critical path:** A → B → C → E → F → G → J → I1 → I2 → M → I3 → K. The sandbox and grading chain was the riskiest part, so it was built first. The billing activation (M) is now the one outside dependency on the path.
+**Critical path:** A → B → C → E → F → G → J → Q → R → S → T → K. The sandbox and grading chain was the riskiest part, so it was built first. Writing the DSA content is now the longest chain, and the billing activation (M) the one outside dependency.
 
 ```mermaid
 gantt
@@ -336,6 +353,9 @@ gantt
   Exercises, attempts, fade            :done, g, 2026-10-16, 1d
   Templates, recommender, placement    :done, j, 2026-10-17, 2026-10-18
   Sessions, hints, generation, reset, data rights :done, l, 2026-10-19, 1d
+  DSA course and lessons               :done, r, 2026-10-20, 1d
+  DSA exercise bank                    :active, s, 2026-10-20, 2026-11-02
+  DSA placement items                  :t, 2026-11-03, 2026-11-05
   Frontend screens                     :active, h, 2026-10-16, 2026-11-05
   Billing active, first live AI runs   :i, 2026-11-07, 2026-11-08
   section Delivery
@@ -415,7 +435,7 @@ flowchart TB
   WK --> PG
   WK -->|compile and run code| E2B
   WK -->|generate exercises| GEM
-  API -->|live hints only| GEM
+  API -->|live hints and lesson notes| GEM
   API -->|account emails| EM
 ```
 
@@ -423,7 +443,7 @@ flowchart TB
 
 ### 3.2.1 Use Case
 
-The learner registers, takes a diagnostic, solves exercises, asks for hints, views progress, can reset a forgotten password by email, and can correct, download or delete their own data. The author maintains the skill graph and template exercises; the admin views analytics. Two non-human actors matter: the **scheduler** (mastery decays with time, not only with clicks, and a deleted account is erased once its 7 days are over) and the **sandbox, LLM and email services**.
+The learner registers, takes a diagnostic, reads the lesson for their level, solves exercises, asks for hints, views progress, can reset a forgotten password by email, and can correct, download or delete their own data. The author maintains the skill graph, the lessons and the template exercises; the admin views analytics. Two non-human actors matter: the **scheduler** (mastery decays with time, not only with clicks, and a deleted account is erased once its 7 days are over) and the **sandbox, LLM and email services**.
 
 **Figure 2: Use case diagram**
 
@@ -459,12 +479,16 @@ flowchart LR
     U17(["Reset a<br/>forgotten<br/>password"])
     U18(["Correct, download<br/>or delete<br/>my data"])
     U19(["Erase deleted<br/>accounts"])
+    U20(["Read the lesson<br/>for my level"])
+    U21(["Write and freeze<br/>lessons"])
   end
   Gemini["Actor: Gemini"]
   E2B["Actor: E2B"]
   Brevo["Actor: Brevo<br/>(email)"]
-  Learner --- U1 & U2 & U3 & U4 & U5 & U6 & U7 & U8 & U17 & U18
-  Author --- U9 & U10
+  Learner --- U1 & U2 & U3 & U4 & U5 & U6 & U7 & U8 & U17 & U18 & U20
+  Author --- U9 & U10 & U21
+  U20 --- Gemini
+  U21 --- E2B
   Admin --- U11 & U12
   Clock --- U13 & U15 & U19
   U5 -. includes .-> U14
@@ -735,6 +759,67 @@ flowchart TD
   C --> E(["Seed reading and<br/>writing at 0.85,<br/>raise-only; skills<br/>proven in code<br/>start on the last<br/>fade stage"])
 ```
 
+**Figure 18: Open a lesson, as built (ADR-0019).** The lesson is frozen and chosen by the learner's level today. The short live note over it uses the learner's results, never their code, and is reused until they practise the skill again.
+
+```mermaid
+---
+config:
+  sequence:
+    actorMargin: 20
+    width: 110
+    wrap: true
+    messageMargin: 22
+    boxMargin: 5
+    noteMargin: 5
+    mirrorActors: false
+---
+sequenceDiagram
+  autonumber
+  actor L as Learner
+  participant A as API (M6, M8)
+  participant DB as Postgres
+  participant G as Gemini 3.5 Flash Lite
+  L->>A: GET /lessons/skillId?language=cpp
+  A->>DB: Reading and writing scores for the skill
+  A->>A: Level: new, building or strong
+  A->>DB: Frozen lesson for that level, or the nearest
+  A-->>L: 200 level and lesson
+  L->>A: POST /lessons/skillId/note
+  A->>DB: A note since the last practice? Under the caps?
+  alt nothing personal yet, billing off or capped
+    A-->>L: 200 note null
+  else write a note
+    A->>G: Level, last 5 results, weak prerequisites
+    G-->>A: 2 to 4 sentences
+    A->>A: Drop a reply with code or over 100 words
+    A->>DB: Store the note for reuse
+    A-->>L: 200 note
+  end
+```
+
+**Figure 19: Verify an exercise with generated speed tests, as built (ADR-0020).** Large tests are built from a seed in the harness, so nobody writes their answers by hand: the reference supplies them, and a slow but correct brute force checks the reference.
+
+```mermaid
+---
+config:
+  flowchart:
+    nodeSpacing: 15
+    rankSpacing: 30
+---
+flowchart TD
+  A["Run the reference"] --> B{"Passes the<br/>small tests?"}
+  B -->|no| R(["Rejected, with<br/>the reason"])
+  B -->|yes| C["Its outputs become<br/>the generated<br/>tests' answers"]
+  C --> D{"Slowest test within<br/>a third of the<br/>time limit?"}
+  D -->|no| R
+  D -->|yes| E{"Starter fails<br/>a test?"}
+  E -->|no| R
+  E -->|yes| F["Run the<br/>brute force"]
+  F --> G{"Small tests pass,<br/>a medium test agrees,<br/>then a large one<br/>times out?"}
+  G -->|no| R
+  G -->|yes| V(["Verified: answers<br/>stored, ready<br/>to serve"])
+```
+
 ### 3.2.4 Class Diagrams
 
 **Figure 3: Domain model** (attribute names only; their types are in the ER diagrams and the data dictionary, A-7)
@@ -807,6 +892,10 @@ classDiagram
     +ceiling()
     +advanceOn()
   }
+  class Lesson {
+    +level
+    +languageCode
+  }
   User "1" --> "*" Enrollment : enrolls
   Enrollment "*" --> "1" Course : in
   Course "1" *-- "*" Skill : contains
@@ -815,6 +904,7 @@ classDiagram
   MasteryRecord "*" --> "1" Skill : for
   MasteryRecord "1" --> "*" EvidenceEvent : explained by
   Skill "1" --> "*" Exercise : practised by
+  Skill "1" --> "*" Lesson : taught by
   ExerciseAttempt "*" --> "1" Exercise : on
   ExerciseAttempt "1" *-- "*" Submission : contains
   Enrollment "1" --> "*" LearningSession : studies in
@@ -825,7 +915,9 @@ classDiagram
   SkillScaffolding "*" --> "1" Skill : for
 ```
 
-**Figure 4: Services and adapters, as built (method parameters left out for space).** Two interfaces keep the outside services replaceable: `SandboxProvider` (only one class knows about E2B) and `LlmProvider` (only one class knows about Gemini). Tests replace both with fakes. Modules call each other's services, never each other's tables.
+**Figure 4: Services and adapters, as built (method parameters left out for space), in two parts.** Two interfaces keep the outside services replaceable: `SandboxProvider` (only one class knows about E2B) and `LlmProvider` (only one class knows about Gemini). Tests replace both with fakes. Modules call each other's services, never each other's tables.
+
+**Figure 4a: Running code and moving mastery.** The submission flow and the content verifier both reach the sandbox only through `SandboxProvider`.
 
 ```mermaid
 classDiagram
@@ -841,6 +933,9 @@ classDiagram
   }
   class RunSubmission {
     +runSubmission()
+  }
+  class ContentVerifier {
+    +verifyContent() Verification
   }
   class ExercisesService {
     +getServableExercise() Exercise
@@ -860,6 +955,23 @@ classDiagram
     +getStage() Stage
     +advanceOnSolve()
   }
+  E2BProvider ..|> SandboxProvider
+  RunSubmission --> SandboxProvider
+  RunSubmission --> Judge
+  RunSubmission --> ExercisesService
+  RunSubmission --> MasteryService
+  RunSubmission --> ScaffoldingService
+  ContentVerifier --> SandboxProvider
+  ContentVerifier --> Judge
+  MasteryService --> MasteryFormula
+  AttemptsService --> ScaffoldingService
+```
+
+**Figure 4b: The AI and the placement test.** Hints and lesson notes reach Gemini only through `LlmProvider`; the placement test writes its results through the same mastery and fade services as practice.
+
+```mermaid
+classDiagram
+  direction LR
   class LlmProvider {
     <<interface>>
     +generate() LlmResult
@@ -871,6 +983,10 @@ classDiagram
   class SolutionFilter {
     +checkHint() FilterResult
   }
+  class LessonsService {
+    +getLesson() Lesson
+    +writeNote() Note
+  }
   class DiagnosticService {
     +start() +answer() +complete()
   }
@@ -878,20 +994,21 @@ classDiagram
     +nextItem() Item
     +estimate() Results
   }
-  E2BProvider ..|> SandboxProvider
+  class MasteryService {
+    +recordEvidence()
+  }
+  class ScaffoldingService {
+    +getStage() Stage
+    +advanceOnSolve()
+  }
   GeminiProvider ..|> LlmProvider
   HintsService --> LlmProvider
   HintsService --> SolutionFilter
+  LessonsService --> LlmProvider
+  LessonsService --> MasteryService
   DiagnosticService --> Placement
   DiagnosticService --> MasteryService
   DiagnosticService --> ScaffoldingService
-  RunSubmission --> SandboxProvider
-  RunSubmission --> Judge
-  RunSubmission --> ExercisesService
-  RunSubmission --> MasteryService
-  RunSubmission --> ScaffoldingService
-  MasteryService --> MasteryFormula
-  AttemptsService --> ScaffoldingService
 ```
 
 ## 3.3 Database Design
@@ -917,11 +1034,11 @@ classDiagram
 | Each reset link is unique, stored only as its hash, and used once | UNIQUE `token_hash`; the reset marks it used only `WHERE used_at IS NULL` |
 | An erased account keeps its consent proof | `consents` has no cascade: the user row is anonymised (status `deleted`), never deleted |
 
-The schema has **42 tables in 9 groups**: 39 are built (15 migrations), and 3 come later with their features.
+The schema has **44 tables in 9 groups**: 41 are built (16 migrations), and 3 come later with their features. The two newest, `lessons` and `lesson_notes`, came with the personalised lessons (ADR-0019). `lessons` holds no personal data. A lesson note is written about one learner, so it is personal data: it is in the learner's download and is always erased with the account.
 
 ### 3.3.1 ERD
 
-**Figure 9a: Overview of the table groups.** Each box is one group of tables and the module that owns it; an arrow points from a group to the groups that refer to it. The full ERD with all 42 tables is in the Phase 2 design document (section 5).
+**Figure 9a: Overview of the table groups.** Each box is one group of tables and the module that owns it; an arrow points from a group to the groups that refer to it. The full ERD is in the Phase 2 design document (section 5).
 
 ```mermaid
 ---
@@ -935,7 +1052,7 @@ flowchart TB
   G2["<b>Courses and skill graph (M2)</b><br/>languages<br/>courses<br/>course_languages<br/>skills<br/>skill_prerequisites<br/>skill_resources<br/>skill_graph_changes<br/>concept_chunks"]
   G3["<b>Enrollment and placement (M1, M3)</b><br/>enrollments<br/>diagnostic_items<br/>diagnostic_attempts<br/>diagnostic_responses<br/>diagnostic_results"]
   G4["<b>Mastery and reviews (M4, M10)</b><br/>mastery_records<br/>evidence_events<br/>review_items"]
-  G5["<b>Exercises and generation (M6)</b><br/>exercises<br/>exercise_secrets<br/>exercise_tests<br/>exercise_hints<br/>generation_jobs<br/>generation_failures"]
+  G5["<b>Exercises, lessons and generation (M6)</b><br/>exercises<br/>exercise_secrets<br/>exercise_tests<br/>exercise_hints<br/>generation_jobs<br/>generation_failures<br/>lessons<br/>lesson_notes"]
   G6["<b>Attempts and execution (M7)</b><br/>exercise_attempts<br/>submissions<br/>sandbox_runs<br/>run_test_results"]
   G7["<b>Sessions, hints, recommendations (M5, M8, M9)</b><br/>learning_sessions<br/>session_steps<br/>recommendations<br/>hint_events"]
   G8["<b>Scaffolding fade (M12)</b><br/>fade_schedules<br/>fade_stages<br/>skill_scaffolding<br/>fade_stage_changes"]
@@ -1047,8 +1164,8 @@ flowchart LR
   EM["Email service (Brevo)"]
   P0(("0 AI Tutor System"))
   L -->|sign-up, goal, language,<br/>answers, code, hint and<br/>data requests| P0
-  P0 -->|exercises, verdicts, one hint<br/>level, progress, reviews,<br/>a copy of their data| L
-  AU -->|skill graph seed, resources, template exercises| P0
+  P0 -->|lessons, exercises, verdicts,<br/>one hint level, progress,<br/>reviews, a copy of their data| L
+  AU -->|skill graph seed, resources, lessons, template exercises| P0
   P0 -->|validation results| AU
   AD -->|fade schedule, report requests| P0
   P0 -->|calibration and usage reports| AD
@@ -1076,7 +1193,7 @@ flowchart TB
   P3(("3 Run<br/>diagnostic"))
   P4(("4 Update<br/>mastery"))
   P5(("5 Recommend<br/>next step"))
-  P6(("6 Generate<br/>and verify<br/>exercises"))
+  P6(("6 Verify and<br/>freeze exercises<br/>and lessons"))
   P7(("7 Execute<br/>and grade"))
   P9(("9 Run<br/>session"))
   P10(("10 Schedule<br/>reviews"))
@@ -1226,9 +1343,10 @@ All input enters through the REST API, and **every request body is validated by 
 | Placement answer | itemId, then answer or dontKnow | Only the current question is accepted (`409 ITEM_NOT_CURRENT` otherwise); answer ≤ 64 KB with no NUL character; 30 calls per minute |
 | Session change | status: active, paused or ended | An ended session refuses changes |
 | Hint request | code (optional) | ≤ 64 KB; the level is decided by the server, never the client; 10 per minute |
+| Lesson and its note | skill id in the path, `language` query parameter | The skill must exist (`404 SKILL_NOT_FOUND`); the level comes from the server's scores, never the client; a note request shares the hint limit (10 a minute) and the 20 live calls a day |
 | Analytics | days (1–365), course, language | Admin role only (`403 FORBIDDEN` otherwise) |
 
-**Screen input (frontend, in progress):** sign-up form with a date picker and two separate required tick boxes, with the optional opt-ins shown only when the date of birth makes the user 18+; login form; forgot-password and set-new-password forms; Settings (to build): profile, privacy switches, download and delete; exercise page with the Monaco editor (a plain text box for rung-1 "predict the output"). The same rules are applied in the browser to show errors before submitting, but the server is always the authority.
+**Screen input (frontend, in progress):** sign-up form with a date picker and two separate required tick boxes, with the optional opt-ins shown only when the date of birth makes the user 18+; login form; forgot-password and set-new-password forms; Settings (to build): profile, privacy switches, download and delete; lesson page, where the check's answer stays hidden until the learner has typed a guess; exercise page with the Monaco editor (a plain text box for rung-1 "predict the output"). The same rules are applied in the browser to show errors before submitting, but the server is always the authority.
 
 ## 3.5 Output Design
 
@@ -1264,6 +1382,16 @@ The client branches on `error.code` and shows `error.message`.
 { "level": 2, "ceiling": 5, "source": "live", "bodyMd": "Look at the line that returns the result: which variable does it use?" }
 ```
 
+**A lesson** is the frozen one for the learner's level today, or the nearest level written. Its live note comes from a separate request and is `null` when there's nothing personal to say yet:
+
+```json
+{ "level": "building",
+  "lesson": { "level": "building", "explanationMd": "### A quick recap…", "diagramMermaid": "flowchart TB…",
+              "example": { "code": "#include <iostream>…", "output": "…", "walkthroughMd": "1. …" },
+              "mistakesMd": "- **Forgetting the end mark.** …",
+              "check": { "code": "…", "output": "9 1 0", "explanationMd": "…" } } }
+```
+
 **The password-reset email** has a subject, a button and the plain link (`/reset-password#token=…`), and no name: the email provider may receive only the address (privacy policy §5).
 
 **The account-deletion email** gives the date in the learner's own time zone and says that logging in before then cancels the deletion. It has no name either.
@@ -1282,7 +1410,8 @@ The client branches on `error.code` and shows `error.message`.
 apps/api/src/
   config/env.ts                 settings, validated at startup
   infrastructure/
-    database/  schema/ seed/    Drizzle tables, migrations, seed data
+    database/  schema/ seed/    Drizzle tables, migrations, seed data (both courses' skills, lessons
+                                as Markdown, exercises as C++ templates)
     sandbox/                    SandboxProvider interface, E2B adapter, template
     llm/                        LlmProvider interface, Gemini adapter, cost log
     queue/                      BullMQ queues and workers: submissions, generation, hourly erasure
@@ -1291,7 +1420,8 @@ apps/api/src/
   modules/                      each: routes → controllers → services → repositories
     m1_auth  m2_skills  m3_diagnostic  m4_mastery  m5_recommender  m6_exercises
     m7_execution  m8_socratic  m9_sessions  m11_progress  m12_scaffolding  m13_analytics
-  scripts/                      sandbox build and smoke test, exercise verification, hint generation, make-admin
+  scripts/                      sandbox build and smoke test, exercise verification, lesson seeding and
+                                generation, hint generation, make-admin, the guided demo walk
 ```
 
 **Key pieces of logic are pure functions**, which means no database and no network, so they are fully unit-tested:
@@ -1303,6 +1433,8 @@ apps/api/src/
 - `session-clock.ts`: idle pause after 15 minutes, end after 24 hours paused, study time.
 - `solution-filter.ts`: blocks hints that resemble the solution (Table 12).
 - `exercise-draft.ts`: what the model must write for a new exercise, the prompt, and the conversion into the hand-written bank's format (Table 13).
+- `verify-exercise.ts`: the proof every exercise passes in the sandbox, including generated speed tests and the brute-force check (Table 16, Figure 19). It talks to the sandbox only through `SandboxProvider`, so its rules are unit-tested with a fake.
+- `freeze-lesson.ts`: the gates every lesson passes before it is stored (Table 15).
 
 **Table 5: Verdict rules.** These are checked in this order for each test; the first failing test decides.
 
@@ -1337,7 +1469,7 @@ About five good solves (rungs 2 → 5) take a new skill from 0 to 0.72, just pas
 | 3 | 4 | 3 | rung 4 with ≤ 1 hint |
 | 4 | 5 | 2 | rung 5 with ≤ 1 hint → skill cleared |
 
-**Table 11: Placement test rules (ADR-0012).** All 20 skills are covered by 40 frozen, sandbox-verified items: one predict-the-output reading item and one small function per skill.
+**Table 11: Placement test rules (ADR-0012).** All 20 C++ skills are covered by 40 frozen, sandbox-verified items: one predict-the-output reading item and one small function per skill. The same rules will place DSA learners once its items are written (section 5.3).
 
 | Rule | Detail |
 |---|---|
@@ -1383,6 +1515,27 @@ A live hint is blocked if it holds 25 % or more of the code only the solution ha
 | Download | `GET /me/data` | One JSON file: summary, purposes, the 5 named providers, then each module's rows; 5 an hour |
 | Delete | `DELETE /me` | The password again; every login ends; an email gives the date; logging in within 7 days cancels |
 | Erase | hourly job | Name, email, password, date of birth and all code go. With an opt-in to research or AI training, the anonymous numbers stay (verdicts, scores, timings); without one, every learning row goes. Consents, and a year of sign-in records, stay under the anonymous ID |
+
+**Table 15: Lessons: what each one holds and the gates it passes (ADR-0019).** Each skill has three frozen lessons, one per level: **new** (no score yet), **building** (some score) and **strong** (cleared, or writing ≥ 0.7). The learner gets the lesson for today's level, or the nearest level written, and a short live note over it.
+
+| Part | Rule |
+|---|---|
+| Contents | An explanation (300–700 words), one Mermaid diagram, a worked example with its exact output and a walkthrough, 3–5 common mistakes, and a check: a short program whose output the learner predicts |
+| Shape | Checked against a schema: example program at most 45 lines, check at most 20, a diagram type the web app can draw |
+| Exercises kept safe | The hint leak filter compares the whole lesson with each verified exercise of the skill, so a lesson never solves one |
+| Programs proven | Both programs run in the real sandbox and must print exactly the output the lesson states |
+| Written by | Hand for both courses (207 lessons). Generation is ready for later courses: Gemini drafts, then the same model checks **each technical claim one by one**; asked only for "errors" in general, it missed a wrong claim that the claim-by-claim check caught |
+| Live note | 2–4 sentences from the learner's level, last 5 results and weak prerequisites, never their code; reused until they practise again; counts against the hint caps; a reply with code or over 100 words is dropped |
+
+**Table 16: Speed tests in the DSA exercise bank (ADR-0020).** Five hand-written exercises per skill (245 in all). A task with a slow but correct solution gets large tests; a task without one keeps small tests that wrong answers fail.
+
+| Part | Rule |
+|---|---|
+| Generated tests | A test without an expected output calls a seeded generator in the harness, such as a million random 0s and 1s. The reference's output becomes its answer, stored at verification |
+| Order | The hand-written tests first (the first is the sample), then a medium generated test, then a large one: the sandbox stops at the first failing test |
+| Reference | Passes every hand-written test, and its slowest test takes at most a third of the 2-second limit |
+| Brute force | Required with generated tests: it passes the hand-written tests, **agrees** on at least one generated test and then **times out**. Disagreeing or crashing rejects the exercise, and finishing every test in time means the tests can't tell fast from slow |
+| Starter | Must fail a test. A slow starter fails by timing out, which makes "make it fast enough" a natural rung-2 task |
 
 **Figure 12: Deployment**, as decided for the MVP (ADR-0010)
 
@@ -1431,12 +1584,14 @@ Pure functions are tested with constructed inputs:
 - **judge:** each verdict rule, rule order (TLE wins over a crash exit code), output normalisation, and an empty test list giving SE, never AC;
 - **mastery formula:** the approved learner journey to the exact numbers, the hint and solution-shown rules, TLE doubling and its cap, and decay to half after ln 2 / λ days;
 - **age:** turning 18 exactly on the birthday;
-- **skill graph:** cycle detection, plus a check that the seeded C++ course has unique names, only known prerequisites and no cycles;
+- **skill graph:** cycle detection, plus checks that both seeded courses have unique names, only known prerequisites and no cycles, and that every DSA skill builds on C++ basics and is never easier than what it builds on;
 - **recommender:** candidates, review urgency, rung bands clamped to the fade stage, and the journey from rung 1 to rung 5;
 - **placement:** every one of the **711 knowledge states** the 20-skill graph allows, answered with "I don't know" and with wrong guesses, is placed exactly, in at most 20 reading and 7 code questions; slips, missing items and cleared skills;
 - **session clock:** the idle pause, the 24-hour end, and study time that never counts idle gaps;
 - **leak filter:** prose and fragments pass; the solution, whole or in its key lines, fenced or not, is blocked; the learner's own code is not counted; a rung-1 output is never given away;
-- **exercise drafts:** the schema's rules (the test call must take the test's arguments; exactly 3 wrong solutions), the conversion into the bank's format, and what the prompt contains.
+- **exercise drafts:** the schema's rules (the test call must take the test's arguments; exactly 3 wrong solutions), the conversion into the bank's format, and what the prompt contains;
+- **exercise banks:** both courses have rungs 1–5 once per skill; every DSA exercise shows a sample with its output, and one with generated tests has at least two, last, and a brute force;
+- **lessons:** the level rule (new, building, strong), the lesson schema, and all 207 hand-written lessons covering every skill of both courses at all three levels.
 
 ### 4.1.2 Module Testing
 **Database-rule tests**, one per schema group, try to break each constraint on purpose and expect the database to refuse. Examples: a duplicate email in different letter case, a hint level above the ceiling, a second active attempt, a second open session, a duplicate idempotency key, evidence with no source.
@@ -1446,8 +1601,11 @@ HTTP-level tests call the real Express app with real requests:
 - **auth:** register, login, refresh, logout, theft detection, throttling, CSRF, consent, and per-IP limits that trust only our own proxy;
 - **submissions:** submit, idempotency, ownership, judging, retries, and deleting a cleared skill's code (privacy policy §2);
 - **exercises:** secrets never leak; attempts, enrollment and fade start; the skill's description and reading links;
+- **exercise verification:** a reference that fails or a starter that passes is rejected; generated tests take their outputs from the reference only when the brute force agrees and then times out; a brute force that never times out or disagrees, and a reference slower than a third of the limit, are rejected;
+- **lessons:** the lesson for the learner's level or the nearest one; a generated lesson proven and frozen, or refused when the fact check finds it false, when it gives an exercise away, or when its programs don't print what it states; the ₹300 monthly stop; hand-written lessons through the same gates;
+- **lesson notes:** a note from the learner's recent results and weak prerequisite, reused until they practise again; nothing without live AI, past the daily limit or when the reply has code;
 - **mastery and fade:** read views, the decay maths, stage advance;
-- **recommender:** first step, moving up rungs, skipping skills without content, course complete;
+- **recommender:** first step, moving up rungs, skipping skills without content, naming the other course's skills a learner must finish first, course complete;
 - **placement test:** no answer key in any response, only the current question accepted, replays, code tasks queued once, the 202 grading wait, seeding, fast-track to the last stage, retakes, and a cheat attempt with a borrowed idempotency key;
 - **sessions and progress:** steps from the recommender, pause/resume at the same step, idle and timeout, statuses that match the recommender's unlock rule;
 - **analytics:** admin only, counts only, never a learner's email;
@@ -1461,13 +1619,14 @@ The sandbox, Gemini and the email service are replaced by **fake providers** in 
 
 ### 4.1.4 System Testing
 1. **Sandbox smoke test** (`pnpm sandbox:smoke`): six real C++ programs run on the real E2B service, and each must produce its intended verdict (AC, WA, CE, RE, TLE, MLE).
-2. **Content verification** (`pnpm exercises:verify`): every seeded exercise runs in the real sandbox; the reference must pass and the starter must fail. **140 of 140 verified** (100 practice exercises, 40 placement items). The 74 hand-written for skills 6–20 were also each run against a common wrong answer first, which had to fail.
-3. **End-to-end learner loop** on a running server: register → log in → open exercise → submit → poll → read mastery → reopen the exercise.
-4. **End-to-end placement test** on real E2B, then the first recommendation and the fade stages; **sessions** (start, pause, resume, end); **progress**; **hints** (the whole ladder); **analytics** with a promoted admin; **generation** refused correctly while billing is off.
-5. **Password reset in a real browser:** the forgot-password form, the emailed link (printed locally), a new password, then logging in with it; the old password and the used link are refused.
-6. **Data rights on the running server:** correct, opt in, download, then delete with the password (the email printed locally), and the erasure of that account as the hourly job does it (A-10). The server registers the hourly job once, and its first run completes.
-7. **Guided walk** (`pnpm demo:walk`): one new learner through sign-up, the placement test, an exercise on the real sandbox (a wrong then a right answer), a hint, progress, the data download and deletion (A-10). It is also the smoke test after a deploy.
-8. **Manual API tests** with curl, for authentication and consent, by a team member.
+2. **Content verification** (`pnpm exercises:verify`): every seeded exercise runs in the real sandbox; the reference must pass and the starter must fail. **300 of 300 verified** (100 C++ practice exercises, 40 placement items, 160 DSA exercises). The 74 hand-written for C++ skills 6–20 were also each run against a common wrong answer first, which had to fail. The 160 DSA exercises cover 32 of the 49 skills; their **speed tests** were proven too: on each, the reference took at most a third of the 2-second limit and the slow brute force agreed and then timed out (Table 16).
+3. **Lesson verification** (`pnpm lessons:seed`): every hand-written lesson passes the gates of Table 15, with both its programs run in the real sandbox. **207 of 207 frozen** (60 for C++ basics, 147 for DSA).
+4. **End-to-end learner loop** on a running server: register → log in → open exercise → submit → poll → read mastery → reopen the exercise.
+5. **End-to-end placement test** on real E2B, then the first recommendation and the fade stages; **sessions** (start, pause, resume, end); **progress**; **hints** (the whole ladder); **analytics** with a promoted admin; **generation** refused correctly while billing is off.
+6. **Password reset in a real browser:** the forgot-password form, the emailed link (printed locally), a new password, then logging in with it; the old password and the used link are refused.
+7. **Data rights on the running server:** correct, opt in, download, then delete with the password (the email printed locally), and the erasure of that account as the hourly job does it (A-10). The server registers the hourly job once, and its first run completes.
+8. **Guided walk** (`pnpm demo:walk`): one new learner through sign-up, the placement test, an exercise on the real sandbox (a wrong then a right answer), a hint, progress, the data download and deletion (A-10). It is also the smoke test after a deploy.
+9. **Manual API tests** with curl, for authentication and consent, by a team member.
 
 ### 4.1.5 White-Box and Black-Box Testing
 - **White box:** unit tests cover every branch of the judge and formula, and database-rule tests target specific constraints.
@@ -1487,35 +1646,38 @@ Learner acceptance testing is planned for the pilot before the final report.
 
 ## 4.2 Test Data and Test Cases
 
-**Table 8: Automated test suites (204 tests in 38 files, all passing on 20 Oct 2026)**
+**Table 8: Automated test suites (235 tests in 42 files, all passing on 20 Oct 2026)**
 
 | Level | Suite | Tests | What it proves |
 |---|---|---|---|
 | Unit | judge | 7 | Each verdict rule, order, normalisation, excerpts |
 | Unit | mastery formula v1 | 8 | Approved journey 0 → 0.16 → 0.33 → 0.53 → 0.72; hints; TLE doubling; decay |
-| Unit | skill graph | 4 | Cycle detection; seeded C++ graph is valid |
+| Unit | skill graph | 7 | Cycle detection; both seeded graphs valid; DSA builds on C++ basics and is never easier than its prerequisites |
 | Unit | recommender rules | 7 | Candidates, reviews, rung bands, journey from rung 1 to 5 |
 | Unit | placement rules | 11 | All 711 knowledge states placed exactly; slip check; frontier code tasks |
 | Unit | session clock | 5 | Idle pause, timeout end, study time |
 | Unit | leak filter | 5 | Solution-like hints blocked, learner's own code ignored |
-| Unit | exercise banks | 6 | Practice and placement banks complete and well-formed |
+| Unit | exercise banks | 8 | C++ practice, DSA practice and placement banks complete and well-formed; DSA generated tests last, with a brute force |
 | Unit | exercise drafts | 5 | Draft rules, conversion to the bank's format, prompt contents |
-| Module | 9 schema suites | 16 | Every key constraint refuses bad data |
+| Unit | lesson drafts, lesson files | 7 | Level rule; lesson schema; all 207 hand-written lessons cover both courses at three levels and fit the schema |
+| Module | 9 schema suites | 17 | Every key constraint refuses bad data; a prerequisite from another course must already be seeded |
 | Integration | auth + consent | 17 | Login flows, token theft, throttling, CSRF; DPDP consent; under-18s refused during the pilot; client IP only from our own proxy |
 | Integration | password reset | 9 | Same reply for every email; token stored as a hash; one email per 5 minutes; one use, even at once; expiry; newest link only; every login ended; per-IP limit |
 | Integration | data rights | 15 | Correction; opt-ins on and off, adults only; the download from every module, no secrets; deletion with the password, every login ended, cancelled by logging in; limits |
 | Integration | account erasure | 4 | Every learning row erased, or only anonymous numbers kept with an opt-in; grace period respected; every table pointing at a learner accounted for |
 | Integration | submissions | 11 | 202 + polling, idempotency tied to its attempt, hidden tests private, CE/SE rules, a cleared skill's code deleted |
-| Integration | exercises API + verification | 12 | No secrets or rung-1 answers in responses; skill details; bad content rejected; wrong solutions must fail |
+| Integration | exercises API + verification | 16 | No secrets or rung-1 answers in responses; skill details; bad content rejected; wrong solutions must fail; generated tests' outputs from the reference; brute force must agree then time out; reference within a third of the limit |
 | Integration | mastery API, scaffolding fade | 7 | Reading and writing apart; decay on read; stage advance |
-| Integration | recommendations API | 4 | First step, rung up, skip skills without content, course done |
-| Integration | placement test API | 18 | No answer key, current question only, background grading, seeding, retakes, cheat refused |
-| Integration | sessions, progress | 8 | Steps advance, pause/resume, idle, statuses |
+| Integration | recommendations API | 5 | First step, rung up, skip skills without content, the other course's skills first, course done |
+| Integration | placement test API | 19 | No answer key, current question only, background grading, seeding, retakes, cheat refused, a prerequisite from another course |
+| Integration | sessions, progress | 9 | Steps advance, pause/resume, idle, statuses |
 | Integration | analytics | 5 | Admin only, counts only |
 | Integration | hints, budget, frozen hints | 10 | Live, blocked, failed, ceiling, answer, daily and monthly caps |
 | Integration | exercise generation, budget, API | 10 | Proven drafts stored; retries; weak tests rejected; Pro then fallback; budget stop; admin only; automatic queueing |
+| Integration | lessons API, lesson notes | 11 | Lesson for the level or the nearest; generated lessons proven or refused (false claim, exercise given away, wrong output); ₹300 stop; notes reused, capped, dropped with code |
 | System | sandbox smoke (real E2B) | 6 | All six execution verdicts on real infrastructure |
-| System | content verification (real E2B) | 140 | Every seeded exercise: reference passes, starter fails |
+| System | content verification (real E2B) | 300 | Every seeded exercise: reference passes, starter fails; DSA speed tests tell fast from slow |
+| System | lesson verification (real E2B) | 207 | Every lesson's programs print exactly what it states; no exercise given away |
 
 **Sample test case: a generated exercise whose tests can't catch a mistake is rejected**
 
@@ -1568,7 +1730,7 @@ Learner acceptance testing is planned for the pilot before the final report.
 
 ## 4.3 Test Reports and Debugging
 
-**Results:** 204 of 204 automated tests pass, the 6 of 6 real-sandbox verdicts are correct, 140 of 140 seeded exercises verify on the real sandbox, and the end-to-end runs pass (A-8, A-10).
+**Results:** 235 of 235 automated tests pass, the 6 of 6 real-sandbox verdicts are correct, 300 of 300 seeded exercises and 207 of 207 lessons verify on the real sandbox, and the end-to-end runs pass (A-8, A-10).
 
 Debugging followed one rule: **measure, find the cause, fix the cause, add a test.** These are the defects found:
 
@@ -1602,8 +1764,15 @@ Debugging followed one rule: **measure, find the cause, fix the cause, add a tes
 | 24 | After a deletion request, a token refreshed **seconds before** could start a new 30-day session (security review) | A just-replaced token has a 20-second grace and was already marked revoked, so ending every login skipped it | A refresh is refused while a deletion is pending |
 | 25 | Erasure deleted the **sign-in records** the privacy policy keeps for a year (security review) | The internal DPDP checklist said "delete tokens", unlike its own retention rule | The records are ended and kept under the anonymous ID; the security-log job will delete them after a year |
 | 26 | Switching an opt-in on and off in a loop added **proof rows without end** (security review) | Each switch keeps a row, and nothing limited them | 30 switches an hour per learner |
+| 27 | Generating the 207 lessons would have taken **over three weeks** | Until billing activates, the free tier allows 20 Flash calls a day and no Pro calls; each lesson needs a draft and a fact check | All lessons hand-written, through the same gates as a generated one; generation kept for later courses |
+| 28 | The fact check **passed a wrong lesson** | Asked for "any errors", the model missed that an inner `int i` hid the outer one, so the stated output was wrong | The check now lists each technical claim and judges them one by one; it caught the same error |
+| 29 | The leak filter **flagged correct lessons** as giving exercises away | Matching lines were generic C++ (`std::cout`, `(v.begin(), v.end())`, `[](int x)`) and shared variable names | Lessons reworded with their own names; the filter stays strict, since a missed leak costs more than a rewrite |
+| 30 | **Five lessons stated a wrong output** | Outputs worked out by hand | Caught by the sandbox gate or review and fixed before freezing. This is why no lesson is stored without its programs being run |
+| 31 | A slow brute force **finished in time**, so a speed test could not tell slow from fast | The tests were too small, or the slow version not slow enough (saddle points, factor counts, a tree rebuild) | Larger generated tests, or a brute force that is really quadratic; `tests_too_weak` now catches this before an exercise is stored |
+| 32 | A correct **reference was too slow** for its own speed test | `std::set` and `std::map` at a million items took over a third of the 2-second limit | Those tests use 300,000 items; the rule stays, so a learner's good solution has room to spare |
+| 33 | Some DSA tests **didn't compile** | A braced list such as `{{1, 5}}` was ambiguous between a list of pairs and a list of numbers, and a variadic helper can't take braced lists | Overloads for braced lists; tests with pairs use at least two |
 
-The password reset and the data rights each had an independent security review (19 October), with no critical or high issues in either: defects 18–21 came from the first, and 23–26 from the second. The second also led to a test that fails when a new table points at a learner's data without being exported and erased. One smaller finding is left for later (section 5.3): a login already in progress at the moment of a password reset.
+The password reset and the data rights each had an independent security review (19 October), with no critical or high issues in either: defects 18–21 came from the first, and 23–26 from the second. The second also led to a test that fails when a new table points at a learner's data without being exported and erased. One smaller finding is left for later (section 5.3): a login already in progress at the moment of a password reset. Defects 27–33 came from the lessons and the DSA bank (20 October): each was caught by a gate before any content was stored, which is the gates' purpose.
 
 ## 4.4 Implementation Manual
 
@@ -1612,10 +1781,11 @@ The password reset and the data rights each had an independent security review (
 docker compose up -d                  # PostgreSQL 16 + Redis 7
 pnpm install
 cd apps/api && cp .env.example .env   # fill DATABASE_URL, JWT_SECRET, WEB_ORIGIN, E2B_API_KEY, GEMINI_API_KEY, BREVO_API_KEY
-pnpm db:migrate && pnpm db:seed       # 15 migrations; C++ course, 20 skills, 100 practice exercises, 40 placement items
+pnpm db:migrate && pnpm db:seed       # 16 migrations; C++ basics (20 skills) and DSA (49 skills); 260 practice exercises, 40 placement items
 pnpm exercises:verify                 # runs every new exercise in the real sandbox before it can be served
+pnpm lessons:seed                     # freezes the 207 hand-written lessons through their gates (real sandbox)
 pnpm dev                              # API + queue worker on http://localhost:3001
-pnpm test                             # 204 automated tests (CI runs them on every push)
+pnpm test                             # 235 automated tests (CI runs them on every push)
 pnpm demo:walk                        # one learner through the whole loop on a running API
 pnpm sandbox:smoke                    # real-sandbox check of all six verdicts
 pnpm user:admin <email>               # make the first admin (for analytics)
@@ -1630,28 +1800,28 @@ pnpm hints:generate                   # once billing is active (GEMINI_PAID=true
 | Module | Built | Endpoints live |
 |---|---|---|
 | M1 Accounts, consent and data rights | Register, login, refresh, logout, me; forgot and reset password by email; date of birth; consent kinds; adults only during the pilot; correct, opt in and out, download, delete (7-day grace, hourly erasure) | 13 |
-| M2 Skill graph | C++ basics course: 20 skills, 23 prerequisites, further-reading links (seed); each skill's description and links shown with its exercises and progress | – |
-| M3 Placement test | Adaptive reading walk with a slip check, frontier code tasks, seeding, retakes; 40 verified items | 3 |
+| M2 Skill graph | C++ basics: 20 skills, 23 prerequisites. DSA: 49 skills in 8 groups, 97 prerequisites (19 of them C++ basics skills). Further-reading links; each skill's description and links shown with its exercises and progress | – |
+| M3 Placement test | Adaptive reading walk with a slip check, frontier code tasks, seeding, retakes; 40 verified C++ items (DSA items not yet written) | 3 |
 | M4 Mastery | Formula v1 inside the grading transaction; read views with decay; raise-only seeding | 2 |
-| M5 Recommender | Next skill, rung and exercise by fixed rules, saved with reasons | 1 |
-| M6 Exercises | Learner view; 100 verified practice exercises (all 20 skills × 5 rungs, hand-written); generation proven in the sandbox, by admins and automatically | 3 |
+| M5 Recommender | Next skill, rung and exercise by fixed rules, saved with reasons; names the other course's skills a learner must finish first | 1 |
+| M6 Exercises and lessons | Learner view; 100 verified C++ practice exercises (20 skills × 5 rungs) and 160 verified DSA exercises with speed tests (32 of 49 skills), all hand-written; generation proven in the sandbox, by admins and automatically; 207 frozen lessons (3 levels per skill, both courses) and the live note | 5 |
 | M7 Execution | Fresh offline sandbox per submission, judge, queue, retries, polling; a cleared skill's code deleted | 2 |
 | M8 Hints | Five-level ladder, live tutor with leak filter and caps, frozen fallback | 1 |
 | M9 Sessions | Start or resume, pause, resume, end; steps from the recommender; idle rules | 3 |
 | M11 Progress | Every skill, reading and writing apart, fade stage, status | 1 |
 | M12 Fade | Stage start, advance on solve, fast-track from the placement test, state endpoint | 1 |
 | M13 Analytics | Admin overview: learners, code runs, outcomes, content coverage, hardest exercises, hints, AI spend | 1 |
-| **Total** | | **all 31 MVP endpoints** |
+| **Total** | | **all 33 endpoints** |
 
-**Real runs at this stage:** a placement test on real E2B placed a learner who knew 3 skills with 6 questions (5 reading, 1 code), graded the code in about 6 seconds and fast-tracked those 3 skills to the last fade stage; the first recommendation was then the next new skill. Sessions, progress, hints, analytics and generation were each run against the development database, the password reset was walked through in a real browser, and the data rights on the running server, including the erasure of that test account (A-10). On the web, the sign-in pages (with the password reset) and the Terms and Privacy pages are built.
+**Real runs at this stage:** a placement test on real E2B placed a learner who knew 3 skills with 6 questions (5 reading, 1 code), graded the code in about 6 seconds and fast-tracked those 3 skills to the last fade stage; the first recommendation was then the next new skill. Sessions, progress, hints, analytics and generation were each run against the development database, the password reset was walked through in a real browser, and the data rights on the running server, including the erasure of that test account (A-10). The 207 lessons and 300 exercises were each proven on real E2B. On the web, the sign-in pages (with the password reset) and the Terms and Privacy pages are built.
 
-**Planned for the MVP (10 November):** Gemini billing activation (7 November), then the first live AI runs: live hints, the frozen hints, and extra generated exercise variants; frontend screens (in progress), including the Settings screens for data rights; the Brevo account and sending domain for real account emails; deployment to the cloud server; and a pilot with real learners.
+**Planned for the MVP (10 November):** the other 85 DSA exercises (graphs, algorithm design, problem solving, by 2 November) and the DSA placement items (3–5 November); Gemini billing activation (7 November), then the first live AI runs: live hints, lesson notes, the frozen hints, and extra generated exercise variants; frontend screens (in progress), including the Settings screens for data rights; the Brevo account and sending domain for real account emails; deployment to the cloud server; and a pilot with real learners.
 
 ## 4.6 Users Training
 
 - **Learners** need no training beyond the interface. Every verdict has a plain-language message ("Too slow on test 3: limit 2 s"), and the fade state tells the learner what unlocks the next stage.
 - **The frontend team** works from a written API guide (`DOCS/api/FRONTEND-GUIDE.md`) with exact request and response types, error codes, and what to show for each verdict.
-- **Authors** add skills and exercises as seed data; a test checks the skill graph for cycles on every run, and `pnpm exercises:verify` checks every new exercise in the real sandbox.
+- **Authors** add skills, exercises and lessons as seed data; a test checks the skill graph for cycles on every run, `pnpm exercises:verify` checks every new exercise in the real sandbox, and `pnpm lessons:seed` freezes a lesson only after its gates pass.
 - **Admins** are created with `pnpm user:admin <email>` and see one overview page; it shows counts only, never who.
 
 ## 4.7 Post-Implementation Maintenance
@@ -1678,7 +1848,11 @@ The project set out to measure what a learner can *write*, not what they have wa
 
 In a real run, a correct submission was judged **AC (4 of 4 tests) in about 6 seconds**, and the learner's writing mastery for that skill moved from **0 to 0.24**, exactly as the formula predicts.
 
-Around that core, the rest of the learner's journey now works too: an adaptive **placement test** that asks an expert 26 questions instead of 40 and fast-tracks what they prove, a **recommender** that chooses the next skill, rung and exercise by explainable rules, **study sessions** that resume at the same step, an honest **progress** view, an **admin overview**, a **hint ladder** whose live tutor can never hand over the solution, **exercise generation** that stores nothing the sandbox hasn't proven, a **password reset** that never reveals who has an account, and **data rights**: learners can correct, download and delete their own data, and only those who opted in leave anonymous numbers behind. All 31 MVP endpoints are live, backed by 204 automated tests run on every push, 140 exercises verified in the real sandbox (100 practice exercises covering every skill and rung, and 40 placement items), and a written decision record (ADR-0001 to ADR-0018) for every major choice.
+Around that core, the rest of the learner's journey now works too: an adaptive **placement test** that asks an expert 26 questions instead of 40 and fast-tracks what they prove, a **recommender** that chooses the next skill, rung and exercise by explainable rules, **study sessions** that resume at the same step, an honest **progress** view, an **admin overview**, a **hint ladder** whose live tutor can never hand over the solution, **exercise generation** that stores nothing the sandbox hasn't proven, a **password reset** that never reveals who has an account, and **data rights**: learners can correct, download and delete their own data, and only those who opted in leave anonymous numbers behind.
+
+The platform now teaches two courses. **C++ basics** (20 skills) is complete, and **Data Structures and Algorithms** (49 skills) builds on it. Every skill of both has **three frozen lessons**, one per level, each with a diagram, a worked example and a check, all **207** proven in the sandbox before storing. In the DSA course, **speed tests** tell a fast solution from a slow one: 160 exercises so far, each proven so that its reference finishes well inside the limit and a slow but correct solution times out.
+
+All 33 endpoints are live, backed by 235 automated tests run on every push, 300 exercises verified in the real sandbox (100 C++ practice exercises covering every skill and rung, 40 placement items and 160 DSA exercises), 207 verified lessons, and a written decision record (ADR-0001 to ADR-0020) for every major choice.
 
 ## 5.2 System Specifications
 
@@ -1694,8 +1868,10 @@ Around that core, the rest of the learner's journey now works too: an adaptive *
 ## 5.3 Limitations of the System
 
 - **No web interface yet.** The frontend is in progress; this draft's sample outputs are API responses, and screen snapshots will be added in the final report.
-- **One practice exercise per rung.** Every skill has five hand-written exercises, one per rung, so a learner who needs more practice at a rung retries the same task or moves up; generated variants add more once billing is active. The placement test covers all 20 skills.
-- **Live AI waits for billing.** Live hints and exercise generation are built and tested with a fake model, but stay off until the ₹3,000 prepayment is complete and activates the paid tier (the remaining ₹2,500 on 7 November); until then learners get frozen hints or a general nudge. Lessons are not built yet.
+- **One practice exercise per rung.** Every skill has five hand-written exercises, one per rung, so a learner who needs more practice at a rung retries the same task or moves up; generated variants add more once billing is active. The placement test covers all 20 C++ skills.
+- **The DSA course is not complete yet.** 160 of its 245 exercises are written (32 of 49 skills); graphs, algorithm design and problem solving come next. Its placement test has no items yet, so a DSA learner starts from the first skill. A DSA skill without exercises is named by the recommender but has nothing to practise yet.
+- **Lessons are fixed per level.** The 207 lessons are hand-written, so a lesson does not change for one learner; the live note that personalises it waits for billing. A lesson's correctness rests on its gates and on review: the sandbox proves its programs' outputs, not every sentence.
+- **Live AI waits for billing.** Live hints and exercise generation are built and tested with a fake model, but stay off until the ₹3,000 prepayment is complete and activates the paid tier (the remaining ₹2,500 on 7 November); until then learners get frozen hints or a general nudge, and lessons come without their live note.
 - **Account emails wait for setup.** Real reset and deletion emails need the Brevo key and the sending domain; until then they are printed in the API terminal (in development only: production refuses to start without the key).
 - **Password reset edge cases.** A login already in progress at the moment of a reset can still finish and keep its session (a window of about a tenth of a second); closing it needs a token version per user. The per-IP limits trust only our own proxy; the Vercel and Caddy setup that passes on the visitor's real address is written down (ADR-0008) and is checked at deployment.
 - **Data rights screens and the rest of retention.** The data-rights API is built, but not yet the Settings screens. The email address and date of birth are changed by email, not in the app. The 3-year inactivity job and the yearly clean-up of sign-in records are still to build. After a deletion request, an access token still works on the learning endpoints until it expires (at most 15 minutes).
@@ -1710,12 +1886,12 @@ Around that core, the rest of the learner's journey now works too: an adaptive *
 
 ## 5.4 Future Scope for Modification
 
-- More languages (Java, Python) on the same language-independent engine, and more courses (DSA, frontend, backend).
+- More languages (Java, Python) on the same language-independent engine, and more courses (frontend, backend), whose lessons the generator with its fact check can write.
+- The rest of the DSA course: its last 85 exercises, its placement items, and generated variants with their own speed tests.
 - The parent-approval flow for under-18 learners, with identity verification as the DPDP Rules require, and a parent acting on a child's data rights.
 - The remaining retention jobs: 3 years inactive, and a year's sign-in records.
 - Changing the password, email address or date of birth while logged in, and verifying the email address at sign-up.
 - Calibration of the mastery model from real data (held-out exercises), and spaced-revision scheduling (M10).
-- Frozen lessons with a diagram and a worked example per skill, and the brute-force/time-limit check for DSA-sized generated exercises.
 - A mobile app (the API already supports Bearer tokens), and colleges as institutional customers.
 - Spoken explanation assessment, and a portable learner profile.
 
@@ -1731,7 +1907,7 @@ Around that core, the rest of the learner's journey now works too: an adaptive *
 8. Bastani, H., et al. (2025). Generative AI Without Guardrails Can Harm Learning. *Proceedings of the National Academy of Sciences*.
 9. Government of India (2023). *The Digital Personal Data Protection Act, 2023*; and (2025) *Digital Personal Data Protection Rules, 2025*.
 10. Technical documentation: Node.js, Express 5, PostgreSQL 16, Drizzle ORM, BullMQ, E2B, Google Gemini API, Next.js, Brevo (official documentation, accessed October 2026).
-11. Project documents: Phase 1 synopsis, problem analysis, literature survey and SRS (24 Sep 2026); Phase 2 system design (15 Oct 2026, updated 19 Oct); ADR-0001 to ADR-0018; frontend API guide; Terms of Service, Privacy Policy and DPDP checklist (draft v0.1).
+11. Project documents: Phase 1 synopsis, problem analysis, literature survey and SRS (24 Sep 2026); Phase 2 system design (15 Oct 2026, updated 20 Oct); ADR-0001 to ADR-0020; frontend API guide; Terms of Service, Privacy Policy and DPDP checklist (draft v0.1).
 
 ---
 
@@ -1913,7 +2089,7 @@ After the third failed try (or when the month's budget is spent), the job falls 
 
 ## A-8 Test Reports
 
-Full test run of 20 October 2026: **38 test files, 204 tests, 204 passed.**
+Full test run of 20 October 2026: **42 test files, 235 tests, 235 passed.**
 
 - ✓ account-api.test.ts > PATCH /me > corrects the name and time zone, and renames the hidden personal organisation with the name
 - ✓ account-api.test.ts > PATCH /me > rejects an unknown time zone, a blank name, an empty body and other fields
@@ -1956,6 +2132,8 @@ Full test run of 20 October 2026: **38 test files, 204 tests, 204 passed.**
 - ✓ auth.test.ts > consent at sign-up > counts age in whole years, turning 18 on the birthday
 - ✓ curriculum.test.ts > curriculum schema > rejects a skill that requires itself
 - ✓ curriculum.test.ts > curriculum schema > rejects a duplicate edge even when it applies to every language (null)
+- ✓ curriculum.test.ts > curriculum schema > seeds a prerequisite from another course, and refuses one that isn't seeded yet
+- ✓ diagnostic-api.test.ts > POST /diagnostic/start > asks a skill whose prerequisite comes from another course
 - ✓ diagnostic-api.test.ts > POST /diagnostic/start > starts with the first skill's program to read, never its answer, and resumes the same test
 - ✓ diagnostic-api.test.ts > POST /diagnostic/start > is unavailable until items are verified, and 404 for an unknown course
 - ✓ diagnostic-api.test.ts > POST /diagnostic/:id/answers > grades reading on the spot without saying so, and accepts only the current question
@@ -1989,6 +2167,8 @@ Full test run of 20 October 2026: **38 test files, 204 tests, 204 passed.**
 - ✓ exercise-templates.test.ts > cpp-basics template bank > covers rungs 1–5 for every course skill, once each
 - ✓ exercise-templates.test.ts > cpp-basics template bank > only uses skills that exist in the course
 - ✓ exercise-templates.test.ts > cpp-basics template bank > gives rung 1 a program to read and no harness; rungs 2–5 a function to write
+- ✓ exercise-templates.test.ts > DSA practice bank > has rungs 1–5 once each for every skill it covers, all of them DSA skills
+- ✓ exercise-templates.test.ts > DSA practice bank > shows a sample with its output; generated tests come last, at least two, with a brute force
 - ✓ exercise-templates.test.ts > cpp-basics placement test bank > has exactly one reading item and one code task per course skill
 - ✓ exercise-templates.test.ts > cpp-basics placement test bank > asks reading as a program to read, showing only the code
 - ✓ exercise-templates.test.ts > cpp-basics placement test bank > asks code tasks as a rung-5 function with hidden tests beyond the shown example
@@ -1997,6 +2177,10 @@ Full test run of 20 October 2026: **38 test files, 204 tests, 204 passed.**
 - ✓ exercise-verification.test.ts > exercise verification > rejects an exercise whose tests can't tell the starter from a solution
 - ✓ exercise-verification.test.ts > exercise verification > runs only the program itself for rung 1 (there is no starter to try)
 - ✓ exercise-verification.test.ts > exercise verification > checks content before it is stored: a starter that won't compile, and wrong solutions that slip through
+- ✓ exercise-verification.test.ts > generated tests and the brute force > takes generated tests' outputs from the reference when the brute force agrees and then times out
+- ✓ exercise-verification.test.ts > generated tests and the brute force > rejects a brute force that is missing, never times out, disagrees, never agrees or fails a small test
+- ✓ exercise-verification.test.ts > generated tests and the brute force > rejects a reference that takes more than a third of the time limit
+- ✓ exercise-verification.test.ts > generated tests and the brute force > stores the generated outputs when a draft is verified
 - ✓ exercises-api.test.ts > GET /exercises/:id > shows the exercise and its sample test, never secrets or hidden tests
 - ✓ exercises-api.test.ts > GET /exercises/:id > shows what the skill is about and its active reading links for the exercise's language, in order
 - ✓ exercises-api.test.ts > GET /exercises/:id > starts one attempt, enrolling the learner and starting the skill at fade stage 1
@@ -2035,6 +2219,24 @@ Full test run of 20 October 2026: **38 test files, 204 tests, 204 passed.**
 - ✓ judge.test.ts > judge > gives TLE when the time limit killed the test, whatever else happened
 - ✓ judge.test.ts > judge > lets the first failing test decide, and calls an empty test list a setup error
 - ✓ judge.test.ts > judge > cuts long output to a readable excerpt
+- ✓ lesson-draft.test.ts > lesson level > is new before any evidence, building with some, and strong once the skill is written well or cleared
+- ✓ lesson-draft.test.ts > lesson draft > accepts a complete lesson, and refuses a diagram the web can't draw or a program without main
+- ✓ lesson-draft.test.ts > lesson draft > asks for the learner's level, builds on what they know, and avoids the skill's exercises
+- ✓ lesson-files.test.ts > cpp-basics hand-written lessons > cover every skill of the course, with all three levels each
+- ✓ lesson-files.test.ts > cpp-basics hand-written lessons > fit the lesson schema, as a generated one must
+- ✓ lesson-files.test.ts > dsa hand-written lessons > cover every skill of the course, with all three levels each
+- ✓ lesson-files.test.ts > dsa hand-written lessons > fit the lesson schema, as a generated one must
+- ✓ lesson-notes-api.test.ts > POST /lessons/:skillId/note > writes a note from the learner's recent results and weak prerequisite, then reuses it until they practise again
+- ✓ lesson-notes-api.test.ts > POST /lessons/:skillId/note > says nothing without live AI, past the daily limit, or when the reply has code
+- ✓ lesson-notes-api.test.ts > POST /lessons/:skillId/note > makes no call when there's nothing personal to say yet
+- ✓ lessons-api.test.ts > lesson generation > writes, proves and freezes a lesson for one level
+- ✓ lessons-api.test.ts > lesson generation > refuses a lesson the fact-check finds false, and tells the next try what is true
+- ✓ lessons-api.test.ts > lesson generation > refuses a lesson that gives a practice exercise away, and tells the next try why
+- ✓ lessons-api.test.ts > lesson generation > refuses programs that don't print what the lesson states, and gives up after three tries
+- ✓ lessons-api.test.ts > lesson generation > stops before calling the model once this month's ₹300 is spent
+- ✓ lessons-api.test.ts > hand-written lessons > pass the same gates, are frozen as hand-written, and fill their level for the generator
+- ✓ lessons-api.test.ts > GET /lessons/:skillId > serves the lesson for the learner's level, or the nearest one written so far
+- ✓ lessons-api.test.ts > GET /lessons/:skillId > is null until a lesson is written, 404 for an unknown skill, and needs a login
 - ✓ mastery-api.test.ts > mastery API > lists skills with reading and writing apart, decayed on read
 - ✓ mastery-api.test.ts > mastery API > shows one skill in detail, and zeros for a skill never practised
 - ✓ mastery-api.test.ts > mastery API > answers 404 for a skill that doesn't exist
@@ -2069,10 +2271,12 @@ Full test run of 20 October 2026: **38 test files, 204 tests, 204 passed.**
 - ✓ placement.test.ts > placement estimate > lets one frontier AC vouch for every skill below it, at lower confidence
 - ✓ placement.test.ts > placement estimate > treats a pending or failed-to-run task as unobserved, and gives unreached skills nothing
 - ✓ progress-api.test.ts > GET /progress > shows every skill's reading and writing apart, as they are today, with a status
+- ✓ progress-api.test.ts > GET /progress > names prerequisites from another course, and holds a skill back until they are met
 - ✓ progress-api.test.ts > GET /progress > 404s for a course that doesn't exist in that language
 - ✓ recommendations-api.test.ts > GET /recommendations/next > starts a new learner on the first skill at rung 1, enrolls them, and saves the reasons
 - ✓ recommendations-api.test.ts > GET /recommendations/next > moves to rung 2 after the rung-1 exercise is solved
 - ✓ recommendations-api.test.ts > GET /recommendations/next > names the next skill without an exercise when it has no content yet
+- ✓ recommendations-api.test.ts > GET /recommendations/next > names the other course's skills a learner must finish first, instead of saying the course is done
 - ✓ recommendations-api.test.ts > GET /recommendations/next > returns null when every skill is cleared and fresh, and 404 for an unknown course
 - ✓ recommender.test.ts > recommender rules v1 > starts a new learner on the first skill only
 - ✓ recommender.test.ts > recommender rules v1 > unlocks the next skill once a prerequisite is cleared, even if it has decayed a little
@@ -2103,6 +2307,9 @@ Full test run of 20 October 2026: **38 test files, 204 tests, 204 passed.**
 - ✓ skill-graph.test.ts > skill graph > accepts a graph where skills share prerequisites
 - ✓ skill-graph.test.ts > skill graph > cpp-basics seed data > has unique slugs and only known prerequisites
 - ✓ skill-graph.test.ts > skill graph > cpp-basics seed data > has no cycles
+- ✓ skill-graph.test.ts > skill graph > dsa seed data > has unique slugs and names, and only known prerequisites, its own or C++ basics'
+- ✓ skill-graph.test.ts > skill graph > dsa seed data > has no cycles, even counting C++ basics, and builds on C++ basics from every root
+- ✓ skill-graph.test.ts > skill graph > dsa seed data > is never easier than what it builds on
 - ✓ solution-filter.test.ts > solution filter > passes a hint in words, and a small fragment of a different idea
 - ✓ solution-filter.test.ts > solution filter > blocks the solution, whole or in its key lines, fenced or not
 - ✓ solution-filter.test.ts > solution filter > doesn't count code the learner already has
@@ -2140,6 +2347,24 @@ ok       rung 1 · What does it print? Implicit conversions
 ok       rung 5 · Sort by distance, split near from far
 ok       rung 5 · Own a heap array inside a struct
 40 verified, 0 rejected.
+```
+
+**Content verification on the real sandbox (20 October 2026), the five DSA exercises of one skill (prefix sums).** Each line shows the reference's time per test in ms; the last two tests of rungs 2–5 are generated, so their outputs are printed as a size and a hash and stored as the expected output:
+```
+rung 1 ok   What does it print? Reading sums off a prefix array        ref ms: 10
+rung 2 ok   Fix the range sums                                         ref ms: 20,0,0,0,0,10
+            out: 9 -2 4 13 | 5 |  | 3000000000 | size 2000, hash 12174026465321784153 | size 500000, hash 14448745048033150881
+rung 3 ok   Complete the balance point                                 ref ms: 30,0,0,0,0,0,0
+rung 4 ok   Extend coverage to weights and a threshold                 ref ms: 10,0,0,0,0,0,40
+rung 5 ok   The longest stretch with equal 0s and 1s                   ref ms: 10,0,0,0,0,0,10
+```
+
+**The development database after seeding and verification (20 October 2026):**
+```
+pnpm exercises:verify   → Verifying 0 draft exercise(s)… 0 verified, 0 rejected.   (every exercise already proven)
+pnpm lessons:seed       → 0 added, 207 already there, 0 failed.
+exercises: cpp-basics 140 verified, dsa 160 verified   (300; none rejected or waiting)
+lessons:   207   (C++ basics 20 × 3 levels, DSA 49 × 3 levels)
 ```
 
 ## A-9 Sample Inputs
@@ -2505,5 +2730,28 @@ export async function eraseDueAccounts() {
   for (const { id } of await repo.dueForErasure(graceStart())) {
     await eraseAccount(id).catch((err) => console.error(`Erasing account ${id} failed`, err));
   }
+}
+```
+
+**The speed-test check** (`apps/api/src/modules/m6_exercises/services/verify-exercise.ts`, ADR-0020)
+
+```ts
+// The brute force must pass the small tests, agree with the reference on at least one generated test,
+// and then time out: proof that the reference is right on generated data and that the large tests need speed.
+async function bruteForceProblem(content: Content, expected: string[], provider: SandboxProvider) {
+  if (!content.bruteForceSolution) return fail("brute_force", "generated tests need a brute force to check the reference against");
+  const result = await run(content, content.bruteForceSolution, provider);
+  if (!result.compile.ok) return fail("compile", "the brute force doesn't compile");
+  let agreed = 0;
+  for (const [i, testRun] of result.tests.entries()) {
+    const verdict = judgeTest(testRun, expected[i], content.limits);
+    const { seq, expectedOutput } = content.tests[i];
+    if (expectedOutput !== null && verdict !== "AC") return fail("brute_force", `the brute force gets ${verdict} on test ${seq}`);
+    if (expectedOutput === null && verdict === "TLE")
+      return agreed ? undefined : fail("brute_force", "the brute force times out on every generated test, so none checks the reference");
+    if (expectedOutput === null && verdict !== "AC") return fail("brute_force", `the brute force gets ${verdict} on generated test ${seq}`);
+    if (expectedOutput === null) agreed++;
+  }
+  return fail("tests_too_weak", "the brute force finishes every generated test in time, so the tests can't tell fast from slow");
 }
 ```
