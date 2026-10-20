@@ -65,12 +65,23 @@ export async function findForVerification(id: string) {
   const runnable = await findRunnable(id);
   if (!runnable) return undefined;
   const [extra] = await db
-    .select({ starterCode: exercises.starterCode, referenceSolution: exerciseSecrets.referenceSolution })
+    .select({
+      starterCode: exercises.starterCode,
+      referenceSolution: exerciseSecrets.referenceSolution,
+      bruteForceSolution: exerciseSecrets.bruteForceSolution,
+    })
     .from(exercises)
     .innerJoin(exerciseSecrets, eq(exerciseSecrets.exerciseId, exercises.id))
     .where(eq(exercises.id, id));
   return extra && { ...runnable, ...extra };
 }
+
+// Generated tests get their expected output from the reference, once it has been verified.
+export const fillExpectedOutputs = (exerciseId: string, outputs: { seq: number; expectedOutput: string }[]) =>
+  db.transaction(async (tx) => {
+    for (const { seq, expectedOutput } of outputs)
+      await tx.update(exerciseTests).set({ expectedOutput }).where(and(eq(exerciseTests.exerciseId, exerciseId), eq(exerciseTests.seq, seq)));
+  });
 
 export const listByStatus = (status: (typeof exercises.$inferSelect)["status"]) =>
   db.select({ id: exercises.id, title: exercises.title, rung: exercises.rung }).from(exercises).where(eq(exercises.status, status));
@@ -160,16 +171,22 @@ export async function insertExercise(tx: Tx, t: ExerciseTemplate, { harnessCode,
     .onConflictDoNothing()
     .returning({ id: exercises.id });
   if (!created) return undefined;
-  await tx.insert(exerciseSecrets).values({ exerciseId: created.id, harnessCode, referenceSolution: t.reference });
+  await tx.insert(exerciseSecrets).values({
+    exerciseId: created.id,
+    harnessCode,
+    referenceSolution: t.reference,
+    bruteForceSolution: t.bruteForce ?? null,
+    testGeneratorCode: t.generator ?? null,
+  });
   await tx.insert(exerciseTests).values(
     t.cases.map((c, i) => ({
       exerciseId: created.id,
       seq: i + 1,
       name: i === 0 ? "Example" : `Test ${i + 1}`,
-      size: "small" as const,
+      size: c.expected === undefined ? ("large" as const) : ("small" as const), // generated: expected comes at verification
       visibility: i === 0 ? ("sample" as const) : ("hidden" as const),
       input: c.args || null,
-      expectedOutput: c.expected,
+      expectedOutput: c.expected ?? null,
     })),
   );
   return created.id;

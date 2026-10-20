@@ -10,12 +10,12 @@ const VARIANT_SEED = { practice: 1, diagnostic: 100 } as const;
 
 // The frozen harness owns main(): it #includes the learner's file and runs test number argv[1].
 // Rung 1 has none: the learner predicts the program's output instead of running it.
-export const harnessFor = ({ call, cases }: ExerciseTemplate) =>
+export const harnessFor = ({ call, cases, generator }: ExerciseTemplate) =>
   call
     ? `#include <iostream>
 #include <string>
 #include "solution.cpp"
-
+${generator ? `${generator}\n` : ""}
 int main(int argc, char** argv) {
   switch (std::stoi(argv[1])) {
 ${cases.map((c, i) => `    case ${i + 1}: ${call(c.args)} break;`).join("\n")}

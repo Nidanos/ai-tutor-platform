@@ -59,7 +59,7 @@ async function tryOnce(job: Job, context: GenerationContext, model: string, llm:
         harnessCode,
         referenceSolution: template.reference,
         starterCode: template.starterCode,
-        tests: template.cases.map((c, i) => ({ seq: i + 1, expectedOutput: c.expected })),
+        tests: template.cases.map((c, i) => ({ seq: i + 1, expectedOutput: c.expected ?? null })),
         limits: repo.DEFAULT_LIMITS,
         wrongSolutions: "wrongSolutions" in parsed.data ? parsed.data.wrongSolutions : [],
       },

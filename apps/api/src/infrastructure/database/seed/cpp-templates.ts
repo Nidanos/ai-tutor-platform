@@ -6,7 +6,9 @@
 export type Rung = 1 | 2 | 3 | 4 | 5;
 
 // One test: the arguments passed to the learner's function, and the exact expected output.
-export type Case = { args: string; expected: string };
+// A generated test has no expected output: its args call the generator, and verification takes the
+// reference's output (ADR-0020). Generated tests come after the small ones, medium before large.
+export type Case = { args: string; expected?: string };
 
 export type ExerciseTemplate = {
   skill: string;
@@ -19,6 +21,8 @@ export type ExerciseTemplate = {
   call?: (args: string) => string; // rungs 2–5: one test as a C++ statement
   cases: Case[]; // the first is shown as the sample; the rest are hidden
   variant?: number; // 1, 2, …: a corrected copy of a seeded template (seeded content is never edited)
+  generator?: string; // C++ placed after the solution in the harness: seeded input builders for generated tests
+  bruteForce?: string; // a slow but correct solution: agrees on medium generated tests, times out on large
 };
 
 // Rungs 2–5 use a `void solve(...)` box: the learner writes inside it, inputs arrive as parameters.
