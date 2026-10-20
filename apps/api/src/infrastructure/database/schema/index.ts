@@ -9,3 +9,4 @@ export * from "./attempts.js";
 export * from "./diagnostic.js";
 export * from "./mastery.js";
 export * from "./research.js";
+export * from "./lessons.js";
