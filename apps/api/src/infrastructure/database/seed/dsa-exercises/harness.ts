@@ -2,7 +2,9 @@
 // gen:: builds seeded inputs with its own generator (splitmix64), so generated data never depends on
 // the standard library's random distributions. show() prints a short vector in full, a long one as a checksum.
 export const GEN = String.raw`#include <algorithm>
+#include <array>
 #include <cstdint>
+#include <utility>
 #include <vector>
 
 namespace gen {
@@ -25,6 +27,30 @@ std::vector<int> sortedInts(std::uint64_t seed, int n, int lo, int hi) {
     std::vector<int> v = ints(seed, n, lo, hi);
     std::sort(v.begin(), v.end());
     return v;
+}
+// 1, 2, ..., n in a shuffled order.
+std::vector<int> permutation(std::uint64_t seed, int n) {
+    state = seed;
+    std::vector<int> v(n);
+    for (int i = 0; i < n; i++) v[i] = i + 1;
+    for (int i = n - 1; i > 0; i--) std::swap(v[i], v[between(0, i)]);
+    return v;
+}
+// q ranges (l, r) with 0 <= l <= r < n.
+std::vector<std::pair<int, int>> ranges(std::uint64_t seed, int q, int n) {
+    state = seed;
+    std::vector<std::pair<int, int>> out(q);
+    for (auto& [l, r] : out) {
+        int a = (int)between(0, n - 1), b = (int)between(0, n - 1);
+        l = std::min(a, b), r = std::max(a, b);
+    }
+    return out;
+}
+// m intervals {l, r, w} inside 0..n-1, with weights from 1 to wmax.
+std::vector<std::array<int, 3>> weighted(std::uint64_t seed, int m, int n, int wmax) {
+    std::vector<std::array<int, 3>> out;
+    for (auto [l, r] : ranges(seed, m, n)) out.push_back({l, r, (int)between(1, wmax)});
+    return out;
 }
 template <class T> void show(const std::vector<T>& v) {
     if (v.size() <= 20) {
