@@ -1643,15 +1643,15 @@ In development, Postgres and Redis run locally through `docker compose`.
 | M3 Diagnostic | `POST /diagnostic/start` · `POST /diagnostic/:id/answers` · `POST /diagnostic/:id/complete` |
 | M4 Mastery | `GET /mastery` · `GET /mastery/:skillId` · evidence recording is internal only |
 | M5 Recommender | `GET /recommendations/next` |
-| M6 Exercises | `GET /exercises/:id` · `POST /exercises/generate` · `GET /exercises/generation/:jobId` |
+| M6 Exercises | `GET /exercises/:id` · `POST /exercises/generate` · `GET /exercises/generation/:jobId` · `GET /lessons/:skillId` |
 | M7 Submissions | `POST /submissions` · `GET /submissions/:id/result` |
-| M8 Hints | `POST /exercises/:id/hints` |
+| M8 Hints | `POST /exercises/:id/hints` · `POST /lessons/:skillId/note` |
 | M9 Sessions | `POST /sessions` · `GET /sessions/active` · `PATCH /sessions/:id` |
 | M11 Progress | `GET /progress` |
 | M12 Fade | `GET /scaffolding/state` (fade stage and limits per skill) |
 | M13 Analytics | `GET /analytics/overview` (admin) |
 
-31 client-facing endpoints, plus internal evidence recording. `POST /auth/refresh` is added to M1 because short-lived access tokens need it; forgot and reset password were added on 19 Oct (ADR-0017), and the six data-rights endpoints the same day (ADR-0018). The full plan has ~98 operations; every one maps onto the tables in section 5:
+33 client-facing endpoints, plus internal evidence recording. `POST /auth/refresh` is added to M1 because short-lived access tokens need it; forgot and reset password were added on 19 Oct (ADR-0017), the six data-rights endpoints the same day (ADR-0018), and the two lesson endpoints on 20 Oct (ADR-0019). The full plan has ~98 operations; every one maps onto the tables in section 5:
 
 | Module | Ops | Tables |
 | --- | --- | --- |
@@ -1660,9 +1660,9 @@ In development, Postgres and Redis run locally through `docker compose`.
 | M3 | 6 | diagnostic_*, enrollments |
 | M4 | 9 | mastery_records, evidence_events |
 | M5 | 6 | recommendations |
-| M6 | 9 | exercises, exercise_secrets, exercise_tests, exercise_hints, generation_jobs, generation_failures |
+| M6 | 9 | exercises, exercise_secrets, exercise_tests, exercise_hints, generation_jobs, generation_failures, lessons |
 | M7 | 7 | submissions, sandbox_runs, run_test_results, exercise_attempts |
-| M8 | 7 | hint_events, exercise_hints, exercise_attempts |
+| M8 | 7 | hint_events, exercise_hints, exercise_attempts, lesson_notes |
 | M9 | 8 | learning_sessions, session_steps |
 | M10 | 6 | review_items |
 | M11 | 6 | reads mastery_records, evidence_events, skills |
@@ -1763,7 +1763,7 @@ Rate limits: login 20 per IP and 5 failures per email per 15 minutes; register 5
 
 - pnpm monorepo: `apps/api` (Express 5 + TypeScript 6), `apps/web` (Next.js 16, React 19), `packages/types`, `packages/config`. Exact pinned versions, Node 22.
 - Local infrastructure via `docker compose`: PostgreSQL 16 with pgvector, Redis 7, with secrets in `.env`; settings validated with zod at startup.
-- **Database:** all 38 MVP tables (section 5) plus `password_reset_tokens`, as Drizzle schema files with 15 versioned migrations, plus an idempotent seed: the C++ basics course (20 skills, 23 prerequisites, further-reading links), 100 practice exercises (every skill × rungs 1–5) and 40 placement items; and the DSA skill graph (49 skills in 8 groups, basics to advanced, 97 prerequisites of which 19 point into C++ basics, 31 further-reading links; ADR-0001, 20 Oct). DSA's lessons, exercises and placement items come next.
+- **Database:** all 38 MVP tables (section 5) plus `password_reset_tokens`, `lessons` and `lesson_notes`, as Drizzle schema files with 16 versioned migrations, plus an idempotent seed: the C++ basics course (20 skills, 23 prerequisites, further-reading links), 100 practice exercises (every skill × rungs 1–5), 40 placement items and 60 hand-written lessons (every skill × 3 levels, `pnpm lessons:seed`); and the DSA skill graph (49 skills in 8 groups, basics to advanced, 97 prerequisites of which 19 point into C++ basics, 31 further-reading links; ADR-0001, 20 Oct). DSA's lessons, exercises and placement items come next.
 - **Auth (M1):** register, login, refresh, logout and me (section 7.3): argon2id passwords, 15-minute JWT, rotating refresh tokens with theft detection, httpOnly cookies for web and Bearer tokens for mobile, rate limits and a CSRF origin check. Forgot and reset password (ADR-0017): a one-use, 30-minute link emailed through Brevo and stored only as a hash; a reset logs the account out everywhere.
 - **Consent at sign-up (DPDP):** date of birth, required Terms and Privacy consents, optional AI-training and research opt-ins; during the pilot, sign-up is for adults only (the parent-approval flow comes later). A learner's code is deleted once they clear its skill (20 Oct).
 - **Execution (M7):** `POST /submissions` (202 + idempotency key) and `GET /submissions/:id/result` (polling); a BullMQ worker runs each submission in a fresh, offline E2B sandbox (clang 19), and a pure judge gives AC/WA/CE/RE/TLE/MLE/SE. Checked end to end on real E2B: about 6 s per submission.
@@ -1779,10 +1779,11 @@ Rate limits: login 20 per IP and 5 failures per email per 15 minutes; register 5
 - **Analytics (M13):** `GET /analytics/overview?days=30` for admins only (ADR-0014): aggregate counts per window, each gathered by the module that owns the data. `pnpm user:admin <email>` makes the first admin.
 - **Hints (M8):** `POST /exercises/:id/hints` (ADR-0015). Live Gemini 3.5 Flash Lite hint about the learner's own code first, frozen hint as the fallback; one level per request within the fade ceiling; level 5 is the answer (bottom-out logged, no credit); a leak filter blocks solution-like replies; 20 live hints per learner per day and ₹500 per month, each call logged with its cost. Live calls stay off until billing is active (`GEMINI_PAID`).
 - **Exercise generation (M6):** `POST /exercises/generate` and `GET /exercises/generation/:jobId` for admins and authors, plus automatic jobs queued by the recommender (ADR-0016). Up to 3 tries (Gemini 3.8 Flash twice, then 3.1 Pro); a draft is stored only after the sandbox proves it: the reference passes, the starter fails, and 3 model-written wrong solutions fail. Every failed try is logged; after 3 it falls back to the hand-written bank. Separate ₹300/month cap.
+- **Lessons (M6 + M8):** `GET /lessons/:skillId` and `POST /lessons/:skillId/note` (ADR-0019). Each skill has a frozen lesson for each level (new, building, strong): explanation, Mermaid diagram, worked example, common mistakes and a predict-the-output check. Every lesson passes the same gates: the schema, the leak filter against the skill's exercises, and both programs proven in the real sandbox. The C++ basics lessons are hand-written; Gemini generation, with a claim-by-claim fact-check, is built for later courses (₹300/month). A short live note over the lesson uses the learner's level, recent results and weak prerequisites, never their code, inside the live tutor's limits.
 - **Data rights (M1, DPDP):** `PATCH /me`, `GET /me/data`, `DELETE /me` and the opt-in switches (ADR-0018). The download gathers each module's rows through its service. Deletion asks for the password, waits 7 days (logging in cancels it), then an hourly job anonymises the account and erases each module's rows, keeping anonymous numbers only for learners who opted in to research or AI training.
-- **Tests:** 204 automated tests on a separate test database, run with the type checks and the web build on every push and pull request (GitHub Actions): database rules, auth and consent flows, the verdict judge, the mastery formula, the recommender rules, the placement rules (all 711 possible learners), session time rules, analytics (admin-only, counts only), hints (fake LLM: live, blocked, caps, ceiling, answer), the leak filter, and exercise generation (fake LLM and sandbox: retries, weak tests, fallback, budget), password reset (fake email: one use, expiry, only the newest link, one email per 5 minutes, logged out everywhere), data rights (correction, opt-ins, the download from every module, deletion with and without an opt-in, the grace period), and submissions with a fake sandbox. `pnpm sandbox:smoke` checks all six verdicts on real E2B.
+- **Tests:** 227 automated tests on a separate test database, run with the type checks and the web build on every push and pull request (GitHub Actions): database rules, auth and consent flows, the verdict judge, the mastery formula, the recommender rules, the placement rules (all 711 possible learners), session time rules, analytics (admin-only, counts only), hints (fake LLM: live, blocked, caps, ceiling, answer), the leak filter, exercise generation (fake LLM and sandbox: retries, weak tests, fallback, budget), lessons (the gates, the fact-check, levels, the nearest level, the hand-written files) and live notes (results only, reuse, limits), password reset (fake email: one use, expiry, only the newest link, one email per 5 minutes, logged out everywhere), data rights (correction, opt-ins, the download from every module, deletion with and without an opt-in, the grace period), and submissions with a fake sandbox. `pnpm sandbox:smoke` checks all six verdicts on real E2B.
 
-**Next (Phase 3, 23 Oct):** frontend binding, deployment, then live AI once billing is active (7 Nov). All 31 MVP endpoints are live.
+**Next (Phase 3, 23 Oct):** frontend binding, deployment, then live AI once billing is active (7 Nov). All 31 MVP endpoints are live, plus the two lesson endpoints.
 
 ---
 

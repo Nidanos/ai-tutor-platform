@@ -1,8 +1,8 @@
 # Frontend API Guide
 
-For Aman and Aditi. How the web app talks to the backend. Last updated 19 Oct 2026.
+For Aman and Aditi. How the web app talks to the backend. Last updated 20 Oct 2026.
 
-**Status:** all 31 endpoints are live (section 7).
+**Status:** all 33 endpoints are live (section 7).
 
 ## 1. Run the backend locally (once)
 
@@ -408,6 +408,36 @@ export async function downloadMyData() {
 
 - **Delete account:** a red button opens a dialog. Say: "Your account will be deleted after 7 days. Log in before then to cancel. Your name, email and code are erased." Ask for the password. On `202`, clear the user and go to `/` with "Your account will be deleted after {eraseAfter as a local date}. Logging in before then cancels it." The email we send says the same. On `403 WRONG_PASSWORD`, show the message under the field. After a `202`, every other device is logged out too: its next call gets `401` and the refresh fails, so it goes to `/login` as usual.
 
+## 4m. Lessons (live, 20 Oct)
+
+Every skill has a lesson written for the learner's level (ADR-0019). All 20 C++ basics skills have one for each level.
+
+| Call | Success |
+| --- | --- |
+| `GET /api/v1/lessons/:skillId?language=cpp` | `200 { level, lesson }` |
+| `POST /api/v1/lessons/:skillId/note?language=cpp` | `200 { note }` |
+
+```ts
+type LessonLevel = "new" | "building" | "strong";
+type Lesson = {
+  id: string;
+  level: LessonLevel;          // may differ from the learner's level: the nearest one written
+  explanationMd: string;       // Markdown, ### subheadings at most
+  diagram: string;             // Mermaid source
+  example: { code: string; output: string; walkthroughMd: string };
+  mistakesMd: string;          // a Markdown bullet list
+  check: { code: string; output: string; explanationMd: string };
+};
+type LessonResponse = { level: LessonLevel; lesson: Lesson | null };
+type NoteResponse = { note: { bodyMd: string } | null };
+```
+
+- **Lesson page** (`/learn/{skillId}`): open it before a skill's first exercise, and from the progress map. Show, in order: the explanation, the diagram, the example (the code, then its output in a separate box, then the walkthrough), the common mistakes, and the check.
+- **The check:** show `check.code` and ask "What does this print?" with a text box. Only after the learner answers, show `check.output` and `check.explanationMd`, and say whether they matched (compare ignoring trailing spaces). It's practice only: there is no API call and no effect on progress.
+- **Diagram:** render `diagram` with Mermaid, initialised with `securityLevel: "strict"` (never `"loose"`). Render every `...Md` field with the same safe Markdown renderer as hints: no raw HTML.
+- **Note:** after the lesson loads, call `POST .../note`. If `note` isn't null, show `bodyMd` in a small "For you" box above the explanation; if it's null, show nothing. The server reuses a note until the learner practises again, so calling it on every visit is fine. It shares the hint rate limit (10 a minute), so ignore a `429` here. Notes stay null until billing is on.
+- `lesson: null`: show "Lesson coming soon" and a button straight to practice. `404 SKILL_NOT_FOUND` for an unknown skill.
+
 ## 5. Screens and flow
 
 | Moment | Do this |
@@ -475,7 +505,7 @@ await api("/auth/logout", { method: "POST" });
 
 ## 7. Planned endpoints
 
-All 31 MVP endpoints are live. Live AI (hints and generation) switches on once Gemini billing is active (7 November).
+All 31 MVP endpoints are live, plus the two lesson endpoints (20 Oct). Live AI (hints, lesson notes and generation) switches on once Gemini billing is active (7 November).
 
 ## 8. Error codes
 

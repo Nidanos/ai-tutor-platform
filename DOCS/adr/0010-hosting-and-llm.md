@@ -32,13 +32,13 @@ Everything ships as Docker Compose plus a database dump, so moving between these
 ## How teaching content is made (extends ADR-0005)
 | Layer | What the learner gets | Made |
 |---|---|---|
-| 1. **Lesson** per skill and language | Plain explanation, **Mermaid diagram**, worked example, further-reading links | LLM once → reviewed → frozen |
+| 1. **Lesson** per skill and language | Plain explanation, **Mermaid diagram**, worked example, further-reading links | LLM once → reviewed → frozen *(built 20 Oct as three levels per skill, ADR-0019; C++ basics hand-written)* |
 | 2. **Practice** | Exercises on rungs 1–5 with 5 frozen hints each | LLM once → verified in the sandbox → frozen (ADR-0005) |
 | 3. **Live tutor** | A hint about *their* code, an explanation of their compile error | Live Flash-Lite, filtered so it never shows solution code (FR-M8-04); the frozen hint is the fallback |
 
 - **Visuals are Mermaid diagrams** (settles the open decision): text the LLM writes and the web renders, so they're cheap, the labels are exact, and they're easy to review.
 - Grading, mastery and next-step choice never use an LLM (ADR-0005 unchanged).
-- Lessons need a small schema addition (a frozen lesson per skill and language), designed when M6 generation is built.
+- Lessons need a small schema addition (a frozen lesson per skill and language), designed when M6 generation is built. *(Built 20 Oct: one per skill, language and level, plus a live note; ADR-0019.)*
 
 ## Consequences
 - Learner code goes to Gemini only inside live tutor calls, never with a name or email; the Privacy Policy already says so (section 5).

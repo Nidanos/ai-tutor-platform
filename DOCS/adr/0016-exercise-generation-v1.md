@@ -29,4 +29,4 @@ About ₹1.5 per generated exercise: about ₹0.8 for the Flash draft, about ₹
 ## Notes
 - Analytics shows generation outcomes per skill and rung, failures by stage, and both monthly spends against their caps (ADR-0014).
 - Generated exercises are served without human review: the sandbox checks are the gate, as for the hand-written bank. A bad one shows up in the analytics' hardest-exercises list and can be retired.
-- Not in v1: lessons (layer 1 of ADR-0010, needs a small schema addition), and generating several variants per rung at once.
+- Not in v1: lessons (layer 1 of ADR-0010; built 20 Oct, ADR-0019), and generating several variants per rung at once.
