@@ -32,7 +32,7 @@ Everything ships as Docker Compose plus a database dump, so moving between these
 ## How teaching content is made (extends ADR-0005)
 | Layer | What the learner gets | Made |
 |---|---|---|
-| 1. **Lesson** per skill and language | Plain explanation, **Mermaid diagram**, worked example, further-reading links | LLM once → reviewed → frozen *(built 20 Oct as three levels per skill, ADR-0019; C++ basics hand-written)* |
+| 1. **Lesson** per skill and language | Plain explanation, **Mermaid diagram**, worked example, further-reading links | LLM once → reviewed → frozen *(built 20 Oct as three levels per skill, ADR-0019; C++ basics and DSA hand-written)* |
 | 2. **Practice** | Exercises on rungs 1–5 with 5 frozen hints each | LLM once → verified in the sandbox → frozen (ADR-0005) |
 | 3. **Live tutor** | A hint about *their* code, an explanation of their compile error | Live Flash-Lite, filtered so it never shows solution code (FR-M8-04); the frozen hint is the fallback |
 

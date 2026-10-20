@@ -410,7 +410,7 @@ export async function downloadMyData() {
 
 ## 4m. Lessons (live, 20 Oct)
 
-Every skill has a lesson written for the learner's level (ADR-0019). All 20 C++ basics skills have one for each level.
+Every skill has a lesson written for the learner's level (ADR-0019). All 20 C++ basics skills and all 49 DSA skills have one for each level.
 
 | Call | Success |
 | --- | --- |
