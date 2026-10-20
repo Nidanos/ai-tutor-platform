@@ -217,3 +217,12 @@ export async function erasePractice(userId: string, keepNumbers: boolean) {
   await db.delete(submissions).where(eq(submissions.userId, userId));
   await db.delete(exerciseAttempts).where(eq(exerciseAttempts.userId, userId));
 }
+
+// For M8's lesson note: the learner's latest graded results on these exercises. Verdicts and counts, never code.
+export const recentResults = (userId: string, exerciseIds: string[], limit: number) =>
+  db
+    .select({ verdict: submissions.verdict, testsPassed: submissions.testsPassed, testsTotal: submissions.testsTotal })
+    .from(submissions)
+    .where(and(eq(submissions.userId, userId), inArray(submissions.exerciseId, exerciseIds), eq(submissions.status, "completed")))
+    .orderBy(desc(submissions.createdAt))
+    .limit(limit);

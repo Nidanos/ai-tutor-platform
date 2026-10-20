@@ -83,3 +83,6 @@ export async function lastResult(userId: string, attemptId: string) {
 // For M1: the learner's own attempts and code (DPDP access), and their erasure.
 export const learnerPractice = repo.learnerPractice;
 export const erasePractice = repo.erasePractice;
+
+// For M8: what the learner's latest runs on a skill said, for the lesson note.
+export const recentResults = repo.recentResults;

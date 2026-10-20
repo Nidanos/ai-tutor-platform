@@ -14,6 +14,7 @@ import {
   fadeStageChanges,
   hintEvents,
   learningSessions,
+  lessonNotes,
   masteryRecords,
   organizations,
   recommendations,
@@ -33,6 +34,7 @@ type History = Awaited<ReturnType<typeof createLearnerWithHistory>>;
 const DAY = 86_400_000;
 const askedToDelete = (userId: string, daysAgo: number) =>
   db.update(users).set({ deletionRequestedAt: new Date(Date.now() - daysAgo * DAY) }).where(eq(users.id, userId));
+const notesOf = (h: History) => db.$count(lessonNotes, eq(lessonNotes.userId, h.userId));
 const userRow = async (id: string) => (await db.select().from(users).where(eq(users.id, id)))[0];
 
 // How many rows each table of learning data holds for this learner.
@@ -68,7 +70,7 @@ async function learnerWhoAgreed(...kinds: (typeof consents.$inferInsert)["kind"]
 
 // Every table that points at a user or at a learner's rows, by what erasure does with it (ADR-0018).
 const POINTS_AT_LEARNERS = {
-  erased: ["diagnostic_attempts", "diagnostic_responses", "diagnostic_results", "enrollments", "evidence_events", "exercise_attempts", "fade_stage_changes", "hint_events", "learning_sessions", "mastery_records", "recommendations", "run_test_results", "sandbox_runs", "session_steps", "skill_scaffolding", "submissions"],
+  erased: ["diagnostic_attempts", "diagnostic_responses", "diagnostic_results", "enrollments", "evidence_events", "exercise_attempts", "fade_stage_changes", "hint_events", "learning_sessions", "lesson_notes", "mastery_records", "recommendations", "run_test_results", "sandbox_runs", "session_steps", "skill_scaffolding", "submissions"],
   keptAsRecords: ["consents", "password_reset_tokens", "refresh_tokens"],
   noWriterYet: ["calibration_records", "review_items"],
   whoMadeContent: ["exercises", "fade_schedules", "generation_jobs", "skill_prerequisites"], // authors, not learners
@@ -99,6 +101,7 @@ describe("account erasure (DPDP doc §4)", () => {
     const kept = await db.select().from(consents).where(eq(consents.userId, h.userId));
     expect(kept.map((k) => k.revokedAt !== null)).toEqual([true, true]);
     expect((await rowCounts(h)).every((n) => n === 0)).toBe(true);
+    expect(await notesOf(h)).toBe(0);
 
     await request(app).get("/api/v1/auth/me").set("Authorization", await bearerFor(h.userId)).expect(401); // an old token is no use
   });
@@ -110,6 +113,7 @@ describe("account erasure (DPDP doc §4)", () => {
     await eraseDueAccounts();
 
     expect(await rowCounts(h)).toEqual(before);
+    expect(await notesOf(h)).toBe(0); // written for the person: never kept
     expect((await userRow(h.userId)).status).toBe("deleted");
     const [submission] = await db.select().from(submissions).where(eq(submissions.id, h.submissionId));
     expect(submission).toMatchObject({ answer: null, verdict: "WA" });

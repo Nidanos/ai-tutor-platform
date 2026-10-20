@@ -19,6 +19,13 @@ const fingerprints = (text: string) => {
 const codeBlocks = (reply: string) => [...reply.matchAll(/```[^\n]*\n([\s\S]*?)```/g)].map((m) => m[1]);
 const squash = (text: string) => text.replace(/\s+/g, " ").trim();
 
+// For content that may show longer code (lessons): only the solution's own code, or a rung-1 answer,
+// counts as giving it away.
+export const leaksSolution = (text: string, context: FilterContext) => {
+  const { shared, givesOutput } = checkHint(text, context);
+  return shared >= MAX_SHARED || givesOutput;
+};
+
 export function checkHint(reply: string, { reference, starter, learnerCode = "", output }: FilterContext): FilterResult {
   const known = new Set([...fingerprints(starter), ...fingerprints(learnerCode)]);
   const own = [...fingerprints(reference)].filter((f) => !known.has(f));

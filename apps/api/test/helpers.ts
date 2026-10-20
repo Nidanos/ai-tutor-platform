@@ -17,6 +17,7 @@ import {
   fadeStages,
   hintEvents,
   languages,
+  lessonNotes,
   learningSessions,
   masteryRecords,
   organizations,
@@ -152,6 +153,7 @@ export async function createLearnerWithHistory() {
   const [test] = await db.insert(exerciseTests).values({ exerciseId, seq: 1, name: "t1", size: "small", visibility: "hidden", input: "1", expectedOutput: "1" }).returning();
   await db.insert(runTestResults).values({ runId: run.id, testId: test.id, verdict: "WA", stdoutExcerpt: "41" });
   await db.insert(hintEvents).values({ attemptId: attempt.id, level: 1, kind: "delivered", bodyMd: "Look at `return 42;`" });
+  await db.insert(lessonNotes).values({ userId, skillId, languageCode: "cpp", bodyMd: "Watch the last digit.", attemptsSeen: 1 });
 
   await db.insert(masteryRecords).values({ ...key, decayLambda: 0.05, writingScore: 0.4 });
   await db.insert(evidenceEvents).values({ ...key, dimension: "writing", submissionId: submission.id, weight: 1, scoreBefore: 0, scoreAfter: 0.4, formulaVersion: "test" });

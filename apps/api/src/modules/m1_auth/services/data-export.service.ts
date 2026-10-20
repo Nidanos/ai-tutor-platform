@@ -4,6 +4,7 @@ import { learnerMastery } from "../../m4_mastery/services/mastery-read.service.j
 import { learnerRecommendations } from "../../m5_recommender/services/recommender.service.js";
 import { learnerPractice } from "../../m7_execution/services/submissions.service.js";
 import { learnerHints } from "../../m8_socratic/services/hints.service.js";
+import { learnerNotes } from "../../m8_socratic/services/lesson-note.service.js";
 import { learnerSessions } from "../../m9_sessions/services/sessions.service.js";
 import { learnerScaffolding } from "../../m12_scaffolding/services/scaffolding.service.js";
 import { accountData } from "../repositories/account.repository.js";
@@ -22,7 +23,7 @@ const ABOUT = {
     { provider: "Oracle Cloud (India region)", purpose: "Hosting our servers and database", data: "All of this data" },
     { provider: "Vercel", purpose: "Serving the website", data: "Your requests and IP address, no database access" },
     { provider: "E2B", purpose: "Running your code in an isolated sandbox", data: "Your submitted code and the exercise's tests, no name or email" },
-    { provider: "Google Gemini (paid, no-training terms)", purpose: "Writing hints", data: "Your code and the exercise context, no name or email" },
+    { provider: "Google Gemini (paid, no-training terms)", purpose: "Writing hints and lesson notes", data: "Your code and the exercise context for hints; your scores and recent results for lesson notes; no name or email" },
     { provider: "Brevo", purpose: "Sending account emails", data: "Your email address and the email itself" },
   ],
 };
@@ -31,15 +32,16 @@ const ABOUT = {
 export async function exportData(userId: string) {
   await me(userId);
   const courses = await learnerEnrollments(userId);
-  const [account, placementTests, mastery, recommendations, practice, hints, sessions, scaffolding] = await Promise.all([
+  const [account, placementTests, mastery, recommendations, practice, hints, lessonNotes, sessions, scaffolding] = await Promise.all([
     accountData(userId),
     learnerPlacements(userId),
     learnerMastery(userId),
     learnerRecommendations(courses.map((c) => c.id)),
     learnerPractice(userId),
     learnerHints(userId),
+    learnerNotes(userId),
     learnerSessions(userId),
     learnerScaffolding(userId),
   ]);
-  return { exportedAt: new Date(), about: ABOUT, account, courses, placementTests, mastery, recommendations, practice, hints, sessions, scaffolding };
+  return { exportedAt: new Date(), about: ABOUT, account, courses, placementTests, mastery, recommendations, practice, hints, lessonNotes, sessions, scaffolding };
 }

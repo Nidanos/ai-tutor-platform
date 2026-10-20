@@ -7,12 +7,13 @@ import { getHintContext } from "../../m6_exercises/services/exercises.service.js
 import { latestAttempt } from "../../m7_execution/services/attempts.service.js";
 import { lastResult } from "../../m7_execution/services/submissions.service.js";
 import * as repo from "../repositories/hints.repository.js";
+import * as notes from "../repositories/lesson-notes.repository.js";
 import { answerHint, GENERIC, HINT_PROMPT_VERSION, hintPrompt, SYSTEM } from "./hint-prompts.js";
 import { checkHint } from "./solution-filter.js";
 
-const MODEL = "gemini-3.5-flash-lite"; // ADR-0015
+export const LIVE_MODEL = "gemini-3.5-flash-lite"; // ADR-0015
 const MAX_OUTPUT_TOKENS = 400;
-const LIVE_PER_DAY = 20; // per learner (ADR-0010)
+export const LIVE_PER_DAY = 20; // per learner: hints and lesson notes together (ADR-0010, ADR-0019)
 export const MONTHLY_BUDGET_INR = 500; // live hints, all learners together (ADR-0010)
 const COMPILER_CHARS = 800;
 
@@ -32,16 +33,20 @@ function describe(result: LastResult) {
   return lines.join("\n");
 }
 
+// Live calls this learner has used today (IST): hints, delivered or blocked, and lesson notes.
+export const liveCallsToday = async (userId: string) =>
+  (await repo.liveCallsSince(userId, startOfIstDay())) + (await notes.notesSince(userId, startOfIstDay()));
+
 // The live tutor (ADR-0010), within the daily and monthly caps. Undefined means "use the frozen hint":
 // a cap was hit, Gemini failed, or the filter blocked the reply (logged, FR-M8-04).
 async function liveHint(llm: LlmProvider, userId: string, attempt: { id: string }, task: Task, level: number, learnerCode?: string) {
-  if ((await repo.liveCallsSince(userId, startOfIstDay())) >= LIVE_PER_DAY) return undefined;
+  if ((await liveCallsToday(userId)) >= LIVE_PER_DAY) return undefined;
   if ((await spentThisMonthInr("hint")) >= MONTHLY_BUDGET_INR) return undefined;
   try {
     const prompt = hintPrompt(task, level, learnerCode, describe(await lastResult(userId, attempt.id)));
     const { text, callId } = await llm.generate({
       purpose: "hint",
-      model: MODEL,
+      model: LIVE_MODEL,
       promptVersion: HINT_PROMPT_VERSION,
       system: SYSTEM,
       prompt,
@@ -97,4 +102,8 @@ export const hintStats = repo.hintStats;
 
 // For M1: the learner's own hint history (DPDP access), and their erasure.
 export const learnerHints = repo.learnerHints;
-export const eraseHints = repo.eraseHints;
+// Lesson notes are written for one person: they go even when the numbers stay.
+export async function eraseHints(userId: string, keepNumbers: boolean) {
+  await notes.eraseNotes(userId);
+  await repo.eraseHints(userId, keepNumbers);
+}

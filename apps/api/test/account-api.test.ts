@@ -125,6 +125,7 @@ describe("GET /me/data", () => {
     const counts = {
       attempts: data.practice.attempts.length,
       hints: data.hints.length,
+      lessonNotes: data.lessonNotes.length,
       placementTests: data.placementTests.tests.length,
       placementAnswers: data.placementTests.answers.length,
       estimates: data.placementTests.estimates.length,
@@ -136,7 +137,7 @@ describe("GET /me/data", () => {
       stages: data.scaffolding.stages.length,
       stageMoves: data.scaffolding.moves.length,
     };
-    expect(counts).toEqual({ attempts: 1, hints: 1, placementTests: 1, placementAnswers: 2, estimates: 1, masteryScores: 1, evidence: 1, recommendations: 1, sessions: 1, steps: 1, stages: 1, stageMoves: 2 });
+    expect(counts).toEqual({ attempts: 1, hints: 1, lessonNotes: 1, placementTests: 1, placementAnswers: 2, estimates: 1, masteryScores: 1, evidence: 1, recommendations: 1, sessions: 1, steps: 1, stages: 1, stageMoves: 2 });
   });
 
   it("lists sign-ins and consents, and allows 5 downloads an hour", async () => {

@@ -263,6 +263,16 @@ export async function generationStats(since: Date) {
   return { bySkill, failures };
 }
 
+// For lessons: each verified exercise's title, solution, starter and (rung 1) answer, so a lesson never
+// gives one away.
+export const listSolutionsOfSkill = (skillId: string, languageCode: string) =>
+  db
+    .select({ title: exercises.title, rung: exercises.rung, starter: exercises.starterCode, reference: exerciseSecrets.referenceSolution, firstOutput: exerciseTests.expectedOutput })
+    .from(exercises)
+    .innerJoin(exerciseSecrets, eq(exerciseSecrets.exerciseId, exercises.id))
+    .leftJoin(exerciseTests, and(eq(exerciseTests.exerciseId, exercises.id), eq(exerciseTests.seq, 1)))
+    .where(and(eq(exercises.skillId, skillId), eq(exercises.languageCode, languageCode), eq(exercises.status, "verified")));
+
 // Every exercise of a skill in one language (practice and placement), whatever its status.
 export const exerciseIdsOfSkill = async (skillId: string, languageCode: string) =>
   (await db.select({ id: exercises.id }).from(exercises).where(and(eq(exercises.skillId, skillId), eq(exercises.languageCode, languageCode)))).map((e) => e.id);
