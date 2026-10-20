@@ -102,7 +102,113 @@ template <class F, class... Rest> auto withList(F f, const std::vector<int>& v, 
 }  // namespace gen
 `;
 
-export const LIST_NODE = "struct ListNode {  // keep this as it is: the tests build lists from it\n    int value;\n    ListNode* next;\n};";
+// Trees for exercises whose starter defines TREE_NODE. A test gives a tree in level order, with X for a
+// missing child: {1, 2, 3, X, 4} is 1 with children 2 and 3, and 4 as the right child of 2.
+export const TREE = String.raw`
+#include <climits>
+#include <queue>
+
+const int X = INT_MIN;  // a missing child in a level-order list
+
+namespace gen {
+TreeNode* node(int v) { return new TreeNode{v, nullptr, nullptr}; }
+TreeNode* tree(const std::vector<int>& v) {
+    if (v.empty() || v[0] == X) return nullptr;
+    TreeNode* root = node(v[0]);
+    std::queue<TreeNode*> q;
+    q.push(root);
+    for (std::size_t i = 1; !q.empty() && i < v.size(); i += 2) {
+        TreeNode* n = q.front();
+        q.pop();
+        if (v[i] != X) q.push(n->left = node(v[i]));
+        if (i + 1 < v.size() && v[i + 1] != X) q.push(n->right = node(v[i + 1]));
+    }
+    return root;
+}
+std::vector<int> levelOrder(const TreeNode* root) {  // X for missing children, none at the end
+    std::vector<int> out;
+    std::queue<const TreeNode*> q;
+    q.push(root);
+    while (!q.empty()) {
+        const TreeNode* n = q.front();
+        q.pop();
+        out.push_back(n ? n->value : X);
+        if (n) q.push(n->left), q.push(n->right);
+    }
+    while (!out.empty() && out.back() == X) out.pop_back();
+    return out;
+}
+void showTree(const TreeNode* root) {
+    std::vector<int> v = levelOrder(root);
+    if (v.size() > 30) return show(v);
+    for (std::size_t i = 0; i < v.size(); i++) std::cout << (i ? " " : "") << (v[i] == X ? std::string("x") : std::to_string(v[i]));
+    std::cout << "\n";
+}
+// n nodes, each hung from the first free spot of a random walk down: about log n deep on average.
+TreeNode* randomTree(std::uint64_t seed, int n, int lo, int hi) {
+    state = seed;
+    TreeNode* root = n > 0 ? node((int)between(lo, hi)) : nullptr;
+    for (int i = 1; i < n; i++)
+        for (TreeNode* p = root;;) {
+            TreeNode*& child = next() & 1 ? p->left : p->right;
+            if (!child) {
+                child = node((int)between(lo, hi));
+                break;
+            }
+            p = child;
+        }
+    return root;
+}
+// A path of n nodes going right, or left, the deepest tree there is.
+TreeNode* chainTree(std::uint64_t seed, int n, int lo, int hi, bool goLeft = false) {
+    state = seed;
+    TreeNode* root = nullptr;
+    for (int i = 0; i < n; i++) {
+        TreeNode* top = node((int)between(lo, hi));
+        (goLeft ? top->left : top->right) = root;
+        root = top;
+    }
+    return root;
+}
+// A binary search tree of the distinct values among n random ones, inserted in random order.
+TreeNode* bstOf(std::uint64_t seed, int n, int lo, int hi) {
+    TreeNode* root = nullptr;
+    for (int x : ints(seed, n, lo, hi)) {
+        TreeNode** at = &root;
+        while (*at && (*at)->value != x) at = x < (*at)->value ? &(*at)->left : &(*at)->right;
+        if (!*at) *at = node(x);
+    }
+    return root;
+}
+// Calls f with the tree built from a level-order list, or with a tree already built, then the other arguments.
+template <class F, class... Rest> auto withTree(F f, const std::vector<int>& v, Rest... rest) { return f(tree(v), rest...); }
+template <class F, class... Rest> auto withTree(F f, TreeNode* t, Rest... rest) { return f(t, rest...); }
+// A braced list like {5, 8} can't be deduced through Rest, so the common second arguments get their own.
+template <class F> auto withTree(F f, const std::vector<int>& v, const std::vector<int>& w) { return f(tree(v), w); }
+template <class F> auto withTree(F f, const std::vector<int>& v, const std::vector<std::pair<int, int>>& w) { return f(tree(v), w); }
+template <class F> auto withTree(F f, TreeNode* t, const std::vector<int>& w) { return f(t, w); }
+template <class F> auto withTree(F f, TreeNode* t, const std::vector<std::pair<int, int>>& w) { return f(t, w); }
+}  // namespace gen
+`;
+
+export const TREE_NODE = "struct TreeNode {  // keep this as it is: the tests build trees from it\n    int value;\n    TreeNode* left;\n    TreeNode* right;\n};";
+
+export const LIST_NODE ="struct ListNode {  // keep this as it is: the tests build lists from it\n    int value;\n    ListNode* next;\n};";
+
+// Random operations on positions first..first+n-1: {1, position, value} updates and {2, l, r} range queries.
+export const RANGE_OPS = String.raw`
+namespace gen {
+std::vector<std::array<int, 3>> rangeOps(std::uint64_t seed, int count, int n, int first, int lo, int hi) {
+    state = seed;
+    std::vector<std::array<int, 3>> ops(count);
+    for (auto& op : ops) {
+        int a = first + (int)between(0, n - 1), b = first + (int)between(0, n - 1);
+        op = between(0, 1) ? std::array<int, 3>{1, a, (int)between(lo, hi)} : std::array<int, 3>{2, std::min(a, b), std::max(a, b)};
+    }
+    return ops;
+}
+}  // namespace gen
+`;
 
 // Each test prints the vector the learner's function returns.
 export const showCall = (fn: string) => (args: string) => `gen::show(${fn}(${args}));`;
