@@ -1,7 +1,8 @@
 // Shared C++ for the DSA harnesses (ADR-0020), placed after the learner's code so its names can't clash.
 // gen:: builds seeded inputs with its own generator (splitmix64), so generated data never depends on
 // the standard library's random distributions. show() prints a short vector in full, a long one as a checksum.
-export const GEN = String.raw`#include <cstdint>
+export const GEN = String.raw`#include <algorithm>
+#include <cstdint>
 #include <vector>
 
 namespace gen {
@@ -18,6 +19,11 @@ std::vector<int> ints(std::uint64_t seed, int n, int lo, int hi) {
     state = seed;
     std::vector<int> v(n);
     for (int& x : v) x = (int)between(lo, hi);
+    return v;
+}
+std::vector<int> sortedInts(std::uint64_t seed, int n, int lo, int hi) {
+    std::vector<int> v = ints(seed, n, lo, hi);
+    std::sort(v.begin(), v.end());
     return v;
 }
 template <class T> void show(const std::vector<T>& v) {
