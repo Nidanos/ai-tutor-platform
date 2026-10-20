@@ -210,8 +210,68 @@ std::vector<std::array<int, 3>> rangeOps(std::uint64_t seed, int count, int n, i
 }  // namespace gen
 `;
 
+// Graphs on vertices 0..n-1, and grids of '.' and '#'.
+export const GRAPH = String.raw`
+#include <string>
+
+namespace gen {
+// m random edges {u, v} with u != v; the same pair can come up more than once.
+std::vector<std::pair<int, int>> edges(std::uint64_t seed, int n, int m) {
+    state = seed;
+    std::vector<std::pair<int, int>> out(m);
+    for (auto& [u, v] : out) {
+        u = (int)between(0, n - 1);
+        do v = (int)between(0, n - 1);
+        while (v == u);
+    }
+    return out;
+}
+// The same, each with a weight from 1 to wmax: {u, v, w}.
+std::vector<std::array<int, 3>> weightedEdges(std::uint64_t seed, int n, int m, int wmax) {
+    std::vector<std::array<int, 3>> out;
+    for (auto [u, v] : edges(seed, n, m)) out.push_back({u, v, (int)between(1, wmax)});
+    return out;
+}
+// A connected graph of m weighted edges: a random tree joining all n vertices, then random extra edges.
+std::vector<std::array<int, 3>> connected(std::uint64_t seed, int n, int m, int wmax) {
+    std::vector<int> order = permutation(seed, n);
+    std::vector<std::array<int, 3>> out;
+    for (int i = 1; i < n; i++) out.push_back({order[i] - 1, order[between(0, i - 1)] - 1, (int)between(1, wmax)});
+    for (auto e : weightedEdges(seed + 1, n, m - (n - 1), wmax)) out.push_back(e);
+    return out;
+}
+// m edges that only go forward in a hidden order of the vertices, each at most reach places ahead:
+// no cycles, and long paths.
+std::vector<std::pair<int, int>> dag(std::uint64_t seed, int n, int m, int reach) {
+    std::vector<int> order = permutation(seed, n);
+    std::vector<std::pair<int, int>> out(m);
+    for (auto& [u, v] : out) {
+        int a = (int)between(0, n - 2), b = (int)std::min<long long>(n - 1, a + between(1, reach));
+        u = order[a] - 1, v = order[b] - 1;
+    }
+    return out;
+}
+// The edges plus one of them reversed: in a DAG, that closes a cycle.
+std::vector<std::pair<int, int>> plusBack(std::vector<std::pair<int, int>> e) {
+    auto [u, v] = e[e.size() / 2];
+    e.push_back({v, u});
+    return e;
+}
+// rows lines of cols cells, each '#' with the given percent chance and '.' otherwise.
+std::vector<std::string> grid(std::uint64_t seed, int rows, int cols, int percent) {
+    state = seed;
+    std::vector<std::string> out(rows, std::string(cols, '.'));
+    for (auto& line : out)
+        for (char& cell : line) cell = between(1, 100) <= percent ? '#' : '.';
+    return out;
+}
+}  // namespace gen
+`;
+
 // Each test prints the vector the learner's function returns.
 export const showCall = (fn: string) => (args: string) => `gen::show(${fn}(${args}));`;
+// Each test prints yes or no for the bool the learner's function returns.
+export const yesNoCall = (fn: string) => (args: string) => `std::cout << (${fn}(${args}) ? "yes" : "no") << "\\n";`;
 
 // What every speed-tested task tells the learner about its limits.
 export const limits = (n: string) => `Hidden tests include large inputs (${n}), and each test must finish within 2 seconds.`;
