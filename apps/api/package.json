@@ -17,7 +17,9 @@
     "exercises:verify": "tsx src/scripts/verify-exercises.ts",
     "hints:generate": "tsx src/scripts/generate-hints.ts",
     "user:admin": "tsx src/scripts/make-admin.ts",
-    "demo:walk": "tsx src/scripts/demo-walk.ts"
+    "demo:walk": "tsx src/scripts/demo-walk.ts",
+    "lessons:generate": "tsx src/scripts/generate-lessons.ts",
+    "lessons:seed": "tsx src/scripts/seed-lessons.ts"
   },
   "dependencies": {
     "@ai-tutor/types": "workspace:*",
