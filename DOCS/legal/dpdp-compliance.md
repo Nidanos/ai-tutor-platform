@@ -32,6 +32,7 @@
 | `password_reset_tokens` | token hash (never the token), request and use times | Password reset, security | core | Each new request replaces unused links; rows deleted 1 year after expiry |
 | `enrollments` | courses, language, goal text | Teaching | core | With the account |
 | `exercise_attempts`, `submissions`, `sandbox_runs`, `run_test_results`, `hint_events` | code, verdicts, timings, hint use | Grading, mastery | core | Code purged when the skill is cleared; the rest stays with the account |
+| `lesson_notes` | a short AI-written note about the learner's level and recent results (no code) | Teaching | core | Always erased with the account, even when anonymous numbers are kept (ADR-0019) |
 | `learning_sessions`, `session_steps`, `recommendations`, `skill_scaffolding`, `fade_stage_changes` | activity times, recommendation scores | Adapting lessons | core | With the account |
 | `diagnostic_*` | answers, timings, estimates | Placement | core | With the account |
 | `mastery_records`, `evidence_events`, `review_items` | skill scores, evidence | Adapting, spaced review | core | With the account |
@@ -76,7 +77,7 @@
 | Hosting + database: Oracle Cloud (fallback Azure), ADR-0010 | Everything | India region | Provider's DPA | To accept |
 | Web hosting: Vercel (college phase) | Requests and IP addresses; no database | Global edge | Vercel DPA | To accept |
 | E2B (code sandbox) | Code + tests, no identity | Outside India (check) | E2B terms + DPA | To accept |
-| AI provider: Google Gemini **paid tier** (ADR-0010) | Code + exercise context, no identity | Outside India | Gemini API paid terms (no training on our data) | To accept |
+| AI provider: Google Gemini **paid tier** (ADR-0010) | Code + exercise context for hints; level, recent results and weak prerequisites for lesson notes (ADR-0019); no identity | Outside India | Gemini API paid terms (no training on our data) | To accept |
 | Email delivery: Brevo (ADR-0017) | Email address and the email itself (a reset link), no name | EU (France, Belgium, Germany) | DPA in Brevo's terms (Appendix 3) | To accept |
 | Payments `[TBD, later]` | Billing details | India | Gateway agreement | Later |
 

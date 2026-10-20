@@ -25,7 +25,7 @@ You can read this notice on its own; it doesn't depend on any other document.
 |---|---|---|
 | **Account** | Email, display name, password (stored only as a one-way hash), date of birth, time zone | To create your account, sign you in, check whether you need parental consent, and show times correctly |
 | **Sign-in security** | Device type (browser or app), IP address, sign-in and password-reset times | To keep your account safe and detect stolen sessions |
-| **Learning activity** | Courses you join, the code you submit, test results, hints used, time spent, quiz answers, your self-ratings | To grade your work, measure what you know, and choose your next lesson |
+| **Learning activity** | Courses you join, the code you submit, test results, hints used, lesson notes written for you, time spent, quiz answers, your self-ratings | To grade your work, measure what you know, and choose your next lesson |
 | **Progress** | Mastery scores per skill, review schedule | To adapt lessons and remind you to review before you forget |
 | **Messages to us** | Support or grievance emails | To answer you |
 
@@ -57,7 +57,7 @@ We **never sell** personal data. We share it only with service providers (data p
 |---|---|---|
 | Cloud hosting (India region) | All the data in section 2 | Running our servers and database |
 | Code sandbox | Your submitted code and the exercise's tests, but no name or email | Running your code safely, in isolation |
-| AI model provider (on paid, no-training terms) | Your code and the exercise context, but no name or email | Writing hints and explanations |
+| AI model provider (on paid, no-training terms) | Your code and the exercise context; for lesson notes, your scores and recent results, not your code. Never your name or email | Writing hints, explanations and lesson notes |
 | Email delivery | Your email address | Sign-in and account emails |
 | Payment provider (once paid plans start) | What the payment needs | Taking payments |
 
