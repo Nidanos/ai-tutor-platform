@@ -1,12 +1,12 @@
 import { readdirSync, readFileSync } from "node:fs";
-import { LEVELS, type LessonDraft, type Level } from "../../../../modules/m6_exercises/services/lesson-draft.js";
+import { LEVELS, type LessonDraft, type Level } from "../../../modules/m6_exercises/services/lesson-draft.js";
 
 export type LessonSeed = LessonDraft & { skill: string; level: Level };
 
-// The hand-written C++ basics lessons (ADR-0019): one Markdown file per skill, named by its slug, with
-// "# new", "# building" and "# strong", each holding "## explanation", "## diagram" (a ```mermaid block),
-// "## example", "## mistakes" and "## check". In example and check, the first ```cpp block is the program,
-// the first ```text block what it prints, and the rest is the walkthrough.
+// The hand-written lessons (ADR-0019): one folder per course, one Markdown file per skill, named by its
+// slug, with "# new", "# building" and "# strong", each holding "## explanation", "## diagram" (a ```mermaid
+// block), "## example", "## mistakes" and "## check". In example and check, the first ```cpp block is the
+// program, the first ```text block what it prints, and the rest is the walkthrough.
 const sections = (text: string, depth: number) =>
   new Map(
     text
@@ -38,10 +38,17 @@ function lesson(skill: string, level: Level, text: string): LessonSeed {
   };
 }
 
-const dir = new URL(".", import.meta.url);
-export const cppLessons: LessonSeed[] = readdirSync(dir)
-  .filter((file) => file.endsWith(".md"))
-  .flatMap((file) => {
-    const levels = sections(readFileSync(new URL(file, dir), "utf8").replace(/\r\n/g, "\n"), 1);
-    return LEVELS.filter((level) => levels.has(level)).map((level) => lesson(file.replace(/\.md$/, ""), level, levels.get(level)!));
-  });
+function lessonsIn(folder: string): LessonSeed[] {
+  const dir = new URL(`./${folder}/`, import.meta.url);
+  return readdirSync(dir)
+    .filter((file) => file.endsWith(".md"))
+    .flatMap((file) => {
+      const levels = sections(readFileSync(new URL(file, dir), "utf8").replace(/\r\n/g, "\n"), 1);
+      return LEVELS.filter((level) => levels.has(level)).map((level) => lesson(file.replace(/\.md$/, ""), level, levels.get(level)!));
+    });
+}
+
+export const courseLessons: Record<string, LessonSeed[]> = {
+  "cpp-basics": lessonsIn("cpp-lessons"),
+  dsa: lessonsIn("dsa-lessons"),
+};
