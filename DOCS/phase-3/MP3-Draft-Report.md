@@ -1,6 +1,6 @@
 # AI Tutor: An Evidence-Based Adaptive Learning System with Deliberate Scaffolding Withdrawal
 
-> **Draft report for Review 3 (Implementation, Testing and Draft Report), 23 October 2026.** Status as of 20 October 2026: all 33 endpoints live, 235 automated tests passing, and 300 exercises and 207 lessons proven in the real sandbox.
+> **Draft report for Review 3 (Implementation, Testing and Draft Report), 23 October 2026.** Status as of 22 October 2026: all 33 endpoints live, 240 automated tests passing, and 483 exercises and 207 lessons proven in the real sandbox.
 > Prepared to the MCA-269 "Format of Project Report" and the Annexure-IV chapter scheme. Typesetting rules (Times New Roman 12, 1.5 spacing, margins 3.0/2.0/2.54/2.54 cm, blank page before each chapter) are applied in the final printed copy.
 
 ---
@@ -230,13 +230,13 @@ The hard technical parts were proven early by building them, not just by plannin
 | Judging memory and time limits | Our own judge: `timeout` for time, `prlimit` for address space, GNU `time` for peak memory | MLE, TLE and RE detected correctly |
 | Speed | Measured each step and cut the network round trips from 2 per test to 3 per submission | 5–15 s down to about 6 s per submission |
 | Data integrity | PostgreSQL constraints: CHECK ranges, partial unique indexes, foreign keys | 16 database-rule tests |
-| Placing learners fairly | A placement walk over the skill graph with a check question after a possible slip | All 711 possible knowledge states placed exactly in simulation (section 4.2) |
+| Placing learners fairly | A placement walk over the skill graph with a check question after a possible slip | All 711 possible C++ knowledge states, and 300 random DSA learners, placed exactly in simulation (section 4.2) |
 | Keeping the AI from giving answers | A filter compares every hint with the reference solution; caps per learner and per month | Unit tests with real leak attempts (section 4.2) |
 | Trusting AI-written exercises | Stored only after the sandbox proves them: the reference passes, the starter fails, and 3 wrong answers fail | Tests with a fake model and sandbox, including weak tests being rejected (section 4.2) |
 | Account recovery without revealing accounts | The same reply for every email, with all the work done after it; a one-use, 30-minute link stored only as a hash; at most one email per account every 5 minutes | 9 tests and an independent security review (section 4.3) |
 | Deleting an account without losing what the law keeps | Each module erases its own rows, children first; consent proof and a year of sign-in records stay under an anonymous ID; a test lists every table that points at a learner and fails on a new one | 19 tests, a run on the real database and a second security review (section 4.3) |
 | Lessons that are correct | Both programs of every lesson run in the real sandbox and must print exactly the output the lesson states; a leak filter stops a lesson from solving its skill's exercises; a generated lesson also passes a claim-by-claim fact check | 207 lessons frozen this way; the sandbox caught every wrong stated output before freezing (section 4.3) |
-| Speed tests that tell fast from slow | Large tests built from a seed, with the expected output taken from the reference; a brute-force solution must agree on a medium test and time out on a large one | 160 DSA exercises verified on the real sandbox (section 4.2) |
+| Speed tests that tell fast from slow | Large tests built from a seed, with the expected output taken from the reference; a brute-force solution must agree on a medium test and time out on a large one | All 245 DSA exercises and the 98 DSA placement items verified on the real sandbox (section 4.2) |
 | Team skills | The stack (TypeScript, React, Node, SQL) matches the semester courses | Working code in the repository |
 
 ### 2.1.2 Economic Feasibility
@@ -274,8 +274,8 @@ One design decision is a direct result of this study. The first design kept one 
   - learners can correct, download or delete their data, and switch the opt-ins on and off; a deletion waits 7 days (logging in cancels it), then keeps anonymous numbers only for learners who opted in;
   - the Terms of Service and Privacy Policy are published at `/terms` and `/privacy`, built from the same texts learners accept;
   - data is stored in India.
-- **Licensing.** No third-party course content is copied. Skill names, descriptions, lessons and exercises are our own, and external references appear only as links.
-- **Schedule.** All 33 endpoints (the 23 planned, plus forgot and reset password, six for data rights and two for lessons) were live by Review 3 (section 4.5). The rest of the DSA exercise bank, the DSA placement test, the frontend, deployment, the first live AI runs (once billing is active on 7 November) and the pilot are planned up to 10 November 2026.
+- **Licensing.** No third-party course content is copied. Skill names, descriptions, lessons and exercises are our own, and external references appear only as links. The source code is published under the PolyForm Noncommercial License 1.0.0: anyone may study and run it, but commercial use needs the team's permission.
+- **Schedule.** All 33 endpoints (the 23 planned, plus forgot and reset password, six for data rights and two for lessons) were live by Review 3 (section 4.5). The DSA exercise bank and placement test were finished on 21–22 October, ahead of plan; the frontend, deployment, the first live AI runs (once billing is active on 7 November) and the pilot are planned up to 10 November 2026.
 
 ## 2.2 Analysis Methodology
 
@@ -299,7 +299,8 @@ One design decision is a direct result of this study. The first design kept one 
 16. Data rights (correct, download, delete), skill details with each exercise, and the Terms and Privacy pages.
 17. The DSA course's skill graph, with prerequisites that reach into the C++ course.
 18. Personalised lessons: three frozen levels per skill and a short live note, with all 207 lessons written and proven in the sandbox.
-19. The DSA exercise bank: generated speed tests and a brute-force check (in progress, 160 of 245 exercises).
+19. The DSA exercise bank: generated speed tests and a brute-force check (all 245 exercises).
+20. The DSA placement test: a reading item and a code task for each of the 49 skills (98 items), under the C++ test's rules.
 
 Every increment ended with automated tests and a real end-to-end run before the next one began. Larger designs (the placement test, hints, generation) were also reviewed by adversarial checks that tried to break them, and the holes they found were fixed before the code was committed (Table 9).
 
@@ -331,13 +332,13 @@ Every increment ended with automated tests and a real end-to-end run before the 
 | P. CI, code purge, adults-only pilot sign-up, guided demo walk | O | 20 Oct | Done |
 | Q. DSA course: skill graph of 49 skills | J | 20 Oct | Done |
 | R. Personalised lessons: 3 levels per skill, live note, 207 hand-written lessons | Q, I1 | 20 Oct | Done (live notes wait for billing) |
-| S. DSA exercise bank: 245 exercises with speed tests | R | 20 Oct–2 Nov | In progress (160 of 245 verified) |
-| T. DSA placement test items | S | 3–5 Nov | Planned |
+| S. DSA exercise bank: 245 exercises with speed tests | R | 20–21 Oct | Done (planned to 2 Nov) |
+| T. DSA placement test: 98 items | S | 22 Oct | Done (planned for 3–5 Nov) |
 | M. Gemini billing activation | – | 7 Nov | Planned (₹2,500 of the ₹3,000 prepayment left) |
 | I3. First live AI runs: frozen hints, live notes, extra generated exercise variants | I2, R, M | 7–8 Nov | Planned |
 | K. Deployment, pilot, final report | H, I3, L, T | 5–10 Nov | Planned |
 
-**Critical path:** A → B → C → E → F → G → J → Q → R → S → T → K. The sandbox and grading chain was the riskiest part, so it was built first. Writing the DSA content is now the longest chain, and the billing activation (M) the one outside dependency.
+**Critical path:** A → B → C → E → F → G → J → Q → R → S → T → K. The sandbox and grading chain was the riskiest part, so it was built first. With the DSA content written, the frontend (H) is now the longest chain, and the billing activation (M) the one outside dependency.
 
 ```mermaid
 gantt
@@ -354,8 +355,8 @@ gantt
   Templates, recommender, placement    :done, j, 2026-10-17, 2026-10-18
   Sessions, hints, generation, reset, data rights :done, l, 2026-10-19, 1d
   DSA course and lessons               :done, r, 2026-10-20, 1d
-  DSA exercise bank                    :active, s, 2026-10-20, 2026-11-02
-  DSA placement items                  :t, 2026-11-03, 2026-11-05
+  DSA exercise bank                    :done, s, 2026-10-20, 2026-10-21
+  DSA placement items                  :done, t, 2026-10-22, 1d
   Frontend screens                     :active, h, 2026-10-16, 2026-11-05
   Billing active, first live AI runs   :i, 2026-11-07, 2026-11-08
   section Delivery
@@ -1469,7 +1470,7 @@ About five good solves (rungs 2 → 5) take a new skill from 0 to 0.72, just pas
 | 3 | 4 | 3 | rung 4 with ≤ 1 hint |
 | 4 | 5 | 2 | rung 5 with ≤ 1 hint → skill cleared |
 
-**Table 11: Placement test rules (ADR-0012).** All 20 C++ skills are covered by 40 frozen, sandbox-verified items: one predict-the-output reading item and one small function per skill. The same rules will place DSA learners once its items are written (section 5.3).
+**Table 11: Placement test rules (ADR-0012).** All 20 C++ skills are covered by 40 frozen, sandbox-verified items: one predict-the-output reading item and one small function per skill. The 49 DSA skills have 98 more under the same rules (22 October), none of them a copy of a practice exercise; DSA code tasks carry speed tests (Table 16).
 
 | Rule | Detail |
 |---|---|
@@ -1479,7 +1480,7 @@ About five good solves (rungs 2 → 5) take a new skill from 0 to 0.72, just pas
 | Code tasks | Only on the frontier (passed skills nothing else passed builds on); an AC vouches for everything below. Run in the background |
 | Estimate | Passed → 0.85 for reading; proven in code → 0.85 for writing; confidence 0, 0.5 or 1 by what was observed |
 | Seeding | One transaction: mastery raised only if higher than today's value; skills proven in code start on the last fade stage; skills cleared in practice untouched |
-| Length | 1 question for a novice, 6 for a beginner, 18 for a mid learner, 26 (about 28 minutes) for an expert, instead of 40 |
+| Length | C++: 1 question for a novice, 6 for a beginner, 18 for a mid learner, 26 (about 28 minutes) for an expert, instead of 40. DSA: 17 for a learner who knows 4 skills; 49 reading and 20 code tasks for an expert (about 2½ hours, with pause and resume) |
 | Retakes | Up to 3 per course; a retake can lift a placement but never lowers it |
 
 **Table 12: Hint ladder and where each hint comes from (ADR-0015).**
@@ -1586,11 +1587,11 @@ Pure functions are tested with constructed inputs:
 - **age:** turning 18 exactly on the birthday;
 - **skill graph:** cycle detection, plus checks that both seeded courses have unique names, only known prerequisites and no cycles, and that every DSA skill builds on C++ basics and is never easier than what it builds on;
 - **recommender:** candidates, review urgency, rung bands clamped to the fade stage, and the journey from rung 1 to rung 5;
-- **placement:** every one of the **711 knowledge states** the 20-skill graph allows, answered with "I don't know" and with wrong guesses, is placed exactly, in at most 20 reading and 7 code questions; slips, missing items and cleared skills;
+- **placement:** every one of the **711 knowledge states** the 20-skill graph allows, answered with "I don't know" and with wrong guesses, is placed exactly, in at most 20 reading and 7 code questions; on the real DSA graph, an expert gets 49 reading and 20 code questions, and 300 random learners are each placed exactly, with one code task per skill on their frontier; slips, missing items and cleared skills;
 - **session clock:** the idle pause, the 24-hour end, and study time that never counts idle gaps;
 - **leak filter:** prose and fragments pass; the solution, whole or in its key lines, fenced or not, is blocked; the learner's own code is not counted; a rung-1 output is never given away;
 - **exercise drafts:** the schema's rules (the test call must take the test's arguments; exactly 3 wrong solutions), the conversion into the bank's format, and what the prompt contains;
-- **exercise banks:** both courses have rungs 1–5 once per skill; every DSA exercise shows a sample with its output, and one with generated tests has at least two, last, and a brute force;
+- **exercise banks:** both courses have rungs 1–5 once per skill; every DSA exercise shows a sample with its output, and one with generated tests has at least two, last, and a brute force; the DSA placement bank has one reading item and one code task per skill, none reusing a practice exercise's title or function;
 - **lessons:** the level rule (new, building, strong), the lesson schema, and all 207 hand-written lessons covering every skill of both courses at all three levels.
 
 ### 4.1.2 Module Testing
@@ -1619,7 +1620,7 @@ The sandbox, Gemini and the email service are replaced by **fake providers** in 
 
 ### 4.1.4 System Testing
 1. **Sandbox smoke test** (`pnpm sandbox:smoke`): six real C++ programs run on the real E2B service, and each must produce its intended verdict (AC, WA, CE, RE, TLE, MLE).
-2. **Content verification** (`pnpm exercises:verify`): every seeded exercise runs in the real sandbox; the reference must pass and the starter must fail. **300 of 300 verified** (100 C++ practice exercises, 40 placement items, 160 DSA exercises). The 74 hand-written for C++ skills 6–20 were also each run against a common wrong answer first, which had to fail. The 160 DSA exercises cover 32 of the 49 skills; their **speed tests** were proven too: on each, the reference took at most a third of the 2-second limit and the slow brute force agreed and then timed out (Table 16).
+2. **Content verification** (`pnpm exercises:verify`): every seeded exercise runs in the real sandbox; the reference must pass and the starter must fail. **483 of 483 verified** (100 C++ practice exercises, 40 C++ placement items, 245 DSA exercises, 98 DSA placement items). The 74 hand-written for C++ skills 6–20 were also each run against a common wrong answer first, which had to fail. The 245 DSA exercises cover all 49 skills, five rungs each; their **speed tests**, and those of the DSA placement code tasks, were proven too: on each, the reference took at most a third of the 2-second limit and the slow brute force agreed and then timed out (Table 16).
 3. **Lesson verification** (`pnpm lessons:seed`): every hand-written lesson passes the gates of Table 15, with both its programs run in the real sandbox. **207 of 207 frozen** (60 for C++ basics, 147 for DSA).
 4. **End-to-end learner loop** on a running server: register → log in → open exercise → submit → poll → read mastery → reopen the exercise.
 5. **End-to-end placement test** on real E2B, then the first recommendation and the fade stages; **sessions** (start, pause, resume, end); **progress**; **hints** (the whole ladder); **analytics** with a promoted admin; **generation** refused correctly while billing is off.
@@ -1646,7 +1647,7 @@ Learner acceptance testing is planned for the pilot before the final report.
 
 ## 4.2 Test Data and Test Cases
 
-**Table 8: Automated test suites (235 tests in 42 files, all passing on 20 Oct 2026)**
+**Table 8: Automated test suites (240 tests in 42 files, all passing on 22 Oct 2026)**
 
 | Level | Suite | Tests | What it proves |
 |---|---|---|---|
@@ -1654,10 +1655,10 @@ Learner acceptance testing is planned for the pilot before the final report.
 | Unit | mastery formula v1 | 8 | Approved journey 0 → 0.16 → 0.33 → 0.53 → 0.72; hints; TLE doubling; decay |
 | Unit | skill graph | 7 | Cycle detection; both seeded graphs valid; DSA builds on C++ basics and is never easier than its prerequisites |
 | Unit | recommender rules | 7 | Candidates, reviews, rung bands, journey from rung 1 to 5 |
-| Unit | placement rules | 11 | All 711 knowledge states placed exactly; slip check; frontier code tasks |
+| Unit | placement rules | 13 | All 711 C++ knowledge states and 300 random DSA learners placed exactly; slip check; frontier code tasks |
 | Unit | session clock | 5 | Idle pause, timeout end, study time |
 | Unit | leak filter | 5 | Solution-like hints blocked, learner's own code ignored |
-| Unit | exercise banks | 8 | C++ practice, DSA practice and placement banks complete and well-formed; DSA generated tests last, with a brute force |
+| Unit | exercise banks | 11 | Practice and placement banks of both courses complete and well-formed; DSA generated tests last, with a brute force; no placement item reuses a practice exercise |
 | Unit | exercise drafts | 5 | Draft rules, conversion to the bank's format, prompt contents |
 | Unit | lesson drafts, lesson files | 7 | Level rule; lesson schema; all 207 hand-written lessons cover both courses at three levels and fit the schema |
 | Module | 9 schema suites | 17 | Every key constraint refuses bad data; a prerequisite from another course must already be seeded |
@@ -1676,7 +1677,7 @@ Learner acceptance testing is planned for the pilot before the final report.
 | Integration | exercise generation, budget, API | 10 | Proven drafts stored; retries; weak tests rejected; Pro then fallback; budget stop; admin only; automatic queueing |
 | Integration | lessons API, lesson notes | 11 | Lesson for the level or the nearest; generated lessons proven or refused (false claim, exercise given away, wrong output); ₹300 stop; notes reused, capped, dropped with code |
 | System | sandbox smoke (real E2B) | 6 | All six execution verdicts on real infrastructure |
-| System | content verification (real E2B) | 300 | Every seeded exercise: reference passes, starter fails; DSA speed tests tell fast from slow |
+| System | content verification (real E2B) | 483 | Every seeded exercise: reference passes, starter fails; DSA speed tests tell fast from slow |
 | System | lesson verification (real E2B) | 207 | Every lesson's programs print exactly what it states; no exercise given away |
 
 **Sample test case: a generated exercise whose tests can't catch a mistake is rejected**
@@ -1730,7 +1731,7 @@ Learner acceptance testing is planned for the pilot before the final report.
 
 ## 4.3 Test Reports and Debugging
 
-**Results:** 235 of 235 automated tests pass, the 6 of 6 real-sandbox verdicts are correct, 300 of 300 seeded exercises and 207 of 207 lessons verify on the real sandbox, and the end-to-end runs pass (A-8, A-10).
+**Results:** 240 of 240 automated tests pass, the 6 of 6 real-sandbox verdicts are correct, 483 of 483 seeded exercises and 207 of 207 lessons verify on the real sandbox, and the end-to-end runs pass (A-8, A-10).
 
 Debugging followed one rule: **measure, find the cause, fix the cause, add a test.** These are the defects found:
 
@@ -1771,8 +1772,12 @@ Debugging followed one rule: **measure, find the cause, fix the cause, add a tes
 | 31 | A slow brute force **finished in time**, so a speed test could not tell slow from fast | The tests were too small, or the slow version not slow enough (saddle points, factor counts, a tree rebuild) | Larger generated tests, or a brute force that is really quadratic; `tests_too_weak` now catches this before an exercise is stored |
 | 32 | A correct **reference was too slow** for its own speed test | `std::set` and `std::map` at a million items took over a third of the 2-second limit | Those tests use 300,000 items; the rule stays, so a learner's good solution has room to spare |
 | 33 | Some DSA tests **didn't compile** | A braced list such as `{{1, 5}}` was ambiguous between a list of pairs and a list of numbers, and a variadic helper can't take braced lists | Overloads for braced lists; tests with pairs use at least two |
+| 34 | Generated tests that **said nothing**: every answer of a test was -1 | At 30% walls or more, a random grid usually walls in its start; a sparse random graph usually leaves a town cut off | Densities and seeds chosen by printing the generated answers first, and a generator that always builds a connected graph; each speed test now keeps one "impossible" case on purpose |
+| 35 | A brute force passed the timing check **on one run and failed it on the next** | It finished in about 2 s, right at the limit, and the compiler vectorised some simple loops | Brute forces made clearly slower (at least 10 times over the limit), for example scanning every pile instead of shifting a sorted list |
+| 36 | Six DSA placement items were **too close to practice exercises** | Written for the same skills, four code tasks and one reading program repeated a practice task, and one shared a practice exercise's title: practice would have taught the test's answers | Replaced or renamed; a unit test now fails if a placement item shares a title or a function with any practice exercise, and it found the last two |
+| 37 | Verification **stopped part-way** on a network timeout | One failed connection to the sandbox service ends `pnpm exercises:verify` | Verified items are saved as they pass, so a rerun finishes the rest (73 then 25 here); a retry per item is planned |
 
-The password reset and the data rights each had an independent security review (19 October), with no critical or high issues in either: defects 18–21 came from the first, and 23–26 from the second. The second also led to a test that fails when a new table points at a learner's data without being exported and erased. One smaller finding is left for later (section 5.3): a login already in progress at the moment of a password reset. Defects 27–33 came from the lessons and the DSA bank (20 October): each was caught by a gate before any content was stored, which is the gates' purpose.
+The password reset and the data rights each had an independent security review (19 October), with no critical or high issues in either: defects 18–21 came from the first, and 23–26 from the second. The second also led to a test that fails when a new table points at a learner's data without being exported and erased. One smaller finding is left for later (section 5.3): a login already in progress at the moment of a password reset. Defects 27–37 came from the lessons, the DSA bank and the DSA placement test (20–22 October): each was caught by a gate or a test before any learner saw the content, which is the gates' purpose.
 
 ## 4.4 Implementation Manual
 
@@ -1781,11 +1786,11 @@ The password reset and the data rights each had an independent security review (
 docker compose up -d                  # PostgreSQL 16 + Redis 7
 pnpm install
 cd apps/api && cp .env.example .env   # fill DATABASE_URL, JWT_SECRET, WEB_ORIGIN, E2B_API_KEY, GEMINI_API_KEY, BREVO_API_KEY
-pnpm db:migrate && pnpm db:seed       # 16 migrations; C++ basics (20 skills) and DSA (49 skills); 260 practice exercises, 40 placement items
+pnpm db:migrate && pnpm db:seed       # 16 migrations; C++ basics (20 skills) and DSA (49 skills); 345 practice exercises, 138 placement items
 pnpm exercises:verify                 # runs every new exercise in the real sandbox before it can be served
 pnpm lessons:seed                     # freezes the 207 hand-written lessons through their gates (real sandbox)
 pnpm dev                              # API + queue worker on http://localhost:3001
-pnpm test                             # 235 automated tests (CI runs them on every push)
+pnpm test                             # 240 automated tests (CI runs them on every push)
 pnpm demo:walk                        # one learner through the whole loop on a running API
 pnpm sandbox:smoke                    # real-sandbox check of all six verdicts
 pnpm user:admin <email>               # make the first admin (for analytics)
@@ -1795,16 +1800,16 @@ pnpm hints:generate                   # once billing is active (GEMINI_PAID=true
 
 ## 4.5 Implementation
 
-**Status at Review 3 (20 October 2026):**
+**Status at Review 3 (22 October 2026):**
 
 | Module | Built | Endpoints live |
 |---|---|---|
 | M1 Accounts, consent and data rights | Register, login, refresh, logout, me; forgot and reset password by email; date of birth; consent kinds; adults only during the pilot; correct, opt in and out, download, delete (7-day grace, hourly erasure) | 13 |
 | M2 Skill graph | C++ basics: 20 skills, 23 prerequisites. DSA: 49 skills in 8 groups, 97 prerequisites (19 of them C++ basics skills). Further-reading links; each skill's description and links shown with its exercises and progress | – |
-| M3 Placement test | Adaptive reading walk with a slip check, frontier code tasks, seeding, retakes; 40 verified C++ items (DSA items not yet written) | 3 |
+| M3 Placement test | Adaptive reading walk with a slip check, frontier code tasks, seeding, retakes; 40 verified C++ items and 98 DSA items | 3 |
 | M4 Mastery | Formula v1 inside the grading transaction; read views with decay; raise-only seeding | 2 |
 | M5 Recommender | Next skill, rung and exercise by fixed rules, saved with reasons; names the other course's skills a learner must finish first | 1 |
-| M6 Exercises and lessons | Learner view; 100 verified C++ practice exercises (20 skills × 5 rungs) and 160 verified DSA exercises with speed tests (32 of 49 skills), all hand-written; generation proven in the sandbox, by admins and automatically; 207 frozen lessons (3 levels per skill, both courses) and the live note | 5 |
+| M6 Exercises and lessons | Learner view; 100 verified C++ practice exercises (20 skills × 5 rungs) and 245 verified DSA exercises with speed tests (all 49 skills × 5 rungs), all hand-written; generation proven in the sandbox, by admins and automatically; 207 frozen lessons (3 levels per skill, both courses) and the live note | 5 |
 | M7 Execution | Fresh offline sandbox per submission, judge, queue, retries, polling; a cleared skill's code deleted | 2 |
 | M8 Hints | Five-level ladder, live tutor with leak filter and caps, frozen fallback | 1 |
 | M9 Sessions | Start or resume, pause, resume, end; steps from the recommender; idle rules | 3 |
@@ -1813,9 +1818,9 @@ pnpm hints:generate                   # once billing is active (GEMINI_PAID=true
 | M13 Analytics | Admin overview: learners, code runs, outcomes, content coverage, hardest exercises, hints, AI spend | 1 |
 | **Total** | | **all 33 endpoints** |
 
-**Real runs at this stage:** a placement test on real E2B placed a learner who knew 3 skills with 6 questions (5 reading, 1 code), graded the code in about 6 seconds and fast-tracked those 3 skills to the last fade stage; the first recommendation was then the next new skill. Sessions, progress, hints, analytics and generation were each run against the development database, the password reset was walked through in a real browser, and the data rights on the running server, including the erasure of that test account (A-10). The 207 lessons and 300 exercises were each proven on real E2B. On the web, the sign-in pages (with the password reset) and the Terms and Privacy pages are built.
+**Real runs at this stage:** a placement test on real E2B placed a learner who knew 3 skills with 6 questions (5 reading, 1 code), graded the code in about 6 seconds and fast-tracked those 3 skills to the last fade stage; the first recommendation was then the next new skill. Sessions, progress, hints, analytics and generation were each run against the development database, the password reset was walked through in a real browser, and the data rights on the running server, including the erasure of that test account (A-10). A DSA placement test through the running API placed a learner who knew 4 skills exactly, with 17 questions: 14 reading, and 3 code tasks run on real E2B with their speed tests (A-8). The 207 lessons and 483 exercises were each proven on real E2B. On the web, the sign-in pages (with the password reset) and the Terms and Privacy pages are built.
 
-**Planned for the MVP (10 November):** the other 85 DSA exercises (graphs, algorithm design, problem solving, by 2 November) and the DSA placement items (3–5 November); Gemini billing activation (7 November), then the first live AI runs: live hints, lesson notes, the frozen hints, and extra generated exercise variants; frontend screens (in progress), including the Settings screens for data rights; the Brevo account and sending domain for real account emails; deployment to the cloud server; and a pilot with real learners.
+**Planned for the MVP (10 November):** Gemini billing activation (7 November), then the first live AI runs: live hints, lesson notes, the frozen hints, and extra generated exercise variants; frontend screens (in progress), including the Settings screens for data rights; the Brevo account and sending domain for real account emails; deployment to the cloud server; and a pilot with real learners.
 
 ## 4.6 Users Training
 
@@ -1850,9 +1855,9 @@ In a real run, a correct submission was judged **AC (4 of 4 tests) in about 6 se
 
 Around that core, the rest of the learner's journey now works too: an adaptive **placement test** that asks an expert 26 questions instead of 40 and fast-tracks what they prove, a **recommender** that chooses the next skill, rung and exercise by explainable rules, **study sessions** that resume at the same step, an honest **progress** view, an **admin overview**, a **hint ladder** whose live tutor can never hand over the solution, **exercise generation** that stores nothing the sandbox hasn't proven, a **password reset** that never reveals who has an account, and **data rights**: learners can correct, download and delete their own data, and only those who opted in leave anonymous numbers behind.
 
-The platform now teaches two courses. **C++ basics** (20 skills) is complete, and **Data Structures and Algorithms** (49 skills) builds on it. Every skill of both has **three frozen lessons**, one per level, each with a diagram, a worked example and a check, all **207** proven in the sandbox before storing. In the DSA course, **speed tests** tell a fast solution from a slow one: 160 exercises so far, each proven so that its reference finishes well inside the limit and a slow but correct solution times out.
+The platform now teaches two courses. **C++ basics** (20 skills) is complete, and **Data Structures and Algorithms** (49 skills) builds on it. Every skill of both has **three frozen lessons**, one per level, each with a diagram, a worked example and a check, all **207** proven in the sandbox before storing. In the DSA course, **speed tests** tell a fast solution from a slow one: all 245 exercises, each proven so that its reference finishes well inside the limit and a slow but correct solution times out. Both courses have a **placement test**, 138 items in all.
 
-All 33 endpoints are live, backed by 235 automated tests run on every push, 300 exercises verified in the real sandbox (100 C++ practice exercises covering every skill and rung, 40 placement items and 160 DSA exercises), 207 verified lessons, and a written decision record (ADR-0001 to ADR-0020) for every major choice.
+All 33 endpoints are live, backed by 240 automated tests run on every push, 483 exercises verified in the real sandbox (100 C++ and 245 DSA practice exercises covering every skill and rung of both courses, and 138 placement items), 207 verified lessons, and a written decision record (ADR-0001 to ADR-0020) for every major choice.
 
 ## 5.2 System Specifications
 
@@ -1868,8 +1873,8 @@ All 33 endpoints are live, backed by 235 automated tests run on every push, 300 
 ## 5.3 Limitations of the System
 
 - **No web interface yet.** The frontend is in progress; this draft's sample outputs are API responses, and screen snapshots will be added in the final report.
-- **One practice exercise per rung.** Every skill has five hand-written exercises, one per rung, so a learner who needs more practice at a rung retries the same task or moves up; generated variants add more once billing is active. The placement test covers all 20 C++ skills.
-- **The DSA course is not complete yet.** 160 of its 245 exercises are written (32 of 49 skills); graphs, algorithm design and problem solving come next. Its placement test has no items yet, so a DSA learner starts from the first skill. A DSA skill without exercises is named by the recommender but has nothing to practise yet.
+- **One practice exercise per rung.** Every skill has five hand-written exercises, one per rung, so a learner who needs more practice at a rung retries the same task or moves up; generated variants add more once billing is active. The placement tests cover every skill of both courses.
+- **The DSA placement test is long for an expert.** It follows the C++ rules, so an expert answers all 49 reading questions and 20 code tasks, about 2½ hours with pause and resume; a beginner is done in a few questions. A walk that tries the hardest skills first would be shorter for experts and longer for beginners.
 - **Lessons are fixed per level.** The 207 lessons are hand-written, so a lesson does not change for one learner; the live note that personalises it waits for billing. A lesson's correctness rests on its gates and on review: the sandbox proves its programs' outputs, not every sentence.
 - **Live AI waits for billing.** Live hints and exercise generation are built and tested with a fake model, but stay off until the ₹3,000 prepayment is complete and activates the paid tier (the remaining ₹2,500 on 7 November); until then learners get frozen hints or a general nudge, and lessons come without their live note.
 - **Account emails wait for setup.** Real reset and deletion emails need the Brevo key and the sending domain; until then they are printed in the API terminal (in development only: production refuses to start without the key).
@@ -1887,7 +1892,7 @@ All 33 endpoints are live, backed by 235 automated tests run on every push, 300 
 ## 5.4 Future Scope for Modification
 
 - More languages (Java, Python) on the same language-independent engine, and more courses (frontend, backend), whose lessons the generator with its fact check can write.
-- The rest of the DSA course: its last 85 exercises, its placement items, and generated variants with their own speed tests.
+- Generated variants of the DSA exercises, with their own speed tests; and a shorter DSA placement walk for experts.
 - The parent-approval flow for under-18 learners, with identity verification as the DPDP Rules require, and a parent acting on a child's data rights.
 - The remaining retention jobs: 3 years inactive, and a year's sign-in records.
 - Changing the password, email address or date of birth while logged in, and verifying the email address at sign-up.
@@ -2089,7 +2094,7 @@ After the third failed try (or when the month's budget is spent), the job falls 
 
 ## A-8 Test Reports
 
-Full test run of 20 October 2026: **42 test files, 235 tests, 235 passed.**
+Full test run of 22 October 2026: **42 test files, 240 tests, 240 passed.**
 
 - ✓ account-api.test.ts > PATCH /me > corrects the name and time zone, and renames the hidden personal organisation with the name
 - ✓ account-api.test.ts > PATCH /me > rejects an unknown time zone, a blank name, an empty body and other fields
@@ -2172,6 +2177,9 @@ Full test run of 20 October 2026: **42 test files, 235 tests, 235 passed.**
 - ✓ exercise-templates.test.ts > cpp-basics placement test bank > has exactly one reading item and one code task per course skill
 - ✓ exercise-templates.test.ts > cpp-basics placement test bank > asks reading as a program to read, showing only the code
 - ✓ exercise-templates.test.ts > cpp-basics placement test bank > asks code tasks as a rung-5 function with hidden tests beyond the shown example
+- ✓ exercise-templates.test.ts > DSA placement test bank > has exactly one reading item and one code task per course skill
+- ✓ exercise-templates.test.ts > DSA placement test bank > asks reading as a program to read, and code as a rung-5 function with a shown example
+- ✓ exercise-templates.test.ts > DSA placement test bank > never reuses a practice exercise, so practice can't teach the test's answers
 - ✓ exercise-verification.test.ts > exercise verification > verifies when the reference passes and the starter fails
 - ✓ exercise-verification.test.ts > exercise verification > rejects an exercise whose reference doesn't pass
 - ✓ exercise-verification.test.ts > exercise verification > rejects an exercise whose tests can't tell the starter from a solution
@@ -2270,6 +2278,8 @@ Full test run of 20 October 2026: **42 test files, 235 tests, 235 passed.**
 - ✓ placement.test.ts > placement walk > never asks or estimates skills already cleared in practice, but builds on them
 - ✓ placement.test.ts > placement estimate > lets one frontier AC vouch for every skill below it, at lower confidence
 - ✓ placement.test.ts > placement estimate > treats a pending or failed-to-run task as unobserved, and gives unreached skills nothing
+- ✓ placement.test.ts > placement walk, DSA course > asks an expert all 49 reading items and the 20 skills nothing else in the course builds on
+- ✓ placement.test.ts > placement walk, DSA course > places 300 random learners exactly, with one code task per skill on their frontier
 - ✓ progress-api.test.ts > GET /progress > shows every skill's reading and writing apart, as they are today, with a status
 - ✓ progress-api.test.ts > GET /progress > names prerequisites from another course, and holds a skill back until they are met
 - ✓ progress-api.test.ts > GET /progress > 404s for a course that doesn't exist in that language
@@ -2359,12 +2369,26 @@ rung 4 ok   Extend coverage to weights and a threshold                 ref ms: 1
 rung 5 ok   The longest stretch with equal 0s and 1s                   ref ms: 10,0,0,0,0,0,10
 ```
 
-**The development database after seeding and verification (20 October 2026):**
+**The development database after seeding and verification (22 October 2026):**
 ```
 pnpm exercises:verify   → Verifying 0 draft exercise(s)… 0 verified, 0 rejected.   (every exercise already proven)
 pnpm lessons:seed       → 0 added, 207 already there, 0 failed.
-exercises: cpp-basics 140 verified, dsa 160 verified   (300; none rejected or waiting)
+exercises: cpp-basics 140 verified, dsa 343 verified   (483; none rejected or waiting)
+placement items: cpp-basics 20 reading + 20 code, dsa 49 reading + 49 code   (all verified)
 lessons:   207   (C++ basics 20 × 3 levels, DSA 49 × 3 levels)
+```
+
+**A DSA placement test through the running API (22 October 2026, real E2B).** A learner who knows complexity, binary search, prefix sums and two pointers answers those reading items with the right output, says "I don't know" to the rest, and submits each frontier code task's reference solution (R: reading, W: code task):
+```
+asked 17: R:complexity R:recursion R:binary-search R:elementary-sorts R:graph-basics R:hashing R:matrices
+          R:prefix-sums R:queues R:stacks R:two-pointers R:bit-manipulation R:linked-lists
+          R:binary-search-on-answer W:binary-search W:prefix-sums W:two-pointers
+status completed, 49 skills
+  complexity: reading 0.85, writing 0.85, confidence 0.5     (vouched for by the code tasks above it)
+  binary-search: reading 0.85, writing 0.85, confidence 1
+  prefix-sums: reading 0.85, writing 0.85, confidence 1
+  two-pointers: reading 0.85, writing 0.85, confidence 1
+  (the other 45 skills: 0)
 ```
 
 ## A-9 Sample Inputs
