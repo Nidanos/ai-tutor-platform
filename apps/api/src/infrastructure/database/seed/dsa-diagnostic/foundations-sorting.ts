@@ -477,24 +477,27 @@ int kthSmallest(std::vector<int> a, int k) {
   // ── linear-time-sorting ──
   predict(
     "linear-time-sorting",
-    "What does it print? Counting sort's positions",
+    "What does it print? Radix sort, one digit at a time",
     `#include <iostream>
 #include <vector>
 
 int main() {
-    std::vector<int> a = {3, 1, 3, 0, 2, 1};
-    std::vector<int> count(4, 0);
-    for (int x : a) count[x]++;
-    for (int v = 1; v < 4; v++) count[v] += count[v - 1];
-    for (int c : count) std::cout << c;
-    std::cout << " ";
-    std::vector<int> from(a.size());  // from[p]: which position of a lands at p
-    for (int i = (int)a.size() - 1; i >= 0; i--) from[--count[a[i]]] = i;
-    for (int i : from) std::cout << i;
-    std::cout << "\\n";
+    std::vector<int> a = {170, 45, 75, 90, 802, 24, 2, 66};
+    for (int place = 1; place <= 100; place *= 10) {
+        std::vector<std::vector<int>> bucket(10);
+        for (int x : a) bucket[x / place % 10].push_back(x);
+        a.clear();
+        for (const auto& b : bucket)
+            for (int x : b) a.push_back(x);
+        if (place == 10) {
+            for (int x : a) std::cout << x << " ";
+            std::cout << "\\n";
+        }
+    }
+    std::cout << a.front() << " " << a.back() << "\\n";
 }
 `,
-    "1346 315402",
+    "802 2 24 45 66 170 75 90\n2 802",
   ),
   {
     skill: "linear-time-sorting",

@@ -59,7 +59,7 @@ int main() {
   {
     skill: "linked-lists",
     rung: 5,
-    title: "Merge two sorted lists",
+    title: "Merge two sorted linked lists",
     promptMd: `\`a\` and \`b\` are linked lists, each in increasing order. Write \`ListNode* mergeLists(ListNode* a, ListNode* b)\` that returns one list in increasing order holding all their values, by relinking the existing nodes. For 1 → 3 → 5 and 2 → 4 that's 1 2 3 4 5. Keep the \`ListNode\` struct as it is. ${TASK} ${limits("lists up to 200,000 nodes each")}`,
     functionSignature: "ListNode* mergeLists(ListNode* a, ListNode* b)",
     call: (args) => `gen::showList(mergeLists(${args}));`,
