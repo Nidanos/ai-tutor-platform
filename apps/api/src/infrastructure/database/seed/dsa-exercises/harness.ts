@@ -282,6 +282,21 @@ std::string text(std::uint64_t seed, int n, int letters) {
 }  // namespace gen
 `;
 
+// n random words of `len` letters from the first `letters` of the alphabet.
+export const WORDS = String.raw`
+#include <string>
+
+namespace gen {
+std::vector<std::string> words(std::uint64_t seed, int n, int len, int letters) {
+    state = seed;
+    std::vector<std::string> out(n, std::string(len, 'a'));
+    for (auto& w : out)
+        for (char& c : w) c = (char)('a' + between(0, letters - 1));
+    return out;
+}
+}  // namespace gen
+`;
+
 // rows × cols whole numbers from lo to hi.
 export const MATRIX = String.raw`
 namespace gen {
