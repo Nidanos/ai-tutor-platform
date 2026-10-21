@@ -3,6 +3,7 @@ import { cppBasicsSkills } from "../src/infrastructure/database/seed/cpp-basics.
 import { cppDiagnosticReading } from "../src/infrastructure/database/seed/cpp-diagnostic-reading.js";
 import { cppDiagnosticWriting } from "../src/infrastructure/database/seed/cpp-diagnostic-writing.js";
 import { cppPracticeBank } from "../src/infrastructure/database/seed/cpp-practice-bank.js";
+import { dsaDiagnostic } from "../src/infrastructure/database/seed/dsa-diagnostic/index.js";
 import { dsaPracticeBank } from "../src/infrastructure/database/seed/dsa-exercises/index.js";
 import { dsaSkills } from "../src/infrastructure/database/seed/dsa.js";
 import { diagnosticPayload, harnessFor } from "../src/infrastructure/database/seed/seed-exercises.js";
@@ -78,5 +79,36 @@ describe("cpp-basics placement test bank", () => {
       expect(harnessFor(t)).toContain(`case ${t.cases.length}:`);
       expect(diagnosticPayload(t)).toMatchObject({ functionSignature: t.functionSignature, sample: { expectedOutput: t.cases[0].expected } });
     }
+  });
+});
+
+describe("DSA placement test bank", () => {
+  const reading = dsaDiagnostic.filter((t) => t.rung === 1);
+  const tasks = dsaDiagnostic.filter((t) => t.rung !== 1);
+
+  it("has exactly one reading item and one code task per course skill", () => {
+    const slugs = dsaSkills.map((s) => s.slug).sort();
+    expect(reading.map((t) => t.skill).sort()).toEqual(slugs);
+    expect(tasks.map((t) => t.skill).sort()).toEqual(slugs);
+  });
+
+  it("asks reading as a program to read, and code as a rung-5 function with a shown example", () => {
+    for (const t of reading) expect([t.cases.length, harnessFor(t), diagnosticPayload(t)]).toEqual([1, null, { code: t.starterCode }]);
+    for (const t of tasks) {
+      expect(t.rung, t.title).toBe(5);
+      expect(t.starterCode, t.title).not.toBe(t.reference);
+      expect(harnessFor(t), t.title).toContain(`case ${t.cases.length}:`);
+      expect(diagnosticPayload(t), t.title).toMatchObject({ sample: { expectedOutput: t.cases[0].expected } });
+      const first = t.cases.findIndex((c) => c.expected === undefined);
+      if (first >= 0) {
+        expect(t.cases.slice(first).every((c) => c.expected === undefined), t.title).toBe(true);
+        expect(t.bruteForce, t.title).toBeTruthy();
+      }
+    }
+  });
+
+  it("never reuses a practice exercise, so practice can't teach the test's answers", () => {
+    const practice = new Set([...dsaPracticeBank, ...cppPracticeBank].flatMap((t) => [t.title, t.functionSignature ?? t.reference]));
+    for (const t of dsaDiagnostic) expect(practice.has(t.title) || practice.has(t.functionSignature ?? t.reference), t.title).toBe(false);
   });
 });
