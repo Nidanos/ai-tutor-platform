@@ -268,6 +268,31 @@ std::vector<std::string> grid(std::uint64_t seed, int rows, int cols, int percen
 }  // namespace gen
 `;
 
+// n random letters from the first `letters` of the alphabet.
+export const TEXT = String.raw`
+#include <string>
+
+namespace gen {
+std::string text(std::uint64_t seed, int n, int letters) {
+    state = seed;
+    std::string s(n, 'a');
+    for (char& c : s) c = (char)('a' + between(0, letters - 1));
+    return s;
+}
+}  // namespace gen
+`;
+
+// rows × cols whole numbers from lo to hi.
+export const MATRIX = String.raw`
+namespace gen {
+std::vector<std::vector<int>> matrix(std::uint64_t seed, int rows, int cols, int lo, int hi) {
+    std::vector<std::vector<int>> out;
+    for (int r = 0; r < rows; r++) out.push_back(ints(seed * 1000003 + r, cols, lo, hi));
+    return out;
+}
+}  // namespace gen
+`;
+
 // Each test prints the vector the learner's function returns.
 export const showCall = (fn: string) => (args: string) => `gen::show(${fn}(${args}));`;
 // Each test prints yes or no for the bool the learner's function returns.
