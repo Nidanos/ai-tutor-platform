@@ -61,3 +61,7 @@ pnpm --filter @ai-tutor/api hints:generate     # writes the frozen hints once (n
 # 4. Start development servers across apps (API :3001, web :3000)
 pnpm dev
 ```
+
+## License
+
+Source-available under the [PolyForm Noncommercial License 1.0.0](LICENSE.md). You may read, run and change this code for personal study, research, teaching and other noncommercial purposes. **Any commercial use, or use for gain, needs written permission from the copyright holders** (Ashwani Kumar Puri, Aman Dogra and Aditi Tanwar, Nidanos).

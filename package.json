@@ -3,6 +3,7 @@
   "version": "1.0.0",
   "private": true,
   "description": "AI Tutor: evidence-based adaptive learning system (MCA-269)",
+  "license": "SEE LICENSE IN LICENSE.md",
   "scripts": {
     "dev": "pnpm -r --parallel --if-present run dev",
     "build": "pnpm -r --if-present run build",
