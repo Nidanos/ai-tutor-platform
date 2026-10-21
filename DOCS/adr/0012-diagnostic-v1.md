@@ -53,6 +53,7 @@ Unit tests run every one of the **711** knowledge states the graph allows. With 
 - No goal is set here yet (enrollment `goal_skill_id`), so M5's goal weight stays 0 until goal-setting is built.
 
 - *(20 Oct)* The test covers its own course: prerequisites from another course (C++ basics, for DSA) are left out of the walk. That course has its own placement test, and the recommender still enforces them.
+- *(22 Oct, decided by Ashwani)* The DSA course gets its own items under the same rules: a reading item and a code task for each of its 49 skills (98 items, `seed/dsa-diagnostic/`), none a copy of a practice exercise. Code tasks on efficient algorithms carry generated speed tests (ADR-0020), so a fast-track on such a skill needs a fast solution, not just a correct one. An expert answers 49 reading questions and 20 code tasks (about 2½ hours, with pause and resume); a learner who knows a few skills takes about 15–20 questions. Unit tests place 300 random learners on the real DSA graph exactly.
 
 ## Open (Ashwani's to decide)
 - Should a fast-tracked skill ever step back a stage (e.g. 3 failed Builds)? v1 never steps back (as ADR-0007).
