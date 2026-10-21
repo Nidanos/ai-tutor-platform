@@ -8,6 +8,7 @@ import { seedSkills } from "./seed-skills.js";
 import { cppDiagnosticReading } from "./cpp-diagnostic-reading.js";
 import { cppDiagnosticWriting } from "./cpp-diagnostic-writing.js";
 import { cppPracticeBank } from "./cpp-practice-bank.js";
+import { dsaDiagnostic } from "./dsa-diagnostic/index.js";
 import { dsaPracticeBank } from "./dsa-exercises/index.js";
 import { seedExercises } from "./seed-exercises.js";
 
@@ -37,6 +38,7 @@ await seedSkills("dsa", dsaSkills); // after C++ basics: its skills build on the
 await seedExercises("cpp-basics", cppPracticeBank);
 await seedExercises("cpp-basics", [...cppDiagnosticReading, ...cppDiagnosticWriting], "diagnostic");
 await seedExercises("dsa", dsaPracticeBank);
+await seedExercises("dsa", dsaDiagnostic, "diagnostic");
 
 await db.$client.end();
 console.log("Seed complete");
