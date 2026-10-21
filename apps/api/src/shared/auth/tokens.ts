@@ -22,7 +22,7 @@ export const signAccessToken = ({ userId, role, orgId }: AuthUser) =>
     .sign(secret);
 
 export async function verifyAccessToken(token: string): Promise<AuthUser> {
-  const { payload } = await jwtVerify(token, secret, { issuer: ISSUER });
+  const { payload } = await jwtVerify(token, secret, { issuer: ISSUER, algorithms: ["HS256"] });  // only the algorithm we sign with
   return { userId: payload.sub!, role: payload.role as AuthUser["role"], orgId: payload.org as string };
 }
 
