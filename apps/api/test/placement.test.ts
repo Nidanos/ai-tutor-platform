@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { cppBasicsSkills } from "../src/infrastructure/database/seed/cpp-basics.js";
+import { dsaSkills } from "../src/infrastructure/database/seed/dsa.js";
 import {
   estimate,
   inOrder,
@@ -10,18 +11,26 @@ import {
   type Response,
 } from "../src/modules/m3_diagnostic/services/placement.js";
 
-// The real cpp-basics graph, with slugs as ids, and one reading and one writing item per skill.
-const skills = cppBasicsSkills.map((s) => ({ id: s.slug, slug: s.slug, difficulty: s.difficulty, prerequisites: s.needs.map((id) => ({ id })) }));
-const allItems: Item[] = skills.flatMap((s) => [
-  { id: `${s.id}:reading`, skillId: s.id, dimension: "reading" as const },
-  { id: `${s.id}:writing`, skillId: s.id, dimension: "writing" as const },
-]);
+// A real course graph, with slugs as ids, and one reading and one writing item per skill. Prerequisites from another
+// course are left out, as the placement test does.
+function graphOf(seedSkills: { slug: string; difficulty: number; needs: string[] }[]) {
+  const own = new Set(seedSkills.map((s) => s.slug));
+  const skills = seedSkills.map((s) => ({ id: s.slug, slug: s.slug, difficulty: s.difficulty, prerequisites: s.needs.filter((p) => own.has(p)).map((id) => ({ id })) }));
+  const items: Item[] = skills.flatMap((s) => [
+    { id: `${s.id}:reading`, skillId: s.id, dimension: "reading" as const },
+    { id: `${s.id}:writing`, skillId: s.id, dimension: "writing" as const },
+  ]);
+  return { skills, items };
+}
+const cpp = graphOf(cppBasicsSkills);
+const dsa = graphOf(dsaSkills);
+const { skills, items: allItems } = cpp;
 
-type Learner = { knows: Set<string>; guesses?: boolean; slips?: Set<string>; items?: Item[]; cleared?: Set<string> };
+type Learner = { knows: Set<string>; guesses?: boolean; slips?: Set<string>; graph?: typeof cpp; items?: Item[]; cleared?: Set<string> };
 
 // Plays the whole test as this learner: right on what they know, else "I don't know" or a wrong guess.
-function take({ knows, guesses = false, slips = new Set(), items = allItems, cleared = new Set() }: Learner) {
-  const placement: Placement = { skills, items, responses: [], cleared };
+function take({ knows, guesses = false, slips = new Set(), graph = cpp, items = graph.items, cleared = new Set() }: Learner) {
+  const placement: Placement = { skills: graph.skills, items, responses: [], cleared };
   const asked: Item[] = [];
   for (let item = nextItem(placement); item; item = nextItem(placement)) {
     asked.push(item);
@@ -153,4 +162,28 @@ describe("placement estimate", () => {
     expect(bySkill.get("loops")).toEqual({ skillId: "loops", estReading: 0, estWriting: 0, confidence: 0 });
     expect(bySkill.size).toBe(20);
   });
+});
+
+describe("placement walk, DSA course", () => {
+  it("asks an expert all 49 reading items and the 20 skills nothing else in the course builds on", () => {
+    const expert = take({ knows: new Set(dsa.skills.map((s) => s.id)), graph: dsa });
+    expect([expert.reading, expert.writing]).toEqual([49, 20]);
+  });
+
+  it("places 300 random learners exactly, with one code task per skill on their frontier", () => {
+    let seed = 2026;
+    const random = () => (seed = (seed * 48271) % 2147483647) / 2147483647; // seeded, so every run checks the same learners
+    for (let run = 0; run < 300; run++) {
+      const knows = new Set<string>();
+      for (const s of inOrder(dsa.skills)) if (s.prerequisites.every((p) => knows.has(p.id)) && random() < 0.85) knows.add(s.id);
+      const { bySkill, reading, writing } = take({ knows, guesses: run % 2 === 1, graph: dsa });
+      const frontier = [...knows].filter((id) => !dsa.skills.some((s) => knows.has(s.id) && s.prerequisites.some((p) => p.id === id)));
+      expect(reading).toBeLessThanOrEqual(49);
+      expect(writing).toBe(frontier.length); // one code task per known skill that no other known skill builds on
+      for (const s of dsa.skills) {
+        const expected = knows.has(s.id) ? KNOWN : 0;
+        expect([bySkill.get(s.id)!.estReading, bySkill.get(s.id)!.estWriting]).toEqual([expected, expected]);
+      }
+    }
+  }, 30_000);
 });
