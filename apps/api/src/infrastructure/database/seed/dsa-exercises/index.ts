@@ -1,5 +1,6 @@
 // The hand-written DSA practice bank: rungs 1–5 for each skill (ADR-0020), one file per skill.
 import { advancedGraphs } from "./advanced-graphs.js";
+import { backtracking } from "./backtracking.js";
 import { balancedTrees } from "./balanced-trees.js";
 import { binarySearch } from "./binary-search.js";
 import { binarySearchOnAnswer } from "./binary-search-on-answer.js";
@@ -11,9 +12,15 @@ import { combinatorics } from "./combinatorics.js";
 import { complexity } from "./complexity.js";
 import { designDataStructures } from "./design-data-structures.js";
 import { dfs } from "./dfs.js";
+import { dpAdvanced } from "./dp-advanced.js";
+import { dpBasics } from "./dp-basics.js";
+import { dpGridsIntervals } from "./dp-grids-intervals.js";
+import { dpKnapsack } from "./dp-knapsack.js";
+import { dpSequences } from "./dp-sequences.js";
 import { elementarySorts } from "./elementary-sorts.js";
 import { fenwickTrees } from "./fenwick-trees.js";
 import { graphBasics } from "./graph-basics.js";
+import { greedy } from "./greedy.js";
 import { hashing } from "./hashing.js";
 import { heaps } from "./heaps.js";
 import { linearTimeSorting } from "./linear-time-sorting.js";
@@ -26,6 +33,7 @@ import { monotonicStack } from "./monotonic-stack.js";
 import { networkFlow } from "./network-flow.js";
 import { numberTheory } from "./number-theory.js";
 import { prefixSums } from "./prefix-sums.js";
+import { problemSolving } from "./problem-solving.js";
 import { queues } from "./queues.js";
 import { quickSort } from "./quick-sort.js";
 import { recursion } from "./recursion.js";
@@ -83,4 +91,12 @@ export const dsaPracticeBank = [
   ...minimumSpanningTrees,
   ...advancedGraphs,
   ...networkFlow,
+  ...greedy,
+  ...backtracking,
+  ...dpBasics,
+  ...dpSequences,
+  ...dpKnapsack,
+  ...dpGridsIntervals,
+  ...dpAdvanced,
+  ...problemSolving,
 ];
