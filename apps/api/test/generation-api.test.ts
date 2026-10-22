@@ -4,9 +4,10 @@ import request from "supertest";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { app } from "../src/app.js";
 import { db } from "../src/infrastructure/database/index.js";
-import { generationJobs, users } from "../src/infrastructure/database/schema/index.js";
+import { courseLanguages, courses, generationJobs, users } from "../src/infrastructure/database/schema/index.js";
 import { geminiReady } from "../src/infrastructure/llm/gemini-provider.js";
 import { enqueueGeneration } from "../src/infrastructure/queue/generation-queue.js";
+import { queueMissingExercise } from "../src/modules/m6_exercises/services/request-generation.js";
 import { addDefaultFadeSchedule, bearerFor, createCourse, createSkill, createUser } from "./helpers.js";
 
 // No Redis and no Gemini here: the queue is checked, not run; "billing on" is pretended per test.
@@ -49,6 +50,20 @@ describe("POST /exercises/generate", () => {
 
     vi.mocked(geminiReady).mockReturnValueOnce(false);
     expect((await t.generate({ skill: t.skill.slug, rung: 1 }, 503)).error.code).toBe("GENERATION_UNAVAILABLE");
+  });
+
+  it("leaves DSA hand-written: no job on request or for a skill with nothing to serve (ADR-0023)", async () => {
+    await db.insert(courses).values({ slug: "dsa", title: "DSA" }).onConflictDoNothing();
+    const [dsa] = await db.select().from(courses).where(eq(courses.slug, "dsa"));
+    await db.insert(courseLanguages).values({ courseId: dsa.id, languageCode: "cpp", isDefault: true }).onConflictDoNothing();
+    const skill = await createSkill(dsa.id);
+    const t = await authorInCourse();
+    const res = await request(app).post("/api/v1/exercises/generate").set("Authorization", t.auth).send({ course: "dsa", skill: skill.slug, rung: 4 }).expect(422);
+    expect(res.body.error.code).toBe("GENERATION_NOT_COVERED");
+
+    await queueMissingExercise({ skillId: skill.id, languageCode: "cpp", rung: 4 });
+    expect(await db.select().from(generationJobs).where(eq(generationJobs.skillId, skill.id))).toEqual([]);
+    expect(enqueueGeneration).not.toHaveBeenCalled();
   });
 
   it("404s for an unknown skill or job", async () => {

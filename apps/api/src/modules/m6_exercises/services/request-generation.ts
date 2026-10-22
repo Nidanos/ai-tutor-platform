@@ -2,12 +2,17 @@ import { geminiReady } from "../../../infrastructure/llm/gemini-provider.js";
 import { spentThisMonthInr } from "../../../infrastructure/llm/llm-log.js";
 import { enqueueGeneration } from "../../../infrastructure/queue/generation-queue.js";
 import { AppError } from "../../../shared/errors/app-error.js";
-import { getSkill } from "../../m2_skills/services/skills.service.js";
+import { getSkill, getSkillsWithCourse } from "../../m2_skills/services/skills.service.js";
 import * as repo from "../repositories/exercises.repository.js";
 import { GENERATION_PROMPT_VERSION } from "./exercise-draft.js";
 import { GENERATION_BUDGET_INR, GENERATION_MODELS } from "./generate-exercise.js";
 
 const FALLBACK_COOLDOWN_MS = 24 * 60 * 60_000; // a skill and rung that just failed isn't retried automatically for a day
+
+// The prompt knows only the plain harness. DSA's exercises also need seeded speed tests and a brute
+// force (ADR-0020), so its bank stays hand-written for the pilot (ADR-0023).
+const HAND_WRITTEN_ONLY = new Set(["dsa"]);
+const isGenerated = async (skillId: string) => !HAND_WRITTEN_ONLY.has((await getSkillsWithCourse([skillId]))[0]?.course);
 
 const budgetSpent = async () => (await spentThisMonthInr("exercise_generation")) >= GENERATION_BUDGET_INR;
 
@@ -31,6 +36,7 @@ async function createJob(key: repo.JobKey, trigger: "pregen" | "on_demand", requ
 // POST /exercises/generate (admins and authors): one new exercise for this skill and rung.
 export async function requestGeneration(key: repo.JobKey, requestedBy: string) {
   if (!geminiReady()) throw new AppError(503, "GENERATION_UNAVAILABLE", "Exercise generation is off until Gemini billing is active");
+  if (!(await isGenerated(key.skillId))) throw new AppError(422, "GENERATION_NOT_COVERED", "This course's exercises are hand-written only");
   if (await budgetSpent()) throw new AppError(503, "GENERATION_BUDGET_REACHED", "This month's generation budget is spent");
   return jobView(await createJob(key, "pregen", requestedBy));
 }
@@ -39,7 +45,7 @@ export async function requestGeneration(key: repo.JobKey, requestedBy: string) {
 // Quiet by design: it never fails or slows the learner's request beyond a few queries.
 export async function queueMissingExercise(key: repo.JobKey) {
   try {
-    if (!geminiReady() || (await repo.findActiveJob(key)) || (await budgetSpent())) return;
+    if (!geminiReady() || !(await isGenerated(key.skillId)) || (await repo.findActiveJob(key)) || (await budgetSpent())) return;
     const failedAt = await repo.lastFallbackAt(key);
     if (failedAt && Date.now() - failedAt.getTime() < FALLBACK_COOLDOWN_MS) return;
     await createJob(key, "on_demand");
