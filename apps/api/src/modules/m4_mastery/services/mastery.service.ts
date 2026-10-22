@@ -11,15 +11,20 @@ export type GradedEvidence = Evidence & repo.LearnerSkill & { submissionId: stri
 
 // The only writer of mastery (design §3): updates the snapshot and appends the ledger row,
 // inside the caller's transaction, so a verdict and its mastery change are saved together.
+// Returns what the model predicted just before this evidence: today's effective scores (for M13).
 export async function recordEvidence(tx: Tx, { userId, skillId, languageCode, submissionId, ...evidence }: GradedEvidence) {
   const key = { userId, skillId, languageCode };
   const { decayLambda } = await getSkill(skillId, tx);
   const record = await repo.lockRecord(tx, key, decayLambda);
+  const now = new Date();
+  const predicted = {
+    reading: effectiveScore(record.readingScore, decayLambda, record.readingEvidenceAt, now),
+    writing: effectiveScore(record.writingScore, decayLambda, record.writingEvidenceAt, now),
+  };
 
   const dimension = dimensionOf(evidence.rung);
   const before = dimension === "reading" ? record.readingScore : record.writingScore;
   const { score, weight, limitStreak } = applyEvidence(before, record.limitStreak, evidence);
-  const now = new Date();
   const isAC = evidence.verdict === "AC";
   const clears = isAC && evidence.rung === CLEAR_RUNG && evidence.hintsUsed <= CLEAR_MAX_HINTS; // ADR-0007
 
@@ -44,6 +49,7 @@ export async function recordEvidence(tx: Tx, { userId, skillId, languageCode, su
     scoreAfter: score,
     formulaVersion: FORMULA_VERSION,
   });
+  return predicted;
 }
 
 export type DiagnosticSeed = repo.LearnerSkill & { diagnosticId: string; reading: number; writing: number; formulaVersion: string };

@@ -5,6 +5,7 @@ import { describe, expect, it, vi } from "vitest";
 import { app } from "../src/app.js";
 import { db } from "../src/infrastructure/database/index.js";
 import {
+  calibrationRecords,
   evidenceEvents,
   exerciseAttempts,
   exercises,
@@ -58,6 +59,7 @@ const sandbox = (result: Partial<RunResult>): SandboxProvider => ({
 const brokenSandbox: SandboxProvider = { run: () => Promise.reject(new Error("sandbox down")) };
 const evidenceOf = (userId: string) =>
   db.select().from(evidenceEvents).where(eq(evidenceEvents.userId, userId)).orderBy(evidenceEvents.id);
+const calibrationOf = (userId: string) => db.select().from(calibrationRecords).where(eq(calibrationRecords.userId, userId));
 const masteryOf = async (userId: string) => (await db.select().from(masteryRecords).where(eq(masteryRecords.userId, userId)))[0];
 const failed = (stdout: string): TestRun => ({ ...passed(stdout), stdout: "wrong" });
 const submissionRow = async (id: string) => (await db.select().from(submissions).where(eq(submissions.id, id)))[0];
@@ -164,6 +166,53 @@ describe("submissions", () => {
     await runSubmission(await submit(api, attempt.id), true, brokenSandbox);
     await runSubmission(await submit(api, attempt.id), false, sandbox({ compile: { ok: false, output: "error" } }));
     expect(await evidenceOf(attempt.userId)).toEqual([]);
+  });
+
+  it("saves a calibration record for a learner's first counted try at an exercise only (ADR-0021)", async () => {
+    const { attempt, api } = await learnerWithAttempt(); // rung 3
+    await runSubmission(await submit(api, attempt.id), false, sandbox({ compile: { ok: false, output: "error" } })); // not a try yet
+    const first = await submit(api, attempt.id);
+    await runSubmission(first, false, sandbox({ tests: [failed("6"), passed("27")] }));
+    await runSubmission(await submit(api, attempt.id), false, sandbox({ tests: [passed("6"), passed("27")] }));
+    // Coming back to the solved exercise in a new attempt isn't a first try either.
+    const [again] = await db
+      .insert(exerciseAttempts)
+      .values({ userId: attempt.userId, enrollmentId: attempt.enrollmentId, exerciseId: attempt.exerciseId, hintCeiling: 3 })
+      .returning();
+    await runSubmission(await submit(api, again.id), false, sandbox({ tests: [passed("6"), passed("27")] }));
+
+    expect(await calibrationOf(attempt.userId)).toMatchObject([
+      { submissionId: first, exerciseId: attempt.exerciseId, rung: 3, predictedReading: 0, predictedWriting: 0, observedVerdict: "WA" },
+    ]);
+  });
+
+  it("calibrates only one of two first tries graded at the same time", async () => {
+    const { attempt, api } = await learnerWithAttempt();
+    const ids = [await submit(api, attempt.id), await submit(api, attempt.id)];
+    await Promise.all(ids.map((id) => runSubmission(id, false, sandbox({ tests: [failed("6"), passed("27")] }))));
+    expect(await calibrationOf(attempt.userId)).toHaveLength(1);
+  });
+
+  it("predicts from today's scores, decayed since their last evidence", async () => {
+    const { attempt, api } = await learnerWithAttempt();
+    const [{ skillId }] = await db.select({ skillId: exercises.skillId }).from(exercises).where(eq(exercises.id, attempt.exerciseId));
+    const tenDaysAgo = new Date(Date.now() - 10 * 86_400_000);
+    await db.insert(masteryRecords).values({
+      userId: attempt.userId,
+      skillId,
+      languageCode: "cpp",
+      decayLambda: 0.05,
+      readingScore: 0.8,
+      readingEvidenceAt: tenDaysAgo,
+      writingScore: 0.5,
+      writingEvidenceAt: tenDaysAgo,
+    });
+    await runSubmission(await submit(api, attempt.id), false, sandbox({ tests: [passed("6"), passed("27")] }));
+
+    const [record] = await calibrationOf(attempt.userId);
+    expect(record.predictedReading).toBeCloseTo(0.8 * Math.exp(-0.5), 6); // 0.05 a day for 10 days
+    expect(record.predictedWriting).toBeCloseTo(0.5 * Math.exp(-0.5), 6);
+    expect(record.observedVerdict).toBe("AC");
   });
 
   it("deletes the learner's code for a skill once it is cleared, keeping every verdict (privacy policy §2)", async () => {

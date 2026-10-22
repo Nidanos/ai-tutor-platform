@@ -78,6 +78,24 @@ export const hasPenalisedFailure = async (attemptId: string, exceptSubmissionId:
       .limit(1)
   ).length > 0;
 
+// Has the learner had a counted try at this exercise before, in any attempt? Run after M4 locks the
+// skill's mastery row, so of two tries graded at once only the first finds none (ADR-0021).
+export const hasEarlierCountedTry = async (tx: Tx, userId: string, exerciseId: string, exceptSubmissionId: string) =>
+  (
+    await tx
+      .select({ id: submissions.id })
+      .from(submissions)
+      .where(
+        and(
+          eq(submissions.userId, userId),
+          eq(submissions.exerciseId, exerciseId),
+          ne(submissions.id, exceptSubmissionId),
+          eq(submissions.countsAsAttempt, true),
+        ),
+      )
+      .limit(1)
+  ).length > 0;
+
 export const setSubmissionStatus = (id: string, status: "queued" | "running") =>
   db.update(submissions).set({ status }).where(eq(submissions.id, id));
 

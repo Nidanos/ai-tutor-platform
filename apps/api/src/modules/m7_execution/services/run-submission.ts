@@ -4,12 +4,14 @@ import { isCleared } from "../../m4_mastery/services/mastery-read.service.js";
 import { recordEvidence } from "../../m4_mastery/services/mastery.service.js";
 import { exerciseIdsOfSkill, getRunnableExercise } from "../../m6_exercises/services/exercises.service.js";
 import { advanceOnSolve } from "../../m12_scaffolding/services/scaffolding.service.js";
+import { recordCalibration } from "../../m13_analytics/services/calibration.service.js";
 import * as repo from "../repositories/submissions.repository.js";
 import { excerpt, judgeTest, overallVerdict, sameOutput, type Verdict } from "./judge.js";
 import { TOOLCHAINS } from "./toolchains.js";
 
 const CE_COUNTS_FROM = 3; // the 3rd compile error counts as an attempt and offers a hint (ADR-0004)
-// Practice and review move mastery. The diagnostic seeds it once; holdout calibrates first (design §5.9).
+// Practice and review move mastery, and a first counted try at an exercise is also a calibration
+// record (ADR-0021). The diagnostic seeds mastery once instead.
 const EVIDENCE_CONTEXTS = new Set(["practice", "review"]);
 
 type Finish = Omit<repo.Outcome, "submissionId" | "attemptId" | "testsTotal">;
@@ -47,8 +49,21 @@ export async function runSubmission(submissionId: string, isLastTry: boolean, pr
       outcomeRow,
       evidence &&
         (async (tx) => {
-          await recordEvidence(tx, evidence);
+          const predicted = await recordEvidence(tx, evidence);
           const { userId, skillId, languageCode, rung, hintsUsed } = evidence;
+          if (!(await repo.hasEarlierCountedTry(tx, userId, exercise.id, submissionId))) {
+            await recordCalibration(tx, {
+              userId,
+              skillId,
+              languageCode,
+              exerciseId: exercise.id,
+              submissionId,
+              rung,
+              predictedReading: predicted.reading,
+              predictedWriting: predicted.writing,
+              observedVerdict: evidence.verdict,
+            });
+          }
           if (evidence.verdict === "AC") await advanceOnSolve(tx, { userId, skillId, languageCode, rung, hintsUsed, submissionId });
         }),
     );
