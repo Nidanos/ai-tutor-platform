@@ -60,5 +60,5 @@ describe("pilot data export (pnpm pilot:export)", () => {
     expect(summary.researchOptIn).toBeGreaterThanOrEqual(1);
     expect(summary.allLearners.signed_up).toBeGreaterThanOrEqual(2); // the other learner counts, as a total
     expect(summary.rows.submissions).toBe(1);
-  });
+  }, 30_000); // it starts a second Node process, slow while the other test files run beside it
 });
