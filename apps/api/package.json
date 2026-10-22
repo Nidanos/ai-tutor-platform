@@ -19,7 +19,8 @@
     "user:admin": "tsx src/scripts/make-admin.ts",
     "demo:walk": "tsx src/scripts/demo-walk.ts",
     "lessons:generate": "tsx src/scripts/generate-lessons.ts",
-    "lessons:seed": "tsx src/scripts/seed-lessons.ts"
+    "lessons:seed": "tsx src/scripts/seed-lessons.ts",
+    "pilot:export": "tsx src/scripts/export-pilot.ts"
   },
   "dependencies": {
     "@ai-tutor/types": "workspace:*",
