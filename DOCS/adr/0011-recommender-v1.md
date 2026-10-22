@@ -23,7 +23,7 @@ The recommender (`GET /recommendations/next`) uses fixed rules, never an LLM (FR
 
 ## Not in v1
 - "Recency" (FR-M5-03) is covered only indirectly, through decay and review urgency. Add an explicit term if the pilot shows learners bouncing between skills.
-- Reviews open as ordinary practice attempts until M10 (review scheduling) is built.
+- Reviews open as ordinary practice attempts. ADR-0022 (23 Oct) keeps it that way and makes this rule the review queue: no stored rows, no decay scan.
 - Recommendation status (`accepted`, `completed`) isn't updated yet; the rows are the audit trail.
 - *(20 Oct)* A prerequisite can come from another course (DSA builds on C++ basics). With nothing open because of one, `GET /recommendations/next` returns `waitingFor`: those skills, for the skills that would be next (ADR-0001).
 

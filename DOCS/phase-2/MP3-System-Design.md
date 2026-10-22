@@ -90,7 +90,7 @@ flowchart LR
 | --- | --- |
 | Web (`apps/web`) | Learner and admin screens, Monaco code editor. Calls `/api/*` on its own origin; Next.js forwards to the API |
 | API (`apps/api`) | Auth, validation, all 13 modules, fast reads and writes |
-| Worker (`apps/api`, second entry point) | Exercise generation and verification, code execution, scheduled jobs (decay scan, pre-generation, code purge) |
+| Worker (`apps/api`, second entry point) | Exercise generation and verification, code execution, scheduled jobs (pre-generation, code purge); reviews need none, they are worked out on read (ADR-0022) |
 | PostgreSQL | Single source of truth for all data |
 | Redis | Job queue (and rate-limit counters once the API runs as several processes). Holds nothing that can't be lost |
 | E2B | Runs learner and reference code in isolation |
@@ -675,7 +675,7 @@ erDiagram
 - `cleared_at` is set the first time the learner gets AC on a rung-5 exercise of the skill using 0 or 1 hint.
 - Each evidence row points to exactly one real source (a submission or a diagnostic), enforced by a CHECK. Which key is set *is* the source, so no separate "source" column is stored. Unique keys on `(submission_id, dimension)` and `(diagnostic_id, skill_id, dimension)` stop evidence being counted twice.
 - `weight` is computed from rung, hints used and time taken (FR-M4-05); `formula_version` keeps old numbers explainable if the formula changes.
-- A review is created when effective mastery falls below the threshold (FR-M4-04); only one open review per skill.
+- A review is due when a cleared skill's effective writing falls below 0.5 (FR-M4-04). v1 works this out on read and stores no rows (ADR-0022); `review_items` is kept for a later spaced-repetition M10, with one open review per skill.
 
 ### 5.7 Exercises and generation (M6)
 
@@ -1566,7 +1566,7 @@ flowchart TB
   subgraph WRK["apps/api worker entry: same code, second process"]
     J1["generation jobs"]
     J2["execution jobs"]
-    J3["maintenance: decay scan, pre-gen top-up, code purge, token cleanup, sandbox cleanup"]
+    J3["maintenance: pre-gen top-up, code purge, token cleanup, sandbox cleanup"]
   end
   subgraph INF["infrastructure adapters"]
     I1["database: Drizzle"]
@@ -1730,7 +1730,7 @@ Rate limits: login 20 per IP and 5 failures per email per 15 minutes; register 5
 | FR-M4-01 Mastery fields | `mastery_records` |
 | FR-M4-02 Evidence only | DFD level 1: only process 4 writes D4; `evidence_events` with real source keys; resources never create evidence |
 | FR-M4-03 Exponential decay | Effective mastery computed on read, per dimension |
-| FR-M4-04 Revision queue | `review_items` created below threshold |
+| FR-M4-04 Revision queue | Due on read: cleared and effective writing < 0.5 (`isReviewDue`, ADR-0022) |
 | FR-M4-05 Weighted evidence | `evidence_events.weight` from rung, hints, time |
 | FR-M5-01 to 05 Recommender | Activity diagram 6.10, `recommendations.score_breakdown`, no LLM in the flow |
 | FR-M6-01 Generate | Generation pipeline, DFD 4.4, sequence 6.8 |
@@ -1749,8 +1749,8 @@ Rate limits: login 20 per IP and 5 failures per email per 15 minutes; register 5
 | FR-M9-01 Start, pause, resume, end | Session state diagram |
 | FR-M9-02 Steps from recommender | `session_steps.recommendation_id` |
 | FR-M9-03 Resume at same step | The session's single `active` step |
-| FR-M10-01 Revision date from decay | `review_items.due_at`, scheduled decay scan |
-| FR-M10-02 Queue visible to M5 | Recommender reads `review_items` |
+| FR-M10-01 Revision date from decay | Worked out from the decay: ln(writing / 0.5) / λ days after the last evidence (ADR-0022) |
+| FR-M10-02 Queue visible to M5 | The recommender applies the rule itself, ranked by urgency (ADR-0011, ADR-0022); `/progress` shows `review_due` |
 | FR-M11-01 to 03 Honest progress view | Reads stored mastery, reading and writing kept separate |
 | FR-M12-01 Configurable schedule | `fade_schedules`, `fade_stages` (rungs, hint ceilings, advance rule as data) |
 | FR-M12-02 Enforce limits | `skill_scaffolding` stage → `hint_ceiling` on each attempt, rung clamp in M5 |
