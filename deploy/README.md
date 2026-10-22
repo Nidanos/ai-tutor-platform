@@ -69,6 +69,13 @@ docker compose exec api pnpm user:admin <your email>   # after signing up on the
    ```
    For a real restore, stop the API, drop and recreate `$POSTGRES_DB`, restore into it, start the API.
 
+## After the pilot: data for the report
+```bash
+docker compose exec api pnpm pilot:export --since=2026-11-08 --until=2026-11-11 --out=/tmp/pilot
+docker compose cp api:/tmp/pilot ./pilot-export
+```
+CSV files (placement, submissions, evidence, calibration, hints, sessions) and `summary.json`. Rows are only for adults with a live research opt-in, as `L001`, `L002`…; everyone else is in the totals only. No name, email, birth date, IP, code or free text is exported (privacy policy §3–4). Delete `/tmp/pilot` in the container afterwards.
+
 ## Updating
 ```bash
 git pull && docker compose up -d --build && docker compose exec api pnpm db:migrate
