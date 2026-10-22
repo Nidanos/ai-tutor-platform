@@ -1,6 +1,6 @@
 # AI Tutor: An Evidence-Based Adaptive Learning System with Deliberate Scaffolding Withdrawal
 
-> **Draft report for Review 3 (Implementation, Testing and Draft Report), 23 October 2026.** Status as of 22 October 2026: all 33 endpoints live, 240 automated tests passing, and 483 exercises and 207 lessons proven in the real sandbox.
+> **Draft report for Review 3 (Implementation, Testing and Draft Report), 23 October 2026.** Status as of 23 October 2026: all 33 endpoints live, 246 automated tests passing, 483 exercises and 207 lessons proven in the real sandbox, and the deployment files checked locally.
 > Prepared to the MCA-269 "Format of Project Report" and the Annexure-IV chapter scheme. Typesetting rules (Times New Roman 12, 1.5 spacing, margins 3.0/2.0/2.54/2.54 cm, blank page before each chapter) are applied in the final printed copy.
 
 ---
@@ -275,7 +275,7 @@ One design decision is a direct result of this study. The first design kept one 
   - the Terms of Service and Privacy Policy are published at `/terms` and `/privacy`, built from the same texts learners accept;
   - data is stored in India.
 - **Licensing.** No third-party course content is copied. Skill names, descriptions, lessons and exercises are our own, and external references appear only as links. The source code is published under the PolyForm Noncommercial License 1.0.0: anyone may study and run it, but commercial use needs the team's permission.
-- **Schedule.** All 33 endpoints (the 23 planned, plus forgot and reset password, six for data rights and two for lessons) were live by Review 3 (section 4.5). The DSA exercise bank and placement test were finished on 21–22 October, ahead of plan; the frontend, deployment, the first live AI runs (once billing is active on 7 November) and the pilot are planned up to 10 November 2026.
+- **Schedule.** All 33 endpoints (the 23 planned, plus forgot and reset password, six for data rights and two for lessons) were live by Review 3 (section 4.5). The DSA exercise bank and placement test were finished on 21–22 October, ahead of plan. On 23 October calibration was added, and the deployment files, the pilot data export and the pilot survey were written; the frontend, running the deployment, the first live AI runs (once billing is active on 7 November) and the pilot are planned up to 10 November 2026.
 
 ## 2.2 Analysis Methodology
 
@@ -301,12 +301,14 @@ One design decision is a direct result of this study. The first design kept one 
 18. Personalised lessons: three frozen levels per skill and a short live note, with all 207 lessons written and proven in the sandbox.
 19. The DSA exercise bank: generated speed tests and a brute-force check (all 245 exercises).
 20. The DSA placement test: a reading item and a code task for each of the 49 skills (98 items), under the C++ test's rules.
+21. Calibration from each first try (ADR-0021); the review queue recorded as worked out on read (ADR-0022); generation kept to C++ basics for the pilot (ADR-0023).
+22. Deployment files checked locally, the pilot data export and the pilot survey.
 
 Every increment ended with automated tests and a real end-to-end run before the next one began. Larger designs (the placement test, hints, generation) were also reviewed by adversarial checks that tried to break them, and the holes they found were fixed before the code was committed (Table 9).
 
 **Analysis tools used:**
 - **Requirements:** the SRS from Phase 1, numbered as FR-Mx-yy and NFR-xx.
-- **Decisions:** each one recorded as an Architecture Decision Record (ADR-0001 to ADR-0020), with the options compared and the reason for the choice. For example, ADR-0003 compares Judge0, Piston and E2B on compiler version, memory-limit support, network isolation and cost.
+- **Decisions:** each one recorded as an Architecture Decision Record (ADR-0001 to ADR-0023), with the options compared and the reason for the choice. For example, ADR-0003 compares Judge0, Piston and E2B on compiler version, memory-limit support, network isolation and cost.
 - **Measurement before optimisation:** timings were measured step by step before anything was changed.
 
 **Pilot baseline.** The planned "Phase 0" (running the whole loop on paper with a learner before coding) was **not carried out**. It was replaced by a measured baseline of one anonymised pilot learner (Learner A: reading 10/11, writing 0/4), which confirmed the central design choice of separate reading and writing scores. A pilot with real learners on the finished system is planned before the final report.
@@ -322,7 +324,7 @@ Every increment ended with automated tests and a real end-to-end run before the 
 | E. Sandbox and judge | C | 15 Oct | Done |
 | F. Submissions, queue, mastery | D, E | 15 Oct | Done |
 | G. Exercises, attempts, help fading | F | 16 Oct | Done |
-| H. Frontend screens | D | 16 Oct–5 Nov | In progress |
+| H. Frontend screens | D | 16–31 Oct | In progress (team; due 31 Oct) |
 | J. Template bank, recommender, placement test | G | 17–18 Oct | Done |
 | L. Sessions, progress, analytics | J | 19 Oct | Done |
 | I1. LLM adapter and hints | G | 19 Oct | Done (live calls wait for billing) |
@@ -334,9 +336,11 @@ Every increment ended with automated tests and a real end-to-end run before the 
 | R. Personalised lessons: 3 levels per skill, live note, 207 hand-written lessons | Q, I1 | 20 Oct | Done (live notes wait for billing) |
 | S. DSA exercise bank: 245 exercises with speed tests | R | 20–21 Oct | Done (planned to 2 Nov) |
 | T. DSA placement test: 98 items | S | 22 Oct | Done (planned for 3–5 Nov) |
+| U. Calibration; review-queue and generation-scope decisions | T | 23 Oct | Done |
+| V. Deployment files, pilot data export, pilot survey | U | 23 Oct | Done (run on Oracle and Vercel by 30 Oct) |
 | M. Gemini billing activation | – | 7 Nov | Planned (₹2,500 of the ₹3,000 prepayment left) |
 | I3. First live AI runs: frozen hints, live notes, extra generated exercise variants | I2, R, M | 7–8 Nov | Planned |
-| K. Deployment, pilot, final report | H, I3, L, T | 5–10 Nov | Planned |
+| K. Deployment, pilot, final report | H, I3, L, V | 5–10 Nov | Planned |
 
 **Critical path:** A → B → C → E → F → G → J → Q → R → S → T → K. The sandbox and grading chain was the riskiest part, so it was built first. With the DSA content written, the frontend (H) is now the longest chain, and the billing activation (M) the one outside dependency.
 
@@ -357,7 +361,8 @@ gantt
   DSA course and lessons               :done, r, 2026-10-20, 1d
   DSA exercise bank                    :done, s, 2026-10-20, 2026-10-21
   DSA placement items                  :done, t, 2026-10-22, 1d
-  Frontend screens                     :active, h, 2026-10-16, 2026-11-05
+  Calibration, deployment files, export :done, u, 2026-10-23, 1d
+  Frontend screens                     :active, h, 2026-10-16, 2026-10-31
   Billing active, first live AI runs   :i, 2026-11-07, 2026-11-08
   section Delivery
   Review 3 draft report                :milestone, 2026-10-23, 0d
@@ -1639,15 +1644,16 @@ The acceptance criteria are the SRS requirements, traced in the Phase 2 design d
 - **FR-M12-02**, "the help limit is enforced on the server": tested by "never lets the hint level pass the fade ceiling" and "refuses a level above the fade stage's ceiling, and logs it".
 - **FR-M8-04**, "block any reply that looks like the solution": tested by "blocks a reply that gives the solution away and serves the frozen hint instead".
 - **FR-M3-01**, "an adaptive test estimates reading and writing": tested by "places all 711 possible learners exactly".
+- **FR-M13-01**, "compare predicted mastery with results": tested by "saves a calibration record for a learner's first counted try at an exercise only".
 - **FR-M1-05**, "reset a forgotten password": tested by "sets the new password, ends every login, and works only once".
 - **DPDP Act s.11**, the right of access: tested by "downloads everything held about the learner, from every module, with who it was shared with".
 - **DPDP Act s.12**, erasure: tested by "anonymises the person and deletes every learning row, keeping the consents as proof".
 
-Learner acceptance testing is planned for the pilot before the final report.
+Learner acceptance testing is planned for the pilot before the final report, with an anonymous survey (`DOCS/phase-3/pilot-survey.md`): the System Usability Scale and ten statements, each paired with a number from the pilot's logs.
 
 ## 4.2 Test Data and Test Cases
 
-**Table 8: Automated test suites (240 tests in 42 files, all passing on 22 Oct 2026)**
+**Table 8: Automated test suites (246 tests in 43 files, all passing on 23 Oct 2026)**
 
 | Level | Suite | Tests | What it proves |
 |---|---|---|---|
@@ -1666,15 +1672,16 @@ Learner acceptance testing is planned for the pilot before the final report.
 | Integration | password reset | 9 | Same reply for every email; token stored as a hash; one email per 5 minutes; one use, even at once; expiry; newest link only; every login ended; per-IP limit |
 | Integration | data rights | 15 | Correction; opt-ins on and off, adults only; the download from every module, no secrets; deletion with the password, every login ended, cancelled by logging in; limits |
 | Integration | account erasure | 4 | Every learning row erased, or only anonymous numbers kept with an opt-in; grace period respected; every table pointing at a learner accounted for |
-| Integration | submissions | 11 | 202 + polling, idempotency tied to its attempt, hidden tests private, CE/SE rules, a cleared skill's code deleted |
+| Integration | submissions | 14 | 202 + polling, idempotency tied to its attempt, hidden tests private, CE/SE rules, a cleared skill's code deleted; a calibration record on the first counted try only, even with two graded at once |
 | Integration | exercises API + verification | 16 | No secrets or rung-1 answers in responses; skill details; bad content rejected; wrong solutions must fail; generated tests' outputs from the reference; brute force must agree then time out; reference within a third of the limit |
 | Integration | mastery API, scaffolding fade | 7 | Reading and writing apart; decay on read; stage advance |
 | Integration | recommendations API | 5 | First step, rung up, skip skills without content, the other course's skills first, course done |
 | Integration | placement test API | 19 | No answer key, current question only, background grading, seeding, retakes, cheat refused, a prerequisite from another course |
 | Integration | sessions, progress | 9 | Steps advance, pause/resume, idle, statuses |
-| Integration | analytics | 5 | Admin only, counts only |
+| Integration | analytics | 6 | Admin only, counts only; Brier score and reliability table |
+| Integration | pilot data export | 1 | Research opt-ins only, under aliases; no name, email, birth date, code or free text in any file |
 | Integration | hints, budget, frozen hints | 10 | Live, blocked, failed, ceiling, answer, daily and monthly caps |
-| Integration | exercise generation, budget, API | 10 | Proven drafts stored; retries; weak tests rejected; Pro then fallback; budget stop; admin only; automatic queueing |
+| Integration | exercise generation, budget, API | 11 | Proven drafts stored; retries; weak tests rejected; Pro then fallback; budget stop; admin only; automatic queueing; DSA left hand-written |
 | Integration | lessons API, lesson notes | 11 | Lesson for the level or the nearest; generated lessons proven or refused (false claim, exercise given away, wrong output); ₹300 stop; notes reused, capped, dropped with code |
 | System | sandbox smoke (real E2B) | 6 | All six execution verdicts on real infrastructure |
 | System | content verification (real E2B) | 483 | Every seeded exercise: reference passes, starter fails; DSA speed tests tell fast from slow |
@@ -1731,7 +1738,7 @@ Learner acceptance testing is planned for the pilot before the final report.
 
 ## 4.3 Test Reports and Debugging
 
-**Results:** 240 of 240 automated tests pass, the 6 of 6 real-sandbox verdicts are correct, 483 of 483 seeded exercises and 207 of 207 lessons verify on the real sandbox, and the end-to-end runs pass (A-8, A-10).
+**Results:** 246 of 246 automated tests pass, the 6 of 6 real-sandbox verdicts are correct, 483 of 483 seeded exercises and 207 of 207 lessons verify on the real sandbox, and the end-to-end runs pass (A-8, A-10).
 
 Debugging followed one rule: **measure, find the cause, fix the cause, add a test.** These are the defects found:
 
@@ -1775,9 +1782,14 @@ Debugging followed one rule: **measure, find the cause, fix the cause, add a tes
 | 34 | Generated tests that **said nothing**: every answer of a test was -1 | At 30% walls or more, a random grid usually walls in its start; a sparse random graph usually leaves a town cut off | Densities and seeds chosen by printing the generated answers first, and a generator that always builds a connected graph; each speed test now keeps one "impossible" case on purpose |
 | 35 | A brute force passed the timing check **on one run and failed it on the next** | It finished in about 2 s, right at the limit, and the compiler vectorised some simple loops | Brute forces made clearly slower (at least 10 times over the limit), for example scanning every pile instead of shifting a sorted list |
 | 36 | Six DSA placement items were **too close to practice exercises** | Written for the same skills, four code tasks and one reading program repeated a practice task, and one shared a practice exercise's title: practice would have taught the test's answers | Replaced or renamed; a unit test now fails if a placement item shares a title or a function with any practice exercise, and it found the last two |
-| 37 | Verification **stopped part-way** on a network timeout | One failed connection to the sandbox service ends `pnpm exercises:verify` | Verified items are saved as they pass, so a rerun finishes the rest (73 then 25 here); a retry per item is planned |
+| 37 | Verification **stopped part-way** on a network timeout | One failed connection to the sandbox service ends `pnpm exercises:verify` | Verified items are saved as they pass, so a rerun finishes the rest (73 then 25 here). Since 23 October each item is tried 3 times, then skipped and left for the next run |
+| 38 | The web framework had **two critical security advisories** (remote code execution) | A dependency audit before deployment: Next.js 16.4.0, and an old DOMPurify inside the code editor | Next.js 16.4.2, and DOMPurify 3.4.17 pinned; the audit fell from 12 advisories to 1 moderate one, in a development-only tool |
+| 39 | The calibration summary **failed** in Postgres | The same bin expression was sent twice with separate parameters, so Postgres couldn't match the SELECT to the GROUP BY | Grouped by column position; a test checks the Brier score and every bin exactly |
+| 40 | A scripted edit **emptied a test file** | Python on Windows used the local code page and stopped at a character it couldn't encode, after opening the file for writing | Restored from Git; scripted edits now read and write UTF-8 explicitly |
+| 41 | The export test **timed out**, but only in the full suite | It starts a second Node process, which took over 5 s while 42 other files ran | That test has a 30 s limit, as in defect 22 |
+| 42 | In the server image, `pnpm` **downloaded itself** on every command | It had been fetched at build time into the root user's folder, and the container runs as an unprivileged user | pnpm is stored in a shared folder at build time, so commands work offline |
 
-The password reset and the data rights each had an independent security review (19 October), with no critical or high issues in either: defects 18–21 came from the first, and 23–26 from the second. The second also led to a test that fails when a new table points at a learner's data without being exported and erased. One smaller finding is left for later (section 5.3): a login already in progress at the moment of a password reset. Defects 27–37 came from the lessons, the DSA bank and the DSA placement test (20–22 October): each was caught by a gate or a test before any learner saw the content, which is the gates' purpose.
+The password reset and the data rights each had an independent security review (19 October), with no critical or high issues in either: defects 18–21 came from the first, and 23–26 from the second. The second also led to a test that fails when a new table points at a learner's data without being exported and erased. One smaller finding is left for later (section 5.3): a login already in progress at the moment of a password reset. Defects 27–37 came from the lessons, the DSA bank and the DSA placement test (20–22 October): each was caught by a gate or a test before any learner saw the content, which is the gates' purpose. Defects 38–42 came from the 23 October work: the dependency audit, calibration, the export, and the local deployment run.
 
 ## 4.4 Implementation Manual
 
@@ -1786,41 +1798,45 @@ The password reset and the data rights each had an independent security review (
 docker compose up -d                  # PostgreSQL 16 + Redis 7
 pnpm install
 cd apps/api && cp .env.example .env   # fill DATABASE_URL, JWT_SECRET, WEB_ORIGIN, E2B_API_KEY, GEMINI_API_KEY, BREVO_API_KEY
-pnpm db:migrate && pnpm db:seed       # 16 migrations; C++ basics (20 skills) and DSA (49 skills); 345 practice exercises, 138 placement items
+pnpm db:migrate && pnpm db:seed       # 17 migrations; C++ basics (20 skills) and DSA (49 skills); 345 practice exercises, 138 placement items
 pnpm exercises:verify                 # runs every new exercise in the real sandbox before it can be served
 pnpm lessons:seed                     # freezes the 207 hand-written lessons through their gates (real sandbox)
 pnpm dev                              # API + queue worker on http://localhost:3001
-pnpm test                             # 240 automated tests (CI runs them on every push)
+pnpm test                             # 246 automated tests (CI runs them on every push)
 pnpm demo:walk                        # one learner through the whole loop on a running API
 pnpm sandbox:smoke                    # real-sandbox check of all six verdicts
 pnpm user:admin <email>               # make the first admin (for analytics)
+pnpm pilot:export --since=… --until=… # de-identified pilot data for the report (research opt-ins only)
 pnpm hints:generate                   # once billing is active (GEMINI_PAID=true): freeze hints 1–4
 ```
 **Build the sandbox template once:** `pnpm sandbox:build` creates the `ai-tutor-cpp` machine (Debian 13, clang 19) on E2B.
 
+**Deploy:** `deploy/README.md` is the runbook: the production Compose file (Caddy, API, Postgres, Redis) on the VM, the web app on Vercel, the checks after deploying, and nightly encrypted backups.
+
 ## 4.5 Implementation
 
-**Status at Review 3 (22 October 2026):**
+**Status at Review 3 (23 October 2026):**
 
 | Module | Built | Endpoints live |
 |---|---|---|
 | M1 Accounts, consent and data rights | Register, login, refresh, logout, me; forgot and reset password by email; date of birth; consent kinds; adults only during the pilot; correct, opt in and out, download, delete (7-day grace, hourly erasure) | 13 |
 | M2 Skill graph | C++ basics: 20 skills, 23 prerequisites. DSA: 49 skills in 8 groups, 97 prerequisites (19 of them C++ basics skills). Further-reading links; each skill's description and links shown with its exercises and progress | – |
 | M3 Placement test | Adaptive reading walk with a slip check, frontier code tasks, seeding, retakes; 40 verified C++ items and 98 DSA items | 3 |
-| M4 Mastery | Formula v1 inside the grading transaction; read views with decay; raise-only seeding | 2 |
+| M4 Mastery | Formula v1 inside the grading transaction; read views with decay; raise-only seeding; the prediction before each first try kept for calibration | 2 |
 | M5 Recommender | Next skill, rung and exercise by fixed rules, saved with reasons; names the other course's skills a learner must finish first | 1 |
-| M6 Exercises and lessons | Learner view; 100 verified C++ practice exercises (20 skills × 5 rungs) and 245 verified DSA exercises with speed tests (all 49 skills × 5 rungs), all hand-written; generation proven in the sandbox, by admins and automatically; 207 frozen lessons (3 levels per skill, both courses) and the live note | 5 |
+| M6 Exercises and lessons | Learner view; 100 verified C++ practice exercises (20 skills × 5 rungs) and 245 verified DSA exercises with speed tests (all 49 skills × 5 rungs), all hand-written; generation proven in the sandbox, by admins and automatically (C++ basics only for the pilot, ADR-0023); 207 frozen lessons (3 levels per skill, both courses) and the live note | 5 |
 | M7 Execution | Fresh offline sandbox per submission, judge, queue, retries, polling; a cleared skill's code deleted | 2 |
 | M8 Hints | Five-level ladder, live tutor with leak filter and caps, frozen fallback | 1 |
 | M9 Sessions | Start or resume, pause, resume, end; steps from the recommender; idle rules | 3 |
+| M10 Reviews | Due when a cleared skill's writing decays below 0.5, worked out on read and served by the recommender (ADR-0022) | – |
 | M11 Progress | Every skill, reading and writing apart, fade stage, status | 1 |
 | M12 Fade | Stage start, advance on solve, fast-track from the placement test, state endpoint | 1 |
-| M13 Analytics | Admin overview: learners, code runs, outcomes, content coverage, hardest exercises, hints, AI spend | 1 |
+| M13 Analytics | Admin overview: learners, code runs, outcomes, content coverage, hardest exercises, hints, AI spend, and calibration (Brier score and reliability table, ADR-0021); the de-identified pilot export | 1 |
 | **Total** | | **all 33 endpoints** |
 
-**Real runs at this stage:** a placement test on real E2B placed a learner who knew 3 skills with 6 questions (5 reading, 1 code), graded the code in about 6 seconds and fast-tracked those 3 skills to the last fade stage; the first recommendation was then the next new skill. Sessions, progress, hints, analytics and generation were each run against the development database, the password reset was walked through in a real browser, and the data rights on the running server, including the erasure of that test account (A-10). A DSA placement test through the running API placed a learner who knew 4 skills exactly, with 17 questions: 14 reading, and 3 code tasks run on real E2B with their speed tests (A-8). The 207 lessons and 483 exercises were each proven on real E2B. On the web, the sign-in pages (with the password reset) and the Terms and Privacy pages are built.
+**Real runs at this stage:** a placement test on real E2B placed a learner who knew 3 skills with 6 questions (5 reading, 1 code), graded the code in about 6 seconds and fast-tracked those 3 skills to the last fade stage; the first recommendation was then the next new skill. Sessions, progress, hints, analytics and generation were each run against the development database, the password reset was walked through in a real browser, and the data rights on the running server, including the erasure of that test account (A-10). A DSA placement test through the running API placed a learner who knew 4 skills exactly, with 17 questions: 14 reading, and 3 code tasks run on real E2B with their speed tests (A-8). The 207 lessons and 483 exercises were each proven on real E2B. On the web, the sign-in pages (with the password reset) and the Terms and Privacy pages are built. The production stack ran locally on 23 October: the image builds, migrations and the seed run inside it, HTTPS works through Caddy, a made-up `X-Forwarded-For` is ignored unless it comes with Vercel's secret header, and an encrypted backup restores into a scratch database.
 
-**Planned for the MVP (10 November):** Gemini billing activation (7 November), then the first live AI runs: live hints, lesson notes, the frozen hints, and extra generated exercise variants; frontend screens (in progress), including the Settings screens for data rights; the Brevo account and sending domain for real account emails; deployment to the cloud server; and a pilot with real learners.
+**Planned for the MVP (10 November):** Gemini billing activation (7 November), then the first live AI runs: live hints, lesson notes, the frozen hints, and extra generated exercise variants; frontend screens (in progress, due 31 October), including the Settings screens for data rights; the Brevo account and sending domain for real account emails; running the deployment on Oracle Cloud and Vercel (its files are written and checked locally); and a pilot with real learners, with the data export and the survey ready.
 
 ## 4.6 Users Training
 
@@ -1835,9 +1851,9 @@ pnpm hints:generate                   # once billing is active (GEMINI_PAID=true
 - **Decisions** are recorded as ADRs, so the reason for each choice survives the people who made it.
 - **The mastery formula is versioned** (`m4-v1` is stored on every evidence row), so it can be tuned later from calibration data without making old numbers unexplainable.
 - **Costs are watched:** every LLM call is logged with its estimated cost, with hard monthly caps; sandboxes are billed per second and killed after each run.
-- **Data protection:** account erasure runs every hour, and a learner's code is deleted once they clear its skill (both built); the other retention jobs come next (3 years inactive with a 48-hour warning, deleting sign-in records after a year). A test fails if a new table points at a learner without being exported and erased. A breach-response plan sets the 6-hour CERT-In and 72-hour Board deadlines, and backups run nightly.
+- **Data protection:** account erasure runs every hour, and a learner's code is deleted once they clear its skill (both built); the other retention jobs come next (3 years inactive with a 48-hour warning, deleting sign-in records after a year). A test fails if a new table points at a learner without being exported and erased. A breach-response plan sets the 6-hour CERT-In and 72-hour Board deadlines, and an encrypted backup runs nightly (`deploy/backup.sh`, restored in a test).
 - **Every push and pull request** runs the type checks, the tests on a fresh database and the web build (GitHub Actions).
-- **Dependencies** are pinned to exact versions; upgrades are deliberate and tested.
+- **Dependencies** are pinned to exact versions; upgrades are deliberate and tested. A dependency audit runs before each deployment (on 23 October it led to the Next.js and DOMPurify upgrades, defect 38).
 
 ---
 
@@ -1853,11 +1869,11 @@ The project set out to measure what a learner can *write*, not what they have wa
 
 In a real run, a correct submission was judged **AC (4 of 4 tests) in about 6 seconds**, and the learner's writing mastery for that skill moved from **0 to 0.24**, exactly as the formula predicts.
 
-Around that core, the rest of the learner's journey now works too: an adaptive **placement test** that asks an expert 26 questions instead of 40 and fast-tracks what they prove, a **recommender** that chooses the next skill, rung and exercise by explainable rules, **study sessions** that resume at the same step, an honest **progress** view, an **admin overview**, a **hint ladder** whose live tutor can never hand over the solution, **exercise generation** that stores nothing the sandbox hasn't proven, a **password reset** that never reveals who has an account, and **data rights**: learners can correct, download and delete their own data, and only those who opted in leave anonymous numbers behind.
+Around that core, the rest of the learner's journey now works too: an adaptive **placement test** that asks an expert 26 questions instead of 40 and fast-tracks what they prove, a **recommender** that chooses the next skill, rung and exercise by explainable rules, **study sessions** that resume at the same step, an honest **progress** view, an **admin overview**, a **hint ladder** whose live tutor can never hand over the solution, **exercise generation** that stores nothing the sandbox hasn't proven, a **password reset** that never reveals who has an account, and **data rights**: learners can correct, download and delete their own data, and only those who opted in leave anonymous numbers behind. Each learner's first try at an exercise also records what the mastery model predicted beforehand (**calibration**), so the pilot measures how far the scores can be trusted.
 
 The platform now teaches two courses. **C++ basics** (20 skills) is complete, and **Data Structures and Algorithms** (49 skills) builds on it. Every skill of both has **three frozen lessons**, one per level, each with a diagram, a worked example and a check, all **207** proven in the sandbox before storing. In the DSA course, **speed tests** tell a fast solution from a slow one: all 245 exercises, each proven so that its reference finishes well inside the limit and a slow but correct solution times out. Both courses have a **placement test**, 138 items in all.
 
-All 33 endpoints are live, backed by 240 automated tests run on every push, 483 exercises verified in the real sandbox (100 C++ and 245 DSA practice exercises covering every skill and rung of both courses, and 138 placement items), 207 verified lessons, and a written decision record (ADR-0001 to ADR-0020) for every major choice.
+All 33 endpoints are live, backed by 246 automated tests run on every push, 483 exercises verified in the real sandbox (100 C++ and 245 DSA practice exercises covering every skill and rung of both courses, and 138 placement items), 207 verified lessons, and a written decision record (ADR-0001 to ADR-0023) for every major choice. The deployment files are written and were checked locally.
 
 ## 5.2 System Specifications
 
@@ -1872,13 +1888,13 @@ All 33 endpoints are live, backed by 240 automated tests run on every push, 483 
 
 ## 5.3 Limitations of the System
 
-- **No web interface yet.** The frontend is in progress; this draft's sample outputs are API responses, and screen snapshots will be added in the final report.
-- **One practice exercise per rung.** Every skill has five hand-written exercises, one per rung, so a learner who needs more practice at a rung retries the same task or moves up; generated variants add more once billing is active. The placement tests cover every skill of both courses.
+- **No web interface yet.** The frontend is in progress (due 31 October); this draft's sample outputs are API responses, and screen snapshots will be added in the final report.
+- **One practice exercise per rung.** Every skill has five hand-written exercises, one per rung, so a learner who needs more practice at a rung retries the same task or moves up; generated variants add more for C++ basics once billing is active. DSA stays hand-written for the pilot, because its speed tests and brute forces aren't in the generation prompt yet (ADR-0023). The placement tests cover every skill of both courses.
 - **The DSA placement test is long for an expert.** It follows the C++ rules, so an expert answers all 49 reading questions and 20 code tasks, about 2½ hours with pause and resume; a beginner is done in a few questions. A walk that tries the hardest skills first would be shorter for experts and longer for beginners.
 - **Lessons are fixed per level.** The 207 lessons are hand-written, so a lesson does not change for one learner; the live note that personalises it waits for billing. A lesson's correctness rests on its gates and on review: the sandbox proves its programs' outputs, not every sentence.
 - **Live AI waits for billing.** Live hints and exercise generation are built and tested with a fake model, but stay off until the ₹3,000 prepayment is complete and activates the paid tier (the remaining ₹2,500 on 7 November); until then learners get frozen hints or a general nudge, and lessons come without their live note.
 - **Account emails wait for setup.** Real reset and deletion emails need the Brevo key and the sending domain; until then they are printed in the API terminal (in development only: production refuses to start without the key).
-- **Password reset edge cases.** A login already in progress at the moment of a reset can still finish and keep its session (a window of about a tenth of a second); closing it needs a token version per user. The per-IP limits trust only our own proxy; the Vercel and Caddy setup that passes on the visitor's real address is written down (ADR-0008) and is checked at deployment.
+- **Password reset edge cases.** A login already in progress at the moment of a reset can still finish and keep its session (a window of about a tenth of a second); closing it needs a token version per user. The per-IP limits trust only our own proxy; the Vercel and Caddy setup that passes on the visitor's real address is built and was checked locally (`deploy/`); it is checked again on the live servers.
 - **Data rights screens and the rest of retention.** The data-rights API is built, but not yet the Settings screens. The email address and date of birth are changed by email, not in the app. The 3-year inactivity job and the yearly clean-up of sign-in records are still to build. After a deletion request, an access token still works on the learning endpoints until it expires (at most 15 minutes).
 - **Adults only during the pilot.** Under-18s can't sign up until the parent-approval flow is built.
 - **Legal pages carry working values.** The company name, the domain and the Grievance Officer's postal address are placeholders until Nidanos is registered, and a lawyer-reviewed version replaces both texts before public launch.
@@ -1886,7 +1902,8 @@ All 33 endpoints are live, backed by 240 automated tests run on every push, 483 
 - **Placement length.** An expert answers 26 questions (about 28 minutes); a placement seed unlocks the next skills for about 4 days (syntactic skills) before one Build per skill confirms them.
 - **Latency:** about 6 s per submission, mostly network round trips to the sandbox provider, whose servers are outside India.
 - **Sandbox trust:** learner code runs as the same user as our runner script, so a determined learner could tamper with result lines. That's acceptable for practice; the fix is a separate run user.
-- **Formula constants are starting values.** They will be calibrated against held-out exercises once real learners use the system.
+- **Formula constants are starting values.** Each first try now records the model's prediction (ADR-0021), so the pilot shows how well they predict, but tuning them needs more learners than a three-day pilot. The recommender picks exercises near the learner's level, so predictions bunch in the middle.
+- **Reviews are simple.** A cleared skill is due for review when its writing decays below 0.5; nothing is stored, and the interval doesn't grow after a good review (ADR-0022). The first review comes about a week after clearing, so the pilot will see few.
 - **Pilot:** the planned manual "Phase 0" validation was replaced by a single-learner baseline.
 
 ## 5.4 Future Scope for Modification
@@ -1896,7 +1913,7 @@ All 33 endpoints are live, backed by 240 automated tests run on every push, 483 
 - The parent-approval flow for under-18 learners, with identity verification as the DPDP Rules require, and a parent acting on a child's data rights.
 - The remaining retention jobs: 3 years inactive, and a year's sign-in records.
 - Changing the password, email address or date of birth while logged in, and verifying the email address at sign-up.
-- Calibration of the mastery model from real data (held-out exercises), and spaced-revision scheduling (M10).
+- Tuning the mastery formula from the calibration records, a held-out exercise bank for a cleaner measure, and spaced-revision intervals (M10, ADR-0022).
 - A mobile app (the API already supports Bearer tokens), and colleges as institutional customers.
 - Spoken explanation assessment, and a portable learner profile.
 
@@ -1912,7 +1929,7 @@ All 33 endpoints are live, backed by 240 automated tests run on every push, 483 
 8. Bastani, H., et al. (2025). Generative AI Without Guardrails Can Harm Learning. *Proceedings of the National Academy of Sciences*.
 9. Government of India (2023). *The Digital Personal Data Protection Act, 2023*; and (2025) *Digital Personal Data Protection Rules, 2025*.
 10. Technical documentation: Node.js, Express 5, PostgreSQL 16, Drizzle ORM, BullMQ, E2B, Google Gemini API, Next.js, Brevo (official documentation, accessed October 2026).
-11. Project documents: Phase 1 synopsis, problem analysis, literature survey and SRS (24 Sep 2026); Phase 2 system design (15 Oct 2026, updated 20 Oct); ADR-0001 to ADR-0020; frontend API guide; Terms of Service, Privacy Policy and DPDP checklist (draft v0.1).
+11. Project documents: Phase 1 synopsis, problem analysis, literature survey and SRS (24 Sep 2026); Phase 2 system design (15 Oct 2026, updated 20 Oct); ADR-0001 to ADR-0023; frontend API guide; deployment runbook (`deploy/README.md`); pilot survey; Terms of Service, Privacy Policy and DPDP checklist (draft v0.1).
 
 ---
 
@@ -2094,7 +2111,7 @@ After the third failed try (or when the month's budget is spent), the job falls 
 
 ## A-8 Test Reports
 
-Full test run of 22 October 2026: **42 test files, 240 tests, 240 passed.**
+Full test run of 23 October 2026: **43 test files, 246 tests, 246 passed.**
 
 - ✓ account-api.test.ts > PATCH /me > corrects the name and time zone, and renames the hidden personal organisation with the name
 - ✓ account-api.test.ts > PATCH /me > rejects an unknown time zone, a blank name, an empty body and other fields
@@ -2114,6 +2131,7 @@ Full test run of 22 October 2026: **42 test files, 240 tests, 240 passed.**
 - ✓ analytics-api.test.ts > GET /analytics/overview > is for admins only
 - ✓ analytics-api.test.ts > GET /analytics/overview > counts new learners, opt-ins, code runs, sessions and clears in the window
 - ✓ analytics-api.test.ts > GET /analytics/overview > reports one course's content coverage and per-skill averages exactly
+- ✓ analytics-api.test.ts > GET /analytics/overview > scores calibration per dimension: the Brier score and predicted against observed, in fifths
 - ✓ analytics-api.test.ts > GET /analytics/overview > lists the hardest practice exercises, lowest solve rate first
 - ✓ analytics-api.test.ts > GET /analytics/overview > accepts a window of 1 to 365 days
 - ✓ attempts.test.ts > attempts schema > rejects a double-submit with the same idempotency key
@@ -2198,6 +2216,7 @@ Full test run of 22 October 2026: **42 test files, 240 tests, 240 passed.**
 - ✓ exercises-api.test.ts > GET /exercises/:id > never opens a placement-test exercise as practice
 - ✓ exercises.test.ts > exercises schema > rejects a second exercise with the same content key
 - ✓ exercises.test.ts > exercises schema > rejects a rung outside 1 to 5
+- ✓ export-pilot.test.ts > pilot data export (pnpm pilot:export) > exports an opted-in learner's activity under an alias, and nothing that identifies anyone
 - ✓ freeze-hints.test.ts > frozen hints > stores levels 1–4 once, and leaves an exercise that already has hints alone
 - ✓ freeze-hints.test.ts > frozen hints > asks again when a hint gives the solution away, and skips the exercise if it happens twice
 - ✓ generate-exercise.test.ts > exercise generation > stores a draft the sandbox proves, verified and ready to serve
@@ -2207,6 +2226,7 @@ Full test run of 22 October 2026: **42 test files, 240 tests, 240 passed.**
 - ✓ generate-exercise.test.ts > exercise generation > does nothing for a job that has already finished
 - ✓ generation-api.test.ts > POST /exercises/generate > queues one job per skill and rung for an author, and returns the same job while it runs
 - ✓ generation-api.test.ts > POST /exercises/generate > is for admins and authors only, and refuses while billing is off
+- ✓ generation-api.test.ts > POST /exercises/generate > leaves DSA hand-written: no job on request or for a skill with nothing to serve (ADR-0023)
 - ✓ generation-api.test.ts > POST /exercises/generate > 404s for an unknown skill or job
 - ✓ generation-api.test.ts > automatic generation > queues an exercise when the learner's next skill has none, once
 - ✓ generation-budget.test.ts > generation budget > stops before calling the model once ₹300 is spent this month, and falls back
@@ -2335,6 +2355,9 @@ Full test run of 22 October 2026: **42 test files, 240 tests, 240 passed.**
 - ✓ submissions.test.ts > submissions > turns an AC into writing mastery, saved with its ledger row
 - ✓ submissions.test.ts > submissions > penalises only the first wrong answer of an attempt
 - ✓ submissions.test.ts > submissions > records no evidence for SE or an early compile error
+- ✓ submissions.test.ts > submissions > saves a calibration record for a learner's first counted try at an exercise only (ADR-0021)
+- ✓ submissions.test.ts > submissions > calibrates only one of two first tries graded at the same time
+- ✓ submissions.test.ts > submissions > predicts from today's scores, decayed since their last evidence
 - ✓ submissions.test.ts > submissions > deletes the learner's code for a skill once it is cleared, keeping every verdict (privacy policy §2)
 
 **Real-sandbox smoke test:**
@@ -2735,8 +2758,9 @@ export async function eraseAccount(userId: string) {
   // A hash of a password nobody knows: the account can never be logged in to again.
   if (!(await repo.closeAccount(userId, graceStart(), await hashPassword(randomToken())))) return; // logged in again: cancelled
   const enrollmentIds = (await learnerEnrollments(userId)).map((e) => e.id);
-  // Rows that point at other modules' rows go first. review_items and calibration_records have no
-  // writer yet: their module adds its step here when it gets one.
+  // Rows that point at other modules' rows go first. review_items has no writer yet: M10 adds its
+  // step here when it gets one.
+  await eraseCalibration(userId, keepNumbers);
   await eraseMastery(userId, keepNumbers);
   await eraseScaffolding(userId, keepNumbers);
   await erasePlacements(userId, keepNumbers);
