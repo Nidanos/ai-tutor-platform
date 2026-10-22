@@ -5,3 +5,7 @@ packages:
 ignoredBuiltDependencies:
   - esbuild
   - msgpackr-extract
+
+# Monaco pins an old DOMPurify with known XSS advisories; drop this once monaco-editor ships >= 3.4.17.
+overrides:
+  dompurify: 3.4.17
