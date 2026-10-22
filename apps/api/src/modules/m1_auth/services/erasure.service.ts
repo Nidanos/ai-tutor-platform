@@ -8,6 +8,7 @@ import { erasePractice } from "../../m7_execution/services/submissions.service.j
 import { eraseHints } from "../../m8_socratic/services/hints.service.js";
 import { eraseSessions } from "../../m9_sessions/services/sessions.service.js";
 import { eraseScaffolding } from "../../m12_scaffolding/services/scaffolding.service.js";
+import { eraseCalibration } from "../../m13_analytics/services/calibration.service.js";
 import * as repo from "../repositories/account.repository.js";
 
 export const DELETION_GRACE_DAYS = 7;
@@ -21,8 +22,9 @@ export async function eraseAccount(userId: string) {
   // A hash of a password nobody knows: the account can never be logged in to again.
   if (!(await repo.closeAccount(userId, graceStart(), await hashPassword(randomToken())))) return; // logged in again: cancelled
   const enrollmentIds = (await learnerEnrollments(userId)).map((e) => e.id);
-  // Rows that point at other modules' rows go first. review_items and calibration_records have no
-  // writer yet: their module adds its step here when it gets one.
+  // Rows that point at other modules' rows go first. review_items has no writer yet: M10 adds its
+  // step here when it gets one.
+  await eraseCalibration(userId, keepNumbers);
   await eraseMastery(userId, keepNumbers);
   await eraseScaffolding(userId, keepNumbers);
   await erasePlacements(userId, keepNumbers);

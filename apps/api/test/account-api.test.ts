@@ -136,8 +136,9 @@ describe("GET /me/data", () => {
       steps: data.sessions.steps.length,
       stages: data.scaffolding.stages.length,
       stageMoves: data.scaffolding.moves.length,
+      calibration: data.calibration.length,
     };
-    expect(counts).toEqual({ attempts: 1, hints: 1, lessonNotes: 1, placementTests: 1, placementAnswers: 2, estimates: 1, masteryScores: 1, evidence: 1, recommendations: 1, sessions: 1, steps: 1, stages: 1, stageMoves: 2 });
+    expect(counts).toEqual({ attempts: 1, hints: 1, lessonNotes: 1, placementTests: 1, placementAnswers: 2, estimates: 1, masteryScores: 1, evidence: 1, recommendations: 1, sessions: 1, steps: 1, stages: 1, stageMoves: 2, calibration: 1 });
   });
 
   it("lists sign-ins and consents, and allows 5 downloads an hour", async () => {

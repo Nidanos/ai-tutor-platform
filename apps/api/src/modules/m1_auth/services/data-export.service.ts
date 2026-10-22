@@ -7,6 +7,7 @@ import { learnerHints } from "../../m8_socratic/services/hints.service.js";
 import { learnerNotes } from "../../m8_socratic/services/lesson-note.service.js";
 import { learnerSessions } from "../../m9_sessions/services/sessions.service.js";
 import { learnerScaffolding } from "../../m12_scaffolding/services/scaffolding.service.js";
+import { learnerCalibration } from "../../m13_analytics/services/calibration.service.js";
 import { accountData } from "../repositories/account.repository.js";
 import { me } from "./auth.service.js";
 
@@ -32,7 +33,7 @@ const ABOUT = {
 export async function exportData(userId: string) {
   await me(userId);
   const courses = await learnerEnrollments(userId);
-  const [account, placementTests, mastery, recommendations, practice, hints, lessonNotes, sessions, scaffolding] = await Promise.all([
+  const [account, placementTests, mastery, recommendations, practice, hints, lessonNotes, sessions, scaffolding, calibration] = await Promise.all([
     accountData(userId),
     learnerPlacements(userId),
     learnerMastery(userId),
@@ -42,6 +43,7 @@ export async function exportData(userId: string) {
     learnerNotes(userId),
     learnerSessions(userId),
     learnerScaffolding(userId),
+    learnerCalibration(userId),
   ]);
-  return { exportedAt: new Date(), about: ABOUT, account, courses, placementTests, mastery, recommendations, practice, hints, lessonNotes, sessions, scaffolding };
+  return { exportedAt: new Date(), about: ABOUT, account, courses, placementTests, mastery, recommendations, practice, hints, lessonNotes, sessions, scaffolding, calibration };
 }

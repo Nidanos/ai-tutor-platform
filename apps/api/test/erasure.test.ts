@@ -4,6 +4,7 @@ import { describe, expect, it } from "vitest";
 import { app } from "../src/app.js";
 import { db } from "../src/infrastructure/database/index.js";
 import {
+  calibrationRecords,
   consents,
   diagnosticAttempts,
   diagnosticResponses,
@@ -56,6 +57,7 @@ async function rowCounts(h: History) {
     db.$count(hintEvents, eq(hintEvents.attemptId, h.attemptId)),
     db.$count(skillScaffolding, eq(skillScaffolding.userId, h.userId)),
     db.$count(fadeStageChanges, eq(fadeStageChanges.userId, h.userId)),
+    db.$count(calibrationRecords, eq(calibrationRecords.userId, h.userId)),
   ]);
   return counts;
 }
@@ -70,9 +72,9 @@ async function learnerWhoAgreed(...kinds: (typeof consents.$inferInsert)["kind"]
 
 // Every table that points at a user or at a learner's rows, by what erasure does with it (ADR-0018).
 const POINTS_AT_LEARNERS = {
-  erased: ["diagnostic_attempts", "diagnostic_responses", "diagnostic_results", "enrollments", "evidence_events", "exercise_attempts", "fade_stage_changes", "hint_events", "learning_sessions", "lesson_notes", "mastery_records", "recommendations", "run_test_results", "sandbox_runs", "session_steps", "skill_scaffolding", "submissions"],
+  erased: ["calibration_records", "diagnostic_attempts", "diagnostic_responses", "diagnostic_results", "enrollments", "evidence_events", "exercise_attempts", "fade_stage_changes", "hint_events", "learning_sessions", "lesson_notes", "mastery_records", "recommendations", "run_test_results", "sandbox_runs", "session_steps", "skill_scaffolding", "submissions"],
   keptAsRecords: ["consents", "password_reset_tokens", "refresh_tokens"],
-  noWriterYet: ["calibration_records", "review_items"],
+  noWriterYet: ["review_items"],
   whoMadeContent: ["exercises", "fade_schedules", "generation_jobs", "skill_prerequisites"], // authors, not learners
 };
 

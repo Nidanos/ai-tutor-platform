@@ -1,6 +1,7 @@
 import { eq } from "drizzle-orm";
 import { db } from "../src/infrastructure/database/index.js";
 import {
+  calibrationRecords,
   courseLanguages,
   courses,
   diagnosticAttempts,
@@ -157,6 +158,7 @@ export async function createLearnerWithHistory() {
 
   await db.insert(masteryRecords).values({ ...key, decayLambda: 0.05, writingScore: 0.4 });
   await db.insert(evidenceEvents).values({ ...key, dimension: "writing", submissionId: submission.id, weight: 1, scoreBefore: 0, scoreAfter: 0.4, formulaVersion: "test" });
+  await db.insert(calibrationRecords).values({ ...key, exerciseId, submissionId: submission.id, rung: 3, predictedReading: 0, predictedWriting: 0, observedVerdict: "WA" });
   await addDefaultFadeSchedule(courseId);
   await getStage(key, courseId);
   await db.insert(fadeStageChanges).values({ ...key, fromStage: 1, toStage: 2, submissionId: submission.id, reason: "solved" });
