@@ -1,0 +1,16 @@
+# HTTPS for the API, with certificates from Let's Encrypt (ADR-0010).
+# Client IP (ADR-0008): by default Caddy sets X-Forwarded-For to the caller's own address, so nobody can
+# make one up. Only Vercel, proving itself with the secret header, may pass on the visitor's IP.
+# Caddy writes no access log here; if one is turned on, leave X-Origin-Secret out of it.
+{$API_DOMAIN} {
+	@vercel header X-Origin-Secret {$ORIGIN_SECRET}
+	handle @vercel {
+		reverse_proxy api:3001 {
+			header_up X-Forwarded-For {header.X-Forwarded-For}
+			header_up -X-Origin-Secret
+		}
+	}
+	handle {
+		reverse_proxy api:3001
+	}
+}

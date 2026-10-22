@@ -1,0 +1,17 @@
+# The API image needs only the workspace manifests, packages/ and apps/api.
+**/node_modules
+**/dist
+**/.next
+**/.env
+**/.env.*
+!**/.env.example
+.git
+.docker-data
+DOCS
+graphify-out
+deploy
+# Their manifests stay: the lockfile covers the whole workspace.
+apps/web/**
+!apps/web/package.json
+packages/report-pdf/**
+!packages/report-pdf/package.json

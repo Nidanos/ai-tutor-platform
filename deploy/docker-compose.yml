@@ -1,0 +1,75 @@
+# Production on one VM (ADR-0010): Caddy → API (+ its queue workers) → Postgres and Redis.
+# Run from this folder: `docker compose up -d --build`. Settings come from deploy/.env (see .env.example).
+# Only Caddy publishes ports (ADR-0008): the API, Postgres and Redis are reachable on the Compose network only.
+name: ai-tutor
+
+services:
+  postgres:
+    image: pgvector/pgvector:pg16
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:?set POSTGRES_USER in deploy/.env}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in deploy/.env}
+      POSTGRES_DB: ${POSTGRES_DB:?set POSTGRES_DB in deploy/.env}
+    volumes:
+      - postgres:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    command: ["redis-server", "--appendonly", "yes"] # queued submissions survive a restart
+    volumes:
+      - redis:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  api:
+    build:
+      context: ..
+      dockerfile: apps/api/Dockerfile
+    restart: unless-stopped
+    depends_on:
+      postgres: { condition: service_healthy }
+      redis: { condition: service_healthy }
+    environment:
+      NODE_ENV: production
+      PORT: 3001
+      DATABASE_URL: postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
+      REDIS_URL: redis://redis:6379
+      JWT_SECRET: ${JWT_SECRET:?set JWT_SECRET in deploy/.env}
+      WEB_ORIGIN: ${WEB_ORIGIN:?set WEB_ORIGIN in deploy/.env}
+      E2B_API_KEY: ${E2B_API_KEY:?set E2B_API_KEY in deploy/.env}
+      GEMINI_API_KEY: ${GEMINI_API_KEY:-}
+      GEMINI_PAID: ${GEMINI_PAID:-false}
+      BREVO_API_KEY: ${BREVO_API_KEY:?set BREVO_API_KEY in deploy/.env}
+      MAIL_FROM: ${MAIL_FROM:?set MAIL_FROM in deploy/.env}
+
+  caddy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    depends_on: [api]
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
+    environment:
+      API_DOMAIN: ${API_DOMAIN:?set API_DOMAIN in deploy/.env}
+      ORIGIN_SECRET: ${ORIGIN_SECRET:?set ORIGIN_SECRET in deploy/.env}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data # the HTTPS certificates
+      - caddy_config:/config
+
+volumes:
+  postgres:
+  redis:
+  caddy_data:
+  caddy_config:
