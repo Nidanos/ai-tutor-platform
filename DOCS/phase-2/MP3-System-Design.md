@@ -760,7 +760,7 @@ erDiagram
 - **`exercise_secrets`** holds everything a learner must never see. Only the worker and the hint engine read it; API responses are built from `exercises` alone.
 - Every test runs inside the frozen harness (ADR-0002), so `exercise_tests` only names the tests; input and output are stored just for the sample tests shown to the learner.
 - A generation job points to the exercise it produced; the exercise doesn't point back (one fact, stored once).
-- Template exercises use the same tables (`source = template`) and pass the same verification. `purpose = holdout` exercises are never recommended; they are used only for calibration (M13).
+- Template exercises use the same tables (`source = template`) and pass the same verification. `purpose = holdout` exercises are never recommended; they are used only for calibration (M13). None are written yet: v1 calibrates on first tries instead (ADR-0021).
 - A partial unique key on `generation_jobs` stops two jobs generating the same exercise at once.
 
 ### 5.8 Attempts and execution (M7)
@@ -839,7 +839,7 @@ erDiagram
 
 - An **attempt** is one learner on one exercise; it owns the server-side hint level (FR-M8-01). A CHECK keeps `hint_level ≤ hint_ceiling`, so the fade limit holds even if application code has a bug.
 - A **submission** is one press of Submit. Its `answer` is code on rungs 2–5 and the predicted output on rung 1 (Predict).
-- **`context` decides evidence:** practice and review attempts create evidence; diagnostic attempts don't (the completed diagnostic seeds mastery, raise-only, ADR-0012); holdout attempts save a calibration record first, then create evidence.
+- **`context` decides evidence:** practice and review attempts create evidence; diagnostic attempts don't (the completed diagnostic seeds mastery, raise-only, ADR-0012); a learner's first counted try at an exercise also saves a calibration record: M4's prediction just before the verdict, in the same transaction (ADR-0021).
 - `counts_as_attempt` is false for CE (until the 3rd on the same exercise) and for SE.
 - `submissions` copies `user_id` and `exercise_id` from the attempt on purpose, for simpler analytics. The server sets them, never the client.
 - `sandbox_runs` serves both learner submissions and exercise verification, giving one source for execution analytics.
@@ -983,8 +983,9 @@ erDiagram
     uuid user_id FK
     uuid skill_id FK
     text language_code FK
-    uuid exercise_id FK "purpose holdout"
-    uuid submission_id FK
+    uuid exercise_id FK
+    uuid submission_id FK "a first counted try"
+    smallint rung
     double predicted_reading
     double predicted_writing
     enum observed_verdict "passed = AC"
@@ -1022,7 +1023,7 @@ erDiagram
 - **Calibration** compares predicted mastery with the result on a held-out exercise (FR-M13-01).
 - **Consent** (owned by M1 since 14 Oct, so sign-up and consent save in one transaction) records each agreement with its policy version. `data_processing` and `terms` are required at sign-up; `ai_training` and `research_study` are optional, adults only. A minor gets none until a parent approves (`parental`); during the pilot, sign-up refuses under-18s (20 Oct). Rows are never deleted (`RESTRICT`); see `DOCS/legal/dpdp-compliance.md`.
 - `llm_calls` tracks token use and estimated cost of every Gemini call.
-- The admin overview (ADR-0014) is built from **aggregate queries owned by each module** (no extra tables, no views): learners and opt-ins, sessions, placement tests, code runs, outcomes per skill, content coverage and the hardest exercises. Hint trends, LLM cost, calibration and generation rates are added with the features that produce them.
+- The admin overview (ADR-0014) is built from **aggregate queries owned by each module** (no extra tables, no views): learners and opt-ins, sessions, placement tests, code runs, outcomes per skill, content coverage and the hardest exercises. Hint trends, LLM cost, calibration (ADR-0021) and generation rates are added with the features that produce them.
 
 ### 5.12 Key constraints
 
@@ -1069,6 +1070,8 @@ A table is created only after the tables it points to. Each step is one versione
 | 0012_consent_at_register | users.date_of_birth, user status pending_parent, consent kinds terms, parental, ai_training | **Built** |
 | 0013_password_reset_tokens | password_reset_tokens (ADR-0017) | **Built** |
 | 0014_data_rights | users.deletion_requested_at, user status deleted (ADR-0018) | **Built** |
+| 0015_lessons | lessons, lesson_notes (ADR-0019) | **Built** |
+| 0016_calibration_rung | calibration_records.rung (ADR-0021) | **Built** |
 | Later | analytics views; skill_graph_changes, concept_chunks (+ `vector`), audit_log | With their features |
 
 Totals: 39 tables built (the 38 of the MVP plus password_reset_tokens), 3 later (42). Enums are created in the migration of the first table that uses them. The seed (`pnpm db:seed`) loads the C++ language, the `dsa` and `cpp-basics` courses, and the default 4-stage fade schedule; it is safe to run repeatedly.
@@ -1751,7 +1754,7 @@ Rate limits: login 20 per IP and 5 failures per email per 15 minutes; register 5
 | FR-M11-01 to 03 Honest progress view | Reads stored mastery, reading and writing kept separate |
 | FR-M12-01 Configurable schedule | `fade_schedules`, `fade_stages` (rungs, hint ceilings, advance rule as data) |
 | FR-M12-02 Enforce limits | `skill_scaffolding` stage → `hint_ceiling` on each attempt, rung clamp in M5 |
-| FR-M13-01 Calibration | `calibration_records`, holdout exercises |
+| FR-M13-01 Calibration | `calibration_records` from each first counted try (ADR-0021); Brier score and reliability table in `GET /analytics/overview` |
 | FR-M13-02 Hint trends | Views over `hint_events` |
 | FR-M13-03 Generation rates | Views over `generation_jobs`, `generation_failures` |
 
@@ -1776,7 +1779,7 @@ Rate limits: login 20 per IP and 5 failures per email per 15 minutes; register 5
 - **Placement test (M3):** `POST /diagnostic/start`, `/:id/answers` and `/:id/complete` (ADR-0012). The test walks all 20 skills easiest-first with predict-the-output questions, with a check question after a possible slip, then asks code tasks (run on E2B in the background) only on the frontier. Completion seeds mastery raise-only (M4) and starts proven skills on the last fade stage (M12) in one transaction. Retakes are allowed (3). The 40 items are verified in the real sandbox (40/40). On the real graph: 1–27 questions, about 28 min for an expert.
 - **Sessions (M9):** `POST /sessions`, `GET /sessions/active` and `PATCH /sessions/:id` (ADR-0013). One open session per learner; each step comes from the recommender and advances when its exercise is solved; 15 minutes idle pauses it, 24 hours paused ends it, worked out when read.
 - **Progress (M11):** `GET /progress` lists every skill with reading and writing apart (stored and today's effective), its fade stage, prerequisites for the graph, and a status (locked, ready, in progress, cleared, review due) from the recommender's own unlock rule.
-- **Analytics (M13):** `GET /analytics/overview?days=30` for admins only (ADR-0014): aggregate counts per window, each gathered by the module that owns the data. `pnpm user:admin <email>` makes the first admin.
+- **Analytics (M13):** `GET /analytics/overview?days=30` for admins only (ADR-0014): aggregate counts per window, each gathered by the module that owns the data. `pnpm user:admin <email>` makes the first admin. Calibration (ADR-0021, 23 Oct): a learner's first counted try at each exercise saves M4's prediction from just before the verdict, and the overview reports the Brier score and a reliability table per dimension.
 - **Hints (M8):** `POST /exercises/:id/hints` (ADR-0015). Live Gemini 3.5 Flash Lite hint about the learner's own code first, frozen hint as the fallback; one level per request within the fade ceiling; level 5 is the answer (bottom-out logged, no credit); a leak filter blocks solution-like replies; 20 live hints per learner per day and ₹500 per month, each call logged with its cost. Live calls stay off until billing is active (`GEMINI_PAID`).
 - **Exercise generation (M6):** `POST /exercises/generate` and `GET /exercises/generation/:jobId` for admins and authors, plus automatic jobs queued by the recommender (ADR-0016). Up to 3 tries (Gemini 3.8 Flash twice, then 3.1 Pro); a draft is stored only after the sandbox proves it: the reference passes, the starter fails, and 3 model-written wrong solutions fail. Every failed try is logged; after 3 it falls back to the hand-written bank. Separate ₹300/month cap.
 - **Lessons (M6 + M8):** `GET /lessons/:skillId` and `POST /lessons/:skillId/note` (ADR-0019). Each skill has a frozen lesson for each level (new, building, strong): explanation, Mermaid diagram, worked example, common mistakes and a predict-the-output check. Every lesson passes the same gates: the schema, the leak filter against the skill's exercises, and both programs proven in the real sandbox. The C++ basics and DSA lessons (207) are hand-written; Gemini generation, with a claim-by-claim fact-check, is built for later courses (₹300/month). A short live note over the lesson uses the learner's level, recent results and weak prerequisites, never their code, inside the live tutor's limits.

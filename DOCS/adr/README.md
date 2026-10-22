@@ -23,7 +23,8 @@ Last updated: 19 Oct 2026. These record decisions Ashwani has made. Where no dec
 | [0017](0017-password-reset-v1.md) | Password reset: Brevo email, one-use 30-minute link in the #fragment, logged out everywhere | Accepted, built |
 | [0018](0018-data-rights-v1.md) | Data rights: correct, download, opt in and out, delete with the password after 7 days, anonymous numbers only with an opt-in | Accepted, built |
 | [0019](0019-personalised-lessons-v1.md) | Lessons: three frozen levels per skill plus a live note; C++ basics and DSA hand-written, Gemini generation with a claim-by-claim fact-check for later courses | Accepted, built |
-| [0020](0020-dsa-exercise-bank-v1.md) | DSA exercise bank: five hand-written per skill; generated tests take the reference's output, and a brute force must agree on medium tests and time out on large ones | Accepted, being built |
+| [0020](0020-dsa-exercise-bank-v1.md) | DSA exercise bank: five hand-written per skill; generated tests take the reference's output, and a brute force must agree on medium tests and time out on large ones | Accepted, built |
+| [0021](0021-calibration-v1.md) | Calibration: a learner's first counted try at each exercise, against M4's prediction just before it; Brier score and reliability table in the admin overview | Accepted, built |
 
 ## Open decisions (Ashwani's to make)
 | # | Question | Blocks |

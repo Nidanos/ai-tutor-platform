@@ -1,6 +1,6 @@
 # ADR-0020: The DSA exercise bank, v1
 
-- **Status:** Accepted, being built. Verification is built; skills are written group by group (complexity first, 20 Oct)
+- **Status:** Accepted, built: all 245 exercises verified on E2B (22 Oct)
 - **Date:** 20 Oct 2026
 - **Decided by:** Ashwani Kumar Puri (five per skill, speed tests where a slow version exists)
 - **Links:** ADR-0004 ("Test data and verification"), ADR-0016, ADR-0019
