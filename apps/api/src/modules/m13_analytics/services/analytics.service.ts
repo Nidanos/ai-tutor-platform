@@ -10,6 +10,7 @@ import { runStats } from "../../m7_execution/services/submissions.service.js";
 import { hintStats, MONTHLY_BUDGET_INR } from "../../m8_socratic/services/hints.service.js";
 import { sessionStats } from "../../m9_sessions/services/sessions.service.js";
 import { stageMoves } from "../../m12_scaffolding/services/scaffolding.service.js";
+import { calibrationStats } from "./calibration.service.js";
 
 const DAY_MS = 86_400_000;
 const RUNGS = [1, 2, 3, 4, 5];
@@ -22,7 +23,7 @@ export async function overview(days: number, courseSlug: string, languageCode: s
   const course = await getCourse(courseSlug, languageCode);
   const graph = await getSkillGraph(course.id, languageCode);
   const skillIds = graph.map((s) => s.id);
-  const [learners, placement, sessions, runs, hardest, outcomes, cleared, moves, content, hints, hintSpend, generation, generationSpend] = await Promise.all([
+  const [learners, placement, sessions, runs, hardest, outcomes, cleared, moves, content, hints, hintSpend, generation, generationSpend, calibration] = await Promise.all([
     learnerStats(since),
     placementStats(since),
     sessionStats(since),
@@ -36,6 +37,7 @@ export async function overview(days: number, courseSlug: string, languageCode: s
     spentThisMonthInr("hint"),
     generationStats(since),
     spentThisMonthInr("exercise_generation"),
+    calibrationStats(skillIds, since),
   ]);
   const titles = await listTitles(hardest.map((h) => h.exerciseId));
   const otherSkills = [...titles.map((t) => t.skillId), ...generation.bySkill.map((g) => g.skillId)];
@@ -66,6 +68,7 @@ export async function overview(days: number, courseSlug: string, languageCode: s
         return { skill: skillOf.get(s.id)!, learners: o?.learners ?? 0, avgReading: o?.avgReading ?? 0, avgWriting: o?.avgWriting ?? 0, cleared: o?.cleared ?? 0 };
       }),
     },
+    calibration,
     content: { skills: contentSkills, skillsWithoutExercises: contentSkills.filter((s) => s.total === 0).length },
     hints: { ...hints, generic: hints.delivered - hints.live - hints.frozen },
     generation: {

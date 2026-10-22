@@ -5,6 +5,7 @@ import { describe, expect, it } from "vitest";
 import { app } from "../src/app.js";
 import { db } from "../src/infrastructure/database/index.js";
 import {
+  calibrationRecords,
   consents,
   enrollments,
   exerciseAttempts,
@@ -17,7 +18,7 @@ import {
   submissions,
   users,
 } from "../src/infrastructure/database/schema/index.js";
-import { bearerFor, createCourse, createSkill, createUser, exerciseRow } from "./helpers.js";
+import { bearerFor, createAttempt, createCourse, createSkill, createUser, exerciseRow } from "./helpers.js";
 
 async function admin() {
   const user = await createUser();
@@ -98,6 +99,41 @@ describe("GET /analytics/overview", () => {
     expect(of(outcomes.skills, covered.slug)).toMatchObject({ learners: 2, cleared: 0 });
     expect(of(outcomes.skills, covered.slug).avgWriting).toBeCloseTo(0.4, 3);
     expect(of(outcomes.skills, empty.slug)).toMatchObject({ learners: 0, avgWriting: 0 });
+  });
+
+  it("scores calibration per dimension: the Brier score and predicted against observed, in fifths", async () => {
+    const auth = await admin();
+    const course = await createCourse();
+    const { id: skillId } = await createSkill(course.id);
+    const tries = [[1, 0.5, "AC"], [3, 0.1, "WA"], [3, 0.3, "AC"], [5, 0.9, "AC"], [2, 0.95, "WA"], [4, 1, "AC"]] as const;
+    for (const [rung, predicted, verdict] of tries) {
+      const attempt = await createAttempt(); // only for a submission to point at
+      const [submission] = await db
+        .insert(submissions)
+        .values({ attemptId: attempt.id, userId: attempt.userId, exerciseId: attempt.exerciseId, languageCode: "cpp", answerSha256: "x", idempotencyKey: randomUUID(), status: "completed", verdict })
+        .returning();
+      await db.insert(calibrationRecords).values({
+        userId: attempt.userId,
+        skillId,
+        languageCode: "cpp",
+        exerciseId: attempt.exerciseId,
+        submissionId: submission.id,
+        rung,
+        predictedReading: rung === 1 ? predicted : 0,
+        predictedWriting: rung === 1 ? 0 : predicted,
+        observedVerdict: verdict,
+      });
+    }
+
+    const { reading, writing } = (await overviewFor(auth, `?course=${course.slug}&days=7`)).data.calibration;
+    expect(reading).toEqual({ tries: 1, brier: 0.25, bins: [{ from: 0.4, to: 0.6, n: 1, meanPredicted: 0.5, passRate: 1 }] });
+    expect(writing.tries).toBe(5);
+    expect(writing.brier).toBeCloseTo((0.01 + 0.49 + 0.01 + 0.9025 + 0) / 5, 6);
+    expect(writing.bins.map((b: { from: number; n: number; passRate: number }) => [b.from, b.n, b.passRate])).toEqual([[0, 1, 0], [0.2, 1, 1], [0.8, 3, 2 / 3]]);
+    expect(writing.bins[2].meanPredicted).toBeCloseTo(0.95, 6); // 1.0 falls in the top fifth
+
+    const none = (await overviewFor(auth, `?course=${(await createCourse()).slug}&days=7`)).data.calibration;
+    expect(none.writing).toEqual({ tries: 0, brier: null, bins: [] });
   });
 
   it("lists the hardest practice exercises, lowest solve rate first", async () => {
