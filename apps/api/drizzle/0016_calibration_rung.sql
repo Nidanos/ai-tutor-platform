@@ -1,0 +1,2 @@
+ALTER TABLE "calibration_records" ADD COLUMN "rung" smallint NOT NULL;--> statement-breakpoint
+ALTER TABLE "calibration_records" ADD CONSTRAINT "calibration_records_rung_range" CHECK ("calibration_records"."rung" between 1 and 5);
