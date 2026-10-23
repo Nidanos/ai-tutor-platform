@@ -1,6 +1,6 @@
 # Frontend API Guide
 
-For Aman and Aditi. How the web app talks to the backend. Last updated 20 Oct 2026.
+For Aman and Aditi. How the web app talks to the backend. Last updated 23 Oct 2026.
 
 **Status:** all 33 endpoints are live (section 7).
 
@@ -89,13 +89,13 @@ Base path: `/api/v1/submissions`. Logged in only. Max **10 submits per minute** 
 
 | Method + path | Body | Success | Errors |
 | --- | --- | --- | --- |
-| `POST /` | `{ attemptId, answer, idempotencyKey }` | `202 { submissionId, status: "queued" }` | `400 VALIDATION_ERROR`, `404 ATTEMPT_NOT_FOUND`, `409 ATTEMPT_CLOSED`, `409 IDEMPOTENCY_KEY_REUSED`, `429 RATE_LIMITED` |
+| `POST /` | `{ attemptId, answer, idempotencyKey }` | `202 { submissionId, status: "queued" }`; for a rung-1 (predict the output) answer, `status: "completed"` at once | `400 VALIDATION_ERROR`, `404 ATTEMPT_NOT_FOUND`, `409 ATTEMPT_CLOSED`, `409 IDEMPOTENCY_KEY_REUSED`, `429 RATE_LIMITED` |
 | `GET /:id/result` | none | `200`: while running `{ submissionId, status: "queued" | "running" }`; when done, the full result below | `404 SUBMISSION_NOT_FOUND` |
 
 - **`answer`**: the code from the editor (max 64 KB). For rung 1 ("predict the output") it's the predicted text.
 - **`idempotencyKey`**: make one per press of Submit with `crypto.randomUUID()`. If the request is retried with the same key, you get the same submission back, so it never runs twice.
 - **`attemptId`**: comes from `GET /exercises/:id` (section 4c).
-- **Polling**: call `GET /:id/result` every **1 second** until `status === "completed"`. A run usually takes **4–7 seconds**. Show a "Running tests…" spinner.
+- **Polling**: call `GET /:id/result` every **1 second** until `status === "completed"`. A run usually takes **4–7 seconds**, and up to about 30 seconds when many learners submit at once. Show a "Running tests…" spinner. A rung-1 answer comes back `completed` from the `POST` itself (23 Oct): fetch the result once, with no spinner.
 
 Finished result:
 ```ts

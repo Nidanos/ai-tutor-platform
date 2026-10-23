@@ -1,6 +1,6 @@
 # AI Tutor: An Evidence-Based Adaptive Learning System with Deliberate Scaffolding Withdrawal
 
-> **Draft report for Review 3 (Implementation, Testing and Draft Report), 23 October 2026.** Status as of 23 October 2026: all 33 endpoints live, 246 automated tests passing, 483 exercises and 207 lessons proven in the real sandbox, and the deployment files checked locally.
+> **Draft report for Review 3 (Implementation, Testing and Draft Report), 23 October 2026.** Status as of 23 October 2026: all 33 endpoints live, 247 automated tests passing, 483 exercises and 207 lessons proven in the real sandbox, and the deployment files checked locally.
 > Prepared to the MCA-269 "Format of Project Report" and the Annexure-IV chapter scheme. Typesetting rules (Times New Roman 12, 1.5 spacing, margins 3.0/2.0/2.54/2.54 cm, blank page before each chapter) are applied in the final printed copy.
 
 ---
@@ -1633,6 +1633,7 @@ The sandbox, Gemini and the email service are replaced by **fake providers** in 
 7. **Data rights on the running server:** correct, opt in, download, then delete with the password (the email printed locally), and the erasure of that account as the hourly job does it (A-10). The server registers the hourly job once, and its first run completes.
 8. **Guided walk** (`pnpm demo:walk`): one new learner through sign-up, the placement test, an exercise on the real sandbox (a wrong then a right answer), a hint, progress, the data download and deletion (A-10). It is also the smoke test after a deploy.
 9. **Manual API tests** with curl, for authentication and consent, by a team member.
+10. **Load check** (23 October, real E2B): 20 learners submit code at the same moment, half of it DSA with speed tests, plus 5 predict-the-output answers. All 25 came back AC, with no sandbox error. The last code verdict arrived after 27–30 s (median 17 s) and the predict answers within about 1 s, after the two changes in defect 43; the rest of the wait is E2B Hobby's limit of one new sandbox per second.
 
 ### 4.1.5 White-Box and Black-Box Testing
 - **White box:** unit tests cover every branch of the judge and formula, and database-rule tests target specific constraints.
@@ -1653,7 +1654,7 @@ Learner acceptance testing is planned for the pilot before the final report, wit
 
 ## 4.2 Test Data and Test Cases
 
-**Table 8: Automated test suites (246 tests in 43 files, all passing on 23 Oct 2026)**
+**Table 8: Automated test suites (247 tests in 43 files, all passing on 23 Oct 2026)**
 
 | Level | Suite | Tests | What it proves |
 |---|---|---|---|
@@ -1672,7 +1673,7 @@ Learner acceptance testing is planned for the pilot before the final report, wit
 | Integration | password reset | 9 | Same reply for every email; token stored as a hash; one email per 5 minutes; one use, even at once; expiry; newest link only; every login ended; per-IP limit |
 | Integration | data rights | 15 | Correction; opt-ins on and off, adults only; the download from every module, no secrets; deletion with the password, every login ended, cancelled by logging in; limits |
 | Integration | account erasure | 4 | Every learning row erased, or only anonymous numbers kept with an opt-in; grace period respected; every table pointing at a learner accounted for |
-| Integration | submissions | 14 | 202 + polling, idempotency tied to its attempt, hidden tests private, CE/SE rules, a cleared skill's code deleted; a calibration record on the first counted try only, even with two graded at once |
+| Integration | submissions | 15 | 202 + polling, idempotency tied to its attempt, hidden tests private, CE/SE rules, predict-the-output graded at once, a cleared skill's code deleted; a calibration record on the first counted try only, even with two graded at once |
 | Integration | exercises API + verification | 16 | No secrets or rung-1 answers in responses; skill details; bad content rejected; wrong solutions must fail; generated tests' outputs from the reference; brute force must agree then time out; reference within a third of the limit |
 | Integration | mastery API, scaffolding fade | 7 | Reading and writing apart; decay on read; stage advance |
 | Integration | recommendations API | 5 | First step, rung up, skip skills without content, the other course's skills first, course done |
@@ -1738,7 +1739,7 @@ Learner acceptance testing is planned for the pilot before the final report, wit
 
 ## 4.3 Test Reports and Debugging
 
-**Results:** 246 of 246 automated tests pass, the 6 of 6 real-sandbox verdicts are correct, 483 of 483 seeded exercises and 207 of 207 lessons verify on the real sandbox, and the end-to-end runs pass (A-8, A-10).
+**Results:** 247 of 247 automated tests pass, the 6 of 6 real-sandbox verdicts are correct, 483 of 483 seeded exercises and 207 of 207 lessons verify on the real sandbox, and the end-to-end runs pass (A-8, A-10).
 
 Debugging followed one rule: **measure, find the cause, fix the cause, add a test.** These are the defects found:
 
@@ -1788,8 +1789,9 @@ Debugging followed one rule: **measure, find the cause, fix the cause, add a tes
 | 40 | A scripted edit **emptied a test file** | Python on Windows used the local code page and stopped at a character it couldn't encode, after opening the file for writing | Restored from Git; scripted edits now read and write UTF-8 explicitly |
 | 41 | The export test **timed out**, but only in the full suite | It starts a second Node process, which took over 5 s while 42 other files ran | That test has a 30 s limit, as in defect 22 |
 | 42 | In the server image, `pnpm` **downloaded itself** on every command | It had been fetched at build time into the root user's folder, and the container runs as an unprivileged user | pnpm is stored in a shared folder at build time, so commands work offline |
+| 43 | Under load, a **predict-the-output answer waited over a minute**, and the queue ran below its limit (load check) | Rung-1 answers need no sandbox but queued behind code runs; 5 workers left E2B's one-start-a-second unused, since a run takes 5–10 s | A rung-1 answer is graded in the request (about 1 s); up to 10 runs at once, of the 20 E2B allows; a retry whose answer just solved the attempt gets its submission back instead of `409` |
 
-The password reset and the data rights each had an independent security review (19 October), with no critical or high issues in either: defects 18–21 came from the first, and 23–26 from the second. The second also led to a test that fails when a new table points at a learner's data without being exported and erased. One smaller finding is left for later (section 5.3): a login already in progress at the moment of a password reset. Defects 27–37 came from the lessons, the DSA bank and the DSA placement test (20–22 October): each was caught by a gate or a test before any learner saw the content, which is the gates' purpose. Defects 38–42 came from the 23 October work: the dependency audit, calibration, the export, and the local deployment run.
+The password reset and the data rights each had an independent security review (19 October), with no critical or high issues in either: defects 18–21 came from the first, and 23–26 from the second. The second also led to a test that fails when a new table points at a learner's data without being exported and erased. One smaller finding is left for later (section 5.3): a login already in progress at the moment of a password reset. Defects 27–37 came from the lessons, the DSA bank and the DSA placement test (20–22 October): each was caught by a gate or a test before any learner saw the content, which is the gates' purpose. Defects 38–43 came from the 23 October work: the dependency audit, calibration, the export, the local deployment run and the load check.
 
 ## 4.4 Implementation Manual
 
@@ -1802,7 +1804,7 @@ pnpm db:migrate && pnpm db:seed       # 17 migrations; C++ basics (20 skills) an
 pnpm exercises:verify                 # runs every new exercise in the real sandbox before it can be served
 pnpm lessons:seed                     # freezes the 207 hand-written lessons through their gates (real sandbox)
 pnpm dev                              # API + queue worker on http://localhost:3001
-pnpm test                             # 246 automated tests (CI runs them on every push)
+pnpm test                             # 247 automated tests (CI runs them on every push)
 pnpm demo:walk                        # one learner through the whole loop on a running API
 pnpm sandbox:smoke                    # real-sandbox check of all six verdicts
 pnpm user:admin <email>               # make the first admin (for analytics)
@@ -1873,7 +1875,7 @@ Around that core, the rest of the learner's journey now works too: an adaptive *
 
 The platform now teaches two courses. **C++ basics** (20 skills) is complete, and **Data Structures and Algorithms** (49 skills) builds on it. Every skill of both has **three frozen lessons**, one per level, each with a diagram, a worked example and a check, all **207** proven in the sandbox before storing. In the DSA course, **speed tests** tell a fast solution from a slow one: all 245 exercises, each proven so that its reference finishes well inside the limit and a slow but correct solution times out. Both courses have a **placement test**, 138 items in all.
 
-All 33 endpoints are live, backed by 246 automated tests run on every push, 483 exercises verified in the real sandbox (100 C++ and 245 DSA practice exercises covering every skill and rung of both courses, and 138 placement items), 207 verified lessons, and a written decision record (ADR-0001 to ADR-0023) for every major choice. The deployment files are written and were checked locally.
+All 33 endpoints are live, backed by 247 automated tests run on every push, 483 exercises verified in the real sandbox (100 C++ and 245 DSA practice exercises covering every skill and rung of both courses, and 138 placement items), 207 verified lessons, and a written decision record (ADR-0001 to ADR-0023) for every major choice. The deployment files are written and were checked locally.
 
 ## 5.2 System Specifications
 
@@ -1900,7 +1902,7 @@ All 33 endpoints are live, backed by 246 automated tests run on every push, 483 
 - **Legal pages carry working values.** The company name, the domain and the Grievance Officer's postal address are placeholders until Nidanos is registered, and a lawyer-reviewed version replaces both texts before public launch.
 - **The judge sees only output.** A determined learner can sometimes avoid a prerequisite (for example by rewriting a struct to use a vector); the tasks are designed so the natural solution uses it.
 - **Placement length.** An expert answers 26 questions (about 28 minutes); a placement seed unlocks the next skills for about 4 days (syntactic skills) before one Build per skill confirms them.
-- **Latency:** about 6 s per submission, mostly network round trips to the sandbox provider, whose servers are outside India.
+- **Latency:** about 6 s per submission, mostly network round trips to the sandbox provider, whose servers are outside India. When 20 learners submit at the same moment the last waits about 30 s, because E2B's Hobby plan starts one sandbox a second; the Pro plan starts five.
 - **Sandbox trust:** learner code runs as the same user as our runner script, so a determined learner could tamper with result lines. That's acceptable for practice; the fix is a separate run user.
 - **Formula constants are starting values.** Each first try now records the model's prediction (ADR-0021), so the pilot shows how well they predict, but tuning them needs more learners than a three-day pilot. The recommender picks exercises near the learner's level, so predictions bunch in the middle.
 - **Reviews are simple.** A cleared skill is due for review when its writing decays below 0.5; nothing is stored, and the interval doesn't grow after a good review (ADR-0022). The first review comes about a week after clearing, so the pilot will see few.
@@ -2111,7 +2113,7 @@ After the third failed try (or when the month's budget is spent), the job falls 
 
 ## A-8 Test Reports
 
-Full test run of 23 October 2026: **43 test files, 246 tests, 246 passed.**
+Full test run of 23 October 2026: **43 test files, 247 tests, 247 passed.**
 
 - ✓ account-api.test.ts > PATCH /me > corrects the name and time zone, and renames the hidden personal organisation with the name
 - ✓ account-api.test.ts > PATCH /me > rejects an unknown time zone, a blank name, an empty body and other fields
@@ -2346,6 +2348,7 @@ Full test run of 23 October 2026: **43 test files, 246 tests, 246 passed.**
 - ✓ solution-filter.test.ts > solution filter > blocks more than a fragment of code, even unrelated code
 - ✓ solution-filter.test.ts > solution filter > blocks a predict-the-output hint that gives the output away
 - ✓ submissions.test.ts > submissions > saves and queues a submission, answering 202
+- ✓ submissions.test.ts > submissions > grades a predict-the-output answer at once, without the queue, and a repeat gives the same result
 - ✓ submissions.test.ts > submissions > returns the same submission for a repeated idempotency key, counted once
 - ✓ submissions.test.ts > submissions > refuses a key already used on another attempt, so no attempt can borrow another's verdict
 - ✓ submissions.test.ts > submissions > hides other learners' attempts and submissions
