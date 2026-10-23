@@ -1,5 +1,5 @@
 import { sql } from "drizzle-orm";
-import { type AnyPgColumn, check, date, index, inet, pgEnum, pgTable, text, uniqueIndex, uuid } from "drizzle-orm/pg-core";
+import { type AnyPgColumn, check, date, index, inet, integer, pgEnum, pgTable, text, uniqueIndex, uuid } from "drizzle-orm/pg-core";
 import { citext, createdAt, id, timestamps, tz } from "./columns.js";
 
 export const orgKind = pgEnum("org_kind", ["personal", "institution"]);
@@ -34,6 +34,9 @@ export const users = pgTable(
     emailVerifiedAt: tz(),
     lastLoginAt: tz(),
     deletionRequestedAt: tz(), // DELETE /me; logging in clears it, else the account is erased 7 days later
+    // Raised by a password reset. A refresh token from an older version is refused, so a login or refresh
+    // that was already under way when the reset ran can't keep its session (ADR-0017).
+    sessionVersion: integer().notNull().default(0),
     ...timestamps,
   },
   (t) => [
@@ -56,6 +59,7 @@ export const refreshTokens = pgTable(
     ip: inet(),
     expiresAt: tz().notNull(),
     revokedAt: tz(),
+    sessionVersion: integer().notNull().default(0), // the user's, when this token was issued
     createdAt: createdAt(),
   },
   (t) => [index().on(t.userId), index().on(t.familyId)],
