@@ -15,10 +15,11 @@ export const enqueueSubmission = (submissionId: string) =>
     { jobId: submissionId, attempts: MAX_TRIES, backoff: { type: "exponential", delay: 2_000 }, removeOnComplete: 1_000, removeOnFail: 1_000 },
   );
 
-// E2B Hobby allows 1 new sandbox per second (ADR-0003); a run takes ~5 s, so about 5 run at once.
+// E2B Hobby allows 1 new sandbox per second (ADR-0003). A run takes 5–10 s, so up to 10 run at once:
+// with 5, a burst of submissions left the start limit unused (load check, 23 Oct). Hobby allows 20 at once.
 export const startSubmissionWorker = (run: (submissionId: string, isLastTry: boolean) => Promise<void>) =>
   new Worker<{ submissionId: string }>(
     QUEUE,
     (job) => run(job.data.submissionId, job.attemptsMade + 1 >= MAX_TRIES),
-    { connection, concurrency: 5, limiter: { max: 1, duration: 1_000 } },
+    { connection, concurrency: 10, limiter: { max: 1, duration: 1_000 } },
   );
