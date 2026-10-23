@@ -1,6 +1,6 @@
 # AI Tutor: An Evidence-Based Adaptive Learning System with Deliberate Scaffolding Withdrawal
 
-> **Draft report for Review 3 (Implementation, Testing and Draft Report), 23 October 2026.** Status as of 23 October 2026: all 33 endpoints live, 247 automated tests passing, 483 exercises and 207 lessons proven in the real sandbox, and the deployment files checked locally.
+> **Draft report for Review 3 (Implementation, Testing and Draft Report), 23 October 2026.** Status as of 23 October 2026: all 33 endpoints live, 248 automated tests passing, 483 exercises and 207 lessons proven in the real sandbox, and the deployment files checked locally.
 > Prepared to the MCA-269 "Format of Project Report" and the Annexure-IV chapter scheme. Typesetting rules (Times New Roman 12, 1.5 spacing, margins 3.0/2.0/2.54/2.54 cm, blank page before each chapter) are applied in the final printed copy.
 
 ---
@@ -1654,7 +1654,7 @@ Learner acceptance testing is planned for the pilot before the final report, wit
 
 ## 4.2 Test Data and Test Cases
 
-**Table 8: Automated test suites (247 tests in 43 files, all passing on 23 Oct 2026)**
+**Table 8: Automated test suites (248 tests in 43 files, all passing on 23 Oct 2026)**
 
 | Level | Suite | Tests | What it proves |
 |---|---|---|---|
@@ -1670,7 +1670,7 @@ Learner acceptance testing is planned for the pilot before the final report, wit
 | Unit | lesson drafts, lesson files | 7 | Level rule; lesson schema; all 207 hand-written lessons cover both courses at three levels and fit the schema |
 | Module | 9 schema suites | 17 | Every key constraint refuses bad data; a prerequisite from another course must already be seeded |
 | Integration | auth + consent | 17 | Login flows, token theft, throttling, CSRF; DPDP consent; under-18s refused during the pilot; client IP only from our own proxy |
-| Integration | password reset | 9 | Same reply for every email; token stored as a hash; one email per 5 minutes; one use, even at once; expiry; newest link only; every login ended; per-IP limit |
+| Integration | password reset | 10 | Same reply for every email; token stored as a hash; one email per 5 minutes; one use, even at once; expiry; newest link only; every login ended, even one under way during the reset; per-IP limit |
 | Integration | data rights | 15 | Correction; opt-ins on and off, adults only; the download from every module, no secrets; deletion with the password, every login ended, cancelled by logging in; limits |
 | Integration | account erasure | 4 | Every learning row erased, or only anonymous numbers kept with an opt-in; grace period respected; every table pointing at a learner accounted for |
 | Integration | submissions | 15 | 202 + polling, idempotency tied to its attempt, hidden tests private, CE/SE rules, predict-the-output graded at once, a cleared skill's code deleted; a calibration record on the first counted try only, even with two graded at once |
@@ -1739,7 +1739,7 @@ Learner acceptance testing is planned for the pilot before the final report, wit
 
 ## 4.3 Test Reports and Debugging
 
-**Results:** 247 of 247 automated tests pass, the 6 of 6 real-sandbox verdicts are correct, 483 of 483 seeded exercises and 207 of 207 lessons verify on the real sandbox, and the end-to-end runs pass (A-8, A-10).
+**Results:** 248 of 248 automated tests pass, the 6 of 6 real-sandbox verdicts are correct, 483 of 483 seeded exercises and 207 of 207 lessons verify on the real sandbox, and the end-to-end runs pass (A-8, A-10).
 
 Debugging followed one rule: **measure, find the cause, fix the cause, add a test.** These are the defects found:
 
@@ -1790,8 +1790,9 @@ Debugging followed one rule: **measure, find the cause, fix the cause, add a tes
 | 41 | The export test **timed out**, but only in the full suite | It starts a second Node process, which took over 5 s while 42 other files ran | That test has a 30 s limit, as in defect 22 |
 | 42 | In the server image, `pnpm` **downloaded itself** on every command | It had been fetched at build time into the root user's folder, and the container runs as an unprivileged user | pnpm is stored in a shared folder at build time, so commands work offline |
 | 43 | Under load, a **predict-the-output answer waited over a minute**, and the queue ran below its limit (load check) | Rung-1 answers need no sandbox but queued behind code runs; 5 workers left E2B's one-start-a-second unused, since a run takes 5–10 s | A rung-1 answer is graded in the request (about 1 s); up to 10 runs at once, of the 20 E2B allows; a retry whose answer just solved the attempt gets its submission back instead of `409` |
+| 44 | A login or refresh **under way during a password reset** could keep its session (security review, 19 October) | It checked the account just before the reset, then saved its new token just after the reset had ended every login | A reset raises the user's session version; a refresh token from an older version is refused and its login ended |
 
-The password reset and the data rights each had an independent security review (19 October), with no critical or high issues in either: defects 18–21 came from the first, and 23–26 from the second. The second also led to a test that fails when a new table points at a learner's data without being exported and erased. One smaller finding is left for later (section 5.3): a login already in progress at the moment of a password reset. Defects 27–37 came from the lessons, the DSA bank and the DSA placement test (20–22 October): each was caught by a gate or a test before any learner saw the content, which is the gates' purpose. Defects 38–43 came from the 23 October work: the dependency audit, calibration, the export, the local deployment run and the load check.
+The password reset and the data rights each had an independent security review (19 October), with no critical or high issues in either: defects 18–21 came from the first, and 23–26 from the second. The second also led to a test that fails when a new table points at a learner's data without being exported and erased. One smaller finding, a login already in progress at the moment of a password reset, was closed on 23 October (defect 44). Defects 27–37 came from the lessons, the DSA bank and the DSA placement test (20–22 October): each was caught by a gate or a test before any learner saw the content, which is the gates' purpose. Defects 38–43 came from the 23 October work: the dependency audit, calibration, the export, the local deployment run and the load check. Defect 44 closes the last finding of the 19 October review.
 
 ## 4.4 Implementation Manual
 
@@ -1800,11 +1801,11 @@ The password reset and the data rights each had an independent security review (
 docker compose up -d                  # PostgreSQL 16 + Redis 7
 pnpm install
 cd apps/api && cp .env.example .env   # fill DATABASE_URL, JWT_SECRET, WEB_ORIGIN, E2B_API_KEY, GEMINI_API_KEY, BREVO_API_KEY
-pnpm db:migrate && pnpm db:seed       # 17 migrations; C++ basics (20 skills) and DSA (49 skills); 345 practice exercises, 138 placement items
+pnpm db:migrate && pnpm db:seed       # 18 migrations; C++ basics (20 skills) and DSA (49 skills); 345 practice exercises, 138 placement items
 pnpm exercises:verify                 # runs every new exercise in the real sandbox before it can be served
 pnpm lessons:seed                     # freezes the 207 hand-written lessons through their gates (real sandbox)
 pnpm dev                              # API + queue worker on http://localhost:3001
-pnpm test                             # 247 automated tests (CI runs them on every push)
+pnpm test                             # 248 automated tests (CI runs them on every push)
 pnpm demo:walk                        # one learner through the whole loop on a running API
 pnpm sandbox:smoke                    # real-sandbox check of all six verdicts
 pnpm user:admin <email>               # make the first admin (for analytics)
@@ -1875,7 +1876,7 @@ Around that core, the rest of the learner's journey now works too: an adaptive *
 
 The platform now teaches two courses. **C++ basics** (20 skills) is complete, and **Data Structures and Algorithms** (49 skills) builds on it. Every skill of both has **three frozen lessons**, one per level, each with a diagram, a worked example and a check, all **207** proven in the sandbox before storing. In the DSA course, **speed tests** tell a fast solution from a slow one: all 245 exercises, each proven so that its reference finishes well inside the limit and a slow but correct solution times out. Both courses have a **placement test**, 138 items in all.
 
-All 33 endpoints are live, backed by 247 automated tests run on every push, 483 exercises verified in the real sandbox (100 C++ and 245 DSA practice exercises covering every skill and rung of both courses, and 138 placement items), 207 verified lessons, and a written decision record (ADR-0001 to ADR-0023) for every major choice. The deployment files are written and were checked locally.
+All 33 endpoints are live, backed by 248 automated tests run on every push, 483 exercises verified in the real sandbox (100 C++ and 245 DSA practice exercises covering every skill and rung of both courses, and 138 placement items), 207 verified lessons, and a written decision record (ADR-0001 to ADR-0023) for every major choice. The deployment files are written and were checked locally.
 
 ## 5.2 System Specifications
 
@@ -1896,7 +1897,7 @@ All 33 endpoints are live, backed by 247 automated tests run on every push, 483 
 - **Lessons are fixed per level.** The 207 lessons are hand-written, so a lesson does not change for one learner; the live note that personalises it waits for billing. A lesson's correctness rests on its gates and on review: the sandbox proves its programs' outputs, not every sentence.
 - **Live AI waits for billing.** Live hints and exercise generation are built and tested with a fake model, but stay off until the ₹3,000 prepayment is complete and activates the paid tier (the remaining ₹2,500 on 7 November); until then learners get frozen hints or a general nudge, and lessons come without their live note.
 - **Account emails wait for setup.** Real reset and deletion emails need the Brevo key and the sending domain; until then they are printed in the API terminal (in development only: production refuses to start without the key).
-- **Password reset edge cases.** A login already in progress at the moment of a reset can still finish and keep its session (a window of about a tenth of a second); closing it needs a token version per user. The per-IP limits trust only our own proxy; the Vercel and Caddy setup that passes on the visitor's real address is built and was checked locally (`deploy/`); it is checked again on the live servers.
+- **Client IP.** The per-IP limits trust only our own proxy; the Vercel and Caddy setup that passes on the visitor's real address is built and was checked locally (`deploy/`); it is checked again on the live servers.
 - **Data rights screens and the rest of retention.** The data-rights API is built, but not yet the Settings screens. The email address and date of birth are changed by email, not in the app. The 3-year inactivity job and the yearly clean-up of sign-in records are still to build. After a deletion request, an access token still works on the learning endpoints until it expires (at most 15 minutes).
 - **Adults only during the pilot.** Under-18s can't sign up until the parent-approval flow is built.
 - **Legal pages carry working values.** The company name, the domain and the Grievance Officer's postal address are placeholders until Nidanos is registered, and a lawyer-reviewed version replaces both texts before public launch.
@@ -2094,7 +2095,7 @@ After the third failed try (or when the month's budget is spent), the job falls 
 
 | Table | Key columns | Constraints |
 |---|---|---|
-| users | id (UUIDv7), org_id, email (citext), display_name, password_hash (argon2id), role, status (active, disabled, pending_parent, deleted), date_of_birth, deletion_requested_at | email unique in any case; name 1–80 characters; an erased row stays, anonymous |
+| users | id (UUIDv7), org_id, email (citext), display_name, password_hash (argon2id), role, status (active, disabled, pending_parent, deleted), date_of_birth, deletion_requested_at, session_version (raised by a password reset) | email unique in any case; name 1–80 characters; an erased row stays, anonymous |
 | consents | user_id, kind (data_processing, terms, parental, ai_training, research_study), policy_version, granted_at, revoked_at | one live consent per kind; revoked, never deleted |
 | password_reset_tokens | user_id, token_hash (SHA-256 of the emailed token), expires_at, used_at, created_at | token hash unique; a link works once; kept a year as a security record |
 | exercises | id, skill_id, language_code, rung, variant_seed, content_version, status, title, prompt_md, starter_code, time_limit_ms, memory_limit_mb | content key unique; rung 1–5; limits in range |
@@ -2113,7 +2114,7 @@ After the third failed try (or when the month's budget is spent), the job falls 
 
 ## A-8 Test Reports
 
-Full test run of 23 October 2026: **43 test files, 247 tests, 247 passed.**
+Full test run of 23 October 2026: **43 test files, 248 tests, 248 passed.**
 
 - ✓ account-api.test.ts > PATCH /me > corrects the name and time zone, and renames the hidden personal organisation with the name
 - ✓ account-api.test.ts > PATCH /me > rejects an unknown time zone, a blank name, an empty body and other fields
@@ -2285,6 +2286,7 @@ Full test run of 23 October 2026: **43 test files, 247 tests, 247 passed.**
 - ✓ password-reset-api.test.ts > forgot password > sends one email per account every 5 minutes; asking sooner keeps the link already sent
 - ✓ password-reset-api.test.ts > forgot password > limits each IP to 5 requests per 15 minutes
 - ✓ password-reset-api.test.ts > reset password > sets the new password, ends every login, and works only once
+- ✓ password-reset-api.test.ts > reset password > ends a login or refresh that was under way during the reset, even one saved just after it
 - ✓ password-reset-api.test.ts > reset password > lets only one of two simultaneous resets through
 - ✓ password-reset-api.test.ts > reset password > refuses an expired link, and an older link once a newer one was sent
 - ✓ password-reset-api.test.ts > reset password > ends the account's other links too (two requests at once can each make one)

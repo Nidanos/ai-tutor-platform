@@ -429,6 +429,7 @@ erDiagram
     timestamptz email_verified_at
     timestamptz last_login_at
     timestamptz deletion_requested_at "DELETE /me; erased 7 days later"
+    int session_version "raised by a password reset"
     timestamptz created_at
     timestamptz updated_at
   }
@@ -443,6 +444,7 @@ erDiagram
     inet ip
     timestamptz expires_at
     timestamptz revoked_at "set on rotation or logout"
+    int session_version "the user's when issued; an older one is refused"
     timestamptz created_at
   }
   password_reset_tokens {
@@ -1072,6 +1074,7 @@ A table is created only after the tables it points to. Each step is one versione
 | 0014_data_rights | users.deletion_requested_at, user status deleted (ADR-0018) | **Built** |
 | 0015_lessons | lessons, lesson_notes (ADR-0019) | **Built** |
 | 0016_calibration_rung | calibration_records.rung (ADR-0021) | **Built** |
+| 0017_session_version | users.session_version, refresh_tokens.session_version (ADR-0017) | **Built** |
 | Later | analytics views; skill_graph_changes, concept_chunks (+ `vector`), audit_log | With their features |
 
 Totals: 39 tables built (the 38 of the MVP plus password_reset_tokens), 3 later (42). Enums are created in the migration of the first table that uses them. The seed (`pnpm db:seed`) loads the C++ language, the `dsa` and `cpp-basics` courses, and the default 4-stage fade schedule; it is safe to run repeatedly.
