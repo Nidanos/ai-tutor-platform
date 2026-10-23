@@ -5,14 +5,22 @@ import { getExercise, getRunnableExercise } from "../../m6_exercises/services/ex
 import { findLatestAttempt, insertAttempt } from "../repositories/attempts.repository.js";
 import * as repo from "../repositories/submissions.repository.js";
 import type { SubmissionInput } from "../schemas/submissions.schemas.js";
+import { runSubmission } from "./run-submission.js";
 
 // Saves the submission and queues it; the verdict comes later via getResult (202 + polling).
+// Rung 1 compares text and needs no sandbox, so a new one is graded here: a predicted output shouldn't
+// wait behind other learners' code runs. A repeat of it, or a failure here, goes to the queue instead.
 export async function submit(userId: string, { attemptId, answer, idempotencyKey }: SubmissionInput) {
   const attempt = await repo.findOwnAttempt(attemptId, userId);
   if (!attempt) throw new AppError(404, "ATTEMPT_NOT_FOUND", "No such attempt");
-  if (attempt.status !== "active") throw new AppError(409, "ATTEMPT_CLOSED", "This attempt is already finished");
+  if (attempt.status !== "active") {
+    // A retried request whose answer just solved the attempt gets that answer's submission back.
+    const earlier = await repo.findByIdempotencyKey(idempotencyKey);
+    if (earlier?.attemptId === attemptId) return { submissionId: earlier.id, status: earlier.status };
+    throw new AppError(409, "ATTEMPT_CLOSED", "This attempt is already finished");
+  }
 
-  const { languageCode } = await getExercise(attempt.exerciseId);
+  const { languageCode, rung } = await getExercise(attempt.exerciseId);
   const saved = await repo.createSubmission({
     attemptId,
     userId,
@@ -24,8 +32,18 @@ export async function submit(userId: string, { attemptId, answer, idempotencyKey
   });
   // A key only ever returns its own submission: never another learner's, nor another attempt's.
   if (saved.userId !== userId || saved.attemptId !== attemptId) throw new AppError(409, "IDEMPOTENCY_KEY_REUSED", "Send a new idempotency key");
+  if (saved.status === "completed") return { submissionId: saved.id, status: saved.status };
+  if (rung === 1 && saved.isNew) {
+    const graded = await runSubmission(saved.id, true)
+      .then(() => true)
+      .catch((err) => {
+        console.error(`Grading rung-1 submission ${saved.id} failed; queueing it`, err);
+        return false;
+      });
+    if (graded) return { submissionId: saved.id, status: "completed" as const };
+  }
   // Also on a repeat: if the first enqueue failed, this one heals it (the job id prevents doubles).
-  if (saved.status !== "completed") await enqueueSubmission(saved.id);
+  await enqueueSubmission(saved.id);
   return { submissionId: saved.id, status: saved.status };
 }
 

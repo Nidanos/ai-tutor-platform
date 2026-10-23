@@ -36,9 +36,10 @@ export const createSubmission = (values: typeof submissions.$inferInsert) =>
         .update(exerciseAttempts)
         .set({ submissionCount: sql`${exerciseAttempts.submissionCount} + 1` })
         .where(eq(exerciseAttempts.id, values.attemptId));
-      return created;
+      return { ...created, isNew: true };
     }
-    return (await tx.select(submissionRef).from(submissions).where(eq(submissions.idempotencyKey, values.idempotencyKey)))[0];
+    const [earlier] = await tx.select(submissionRef).from(submissions).where(eq(submissions.idempotencyKey, values.idempotencyKey));
+    return { ...earlier, isNew: false };
   });
 
 export const findOwnSubmission = async (id: string, userId: string) =>

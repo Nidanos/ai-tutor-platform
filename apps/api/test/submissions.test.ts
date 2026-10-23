@@ -78,6 +78,26 @@ describe("submissions", () => {
     expect(enqueueSubmission).toHaveBeenCalledWith(res.body.data.submissionId);
   });
 
+  it("grades a predict-the-output answer at once, without the queue, and a repeat gives the same result", async () => {
+    const { attempt, api } = await learnerWithAttempt();
+    const [{ skillId }] = await db.select({ skillId: exercises.skillId }).from(exercises).where(eq(exercises.id, attempt.exerciseId));
+    const [predict] = await db.insert(exercises).values(exerciseRow(skillId, 1)).returning();
+    await db.insert(exerciseSecrets).values({ exerciseId: predict.id, referenceSolution: "-" });
+    await db.insert(exerciseTests).values({ exerciseId: predict.id, seq: 1, name: "Output", size: "small", visibility: "hidden", input: "", expectedOutput: "42" });
+    const [readAttempt] = await db
+      .insert(exerciseAttempts)
+      .values({ userId: attempt.userId, enrollmentId: attempt.enrollmentId, exerciseId: predict.id, hintCeiling: 3 })
+      .returning();
+    vi.mocked(enqueueSubmission).mockClear();
+
+    const body = { attemptId: readAttempt.id, answer: "42", idempotencyKey: randomUUID() };
+    const first = (await api.post(body).expect(202)).body.data;
+    expect(first.status).toBe("completed");
+    expect((await api.result(first.submissionId).expect(200)).body.data.verdict).toBe("AC");
+    expect((await api.post(body).expect(202)).body.data).toEqual(first); // graded once
+    expect(enqueueSubmission).not.toHaveBeenCalled();
+  });
+
   it("returns the same submission for a repeated idempotency key, counted once", async () => {
     const { attempt, api } = await learnerWithAttempt();
     const body = { attemptId: attempt.id, answer: "int f() {}", idempotencyKey: randomUUID() };
