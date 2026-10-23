@@ -59,7 +59,7 @@ export const findRefreshToken = async (tokenHash: string) =>
     await db
       .select({
         token: refreshTokens,
-        user: { id: users.id, role: users.role, orgId: users.orgId, status: users.status, deletionRequestedAt: users.deletionRequestedAt },
+        user: { id: users.id, role: users.role, orgId: users.orgId, status: users.status, deletionRequestedAt: users.deletionRequestedAt, sessionVersion: users.sessionVersion },
       })
       .from(refreshTokens)
       .innerJoin(users, eq(users.id, refreshTokens.userId))
@@ -135,7 +135,8 @@ export const resetPassword = (tokenId: string, userId: string, passwordHash: str
       .returning({ id: passwordResetTokens.id });
     if (!spent) return false;
     await tx.delete(passwordResetTokens).where(and(eq(passwordResetTokens.userId, userId), isNull(passwordResetTokens.usedAt)));
-    await tx.update(users).set({ passwordHash }).where(eq(users.id, userId));
+    // A new version also ends a login or refresh that was under way and saves its token after this.
+    await tx.update(users).set({ passwordHash, sessionVersion: sql`${users.sessionVersion} + 1` }).where(eq(users.id, userId));
     await tx.update(refreshTokens).set({ revokedAt: new Date() }).where(and(eq(refreshTokens.userId, userId), isNull(refreshTokens.revokedAt)));
     return true;
   });

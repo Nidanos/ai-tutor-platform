@@ -5,7 +5,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { app } from "../src/app.js";
 import { env } from "../src/config/env.js";
 import { db } from "../src/infrastructure/database/index.js";
-import { passwordResetTokens, users } from "../src/infrastructure/database/schema/index.js";
+import { passwordResetTokens, refreshTokens, users } from "../src/infrastructure/database/schema/index.js";
 import { sendMail } from "../src/infrastructure/mail/mailer.js";
 import { randomToken, sha256 } from "../src/shared/auth/tokens.js";
 import { uniq } from "./helpers.js";
@@ -102,6 +102,25 @@ describe("reset password", () => {
 
     const again = await reset(token, "yet another one!").expect(400);
     expect(again.body.error.code).toBe("RESET_LINK_INVALID");
+  });
+
+  it("ends a login or refresh that was under way during the reset, even one saved just after it", async () => {
+    const { email } = await learner();
+    const userId = await userIdOf(email);
+    const [before] = await db.select({ sessionVersion: users.sessionVersion }).from(users).where(eq(users.id, userId));
+    await reset((await linkFor(email)).token).expect(204);
+
+    // What a login that checked the old password just before the reset would save just after it.
+    const late = randomToken();
+    const familyId = crypto.randomUUID();
+    await db.insert(refreshTokens).values({ userId, familyId, tokenHash: sha256(late), client: "mobile", expiresAt: new Date(Date.now() + 86_400_000), sessionVersion: before.sessionVersion });
+    expect((await client().post(`${AUTH}/refresh`).send({ refreshToken: late }).expect(401)).body.error.code).toBe("UNAUTHENTICATED");
+    const family = await db.select({ revokedAt: refreshTokens.revokedAt }).from(refreshTokens).where(eq(refreshTokens.familyId, familyId));
+    expect(family.every((t) => t.revokedAt !== null)).toBe(true);
+
+    // A login with the new password gets a session that refreshes.
+    const fresh = (await client().post(`${AUTH}/login`).send({ email, password: NEW_PASSWORD, client: "mobile" }).expect(200)).body.data;
+    await client().post(`${AUTH}/refresh`).send({ refreshToken: fresh.refreshToken }).expect(200);
   });
 
   it("lets only one of two simultaneous resets through", async () => {

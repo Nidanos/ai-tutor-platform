@@ -55,23 +55,25 @@ export async function login(input: { email: string; password: string }, client: 
   if (user.status !== "active") throw invalidCredentials();
 
   if (!(await repo.markLoggedIn(user.id))) throw invalidCredentials();
-  return issueSession({ userId: user.id, role: user.role, orgId: user.orgId }, uuidv7(), client, device);
+  return issueSession({ userId: user.id, role: user.role, orgId: user.orgId }, uuidv7(), client, device, user.sessionVersion);
 }
 
 // Rotation: every refresh replaces the token. An old token coming back means it was copied,
-// so the whole login (family) is revoked. So is any login of an account waiting to be deleted.
+// so the whole login (family) is revoked. So is any login of an account waiting to be deleted, and one
+// issued before the latest password reset (even if it was saved just after it).
 export async function refresh(token: string | undefined, device: Device) {
   const found = token && (await repo.findRefreshToken(sha256(token)));
   if (!found || found.token.expiresAt < new Date()) throw loginAgain();
 
   const { token: row, user } = found;
   const inGrace = row.replacedById && row.revokedAt && Date.now() - row.revokedAt.getTime() < REUSE_GRACE_MS;
-  if ((row.revokedAt && !inGrace) || user.status !== "active" || user.deletionRequestedAt) {
+  const staleSession = row.sessionVersion !== user.sessionVersion;
+  if ((row.revokedAt && !inGrace) || staleSession || user.status !== "active" || user.deletionRequestedAt) {
     await repo.revokeFamily(row.familyId);
     throw loginAgain();
   }
 
-  const session = await issueSession({ userId: user.id, role: user.role, orgId: user.orgId }, row.familyId, row.client, device);
+  const session = await issueSession({ userId: user.id, role: user.role, orgId: user.orgId }, row.familyId, row.client, device, row.sessionVersion);
   await repo.markReplaced(row.id, session.refreshTokenId);
   return session;
 }
@@ -87,7 +89,7 @@ export async function me(userId: string) {
   return user;
 }
 
-async function issueSession(user: AuthUser, familyId: string, client: Client, device: Device) {
+async function issueSession(user: AuthUser, familyId: string, client: Client, device: Device, sessionVersion: number) {
   const refreshToken = newRefreshToken();
   const refreshTokenId = await repo.insertRefreshToken({
     userId: user.userId,
@@ -96,6 +98,7 @@ async function issueSession(user: AuthUser, familyId: string, client: Client, de
     client,
     ...device,
     expiresAt: new Date(Date.now() + REFRESH_TTL_DAYS * 86_400_000),
+    sessionVersion,
   });
   return { accessToken: await signAccessToken(user), refreshToken, refreshTokenId, client };
 }
