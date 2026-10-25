@@ -17,12 +17,15 @@ import { scaffoldingRouter } from "./modules/m12_scaffolding/routes/scaffolding.
 import { analyticsRouter } from "./modules/m13_analytics/routes/analytics.routes.js";
 import { errorHandler } from "./shared/errors/error-handler.js";
 import { checkOrigin } from "./shared/middlewares/check-origin.js";
+import { vercelVisitor } from "./shared/middlewares/vercel-visitor.js";
 
 export const app = express();
 
-// Per-IP rate limits use req.ip. Only our own proxy (Caddy, on this machine or its private network) may set it through
-// X-Forwarded-For. `next dev` passes on whatever the browser sends, so local dev trusts nobody (ADR-0008).
+// Per-IP rate limits use req.ip. Only a proxy on this machine or its private network (Render's, or Caddy) may set it
+// through X-Forwarded-For, and Vercel's visitor IP counts only with our secret (ADR-0008, ADR-0024). `next dev` passes
+// on whatever the browser sends, so local dev trusts nobody.
 app.set("trust proxy", env.NODE_ENV === "development" ? false : "loopback, uniquelocal");
+app.use(vercelVisitor);
 app.use(helmet());
 app.use(express.json({ limit: "100kb" }));
 app.use(cookieParser());

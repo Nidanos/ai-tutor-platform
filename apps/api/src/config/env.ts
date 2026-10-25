@@ -11,6 +11,7 @@ export const env = z
     DATABASE_URL: z.url(),
     JWT_SECRET: z.string().min(32),
     WEB_ORIGIN: z.url(), // the only origin allowed to send cookie-authenticated writes
+    ORIGIN_SECRET: z.string().min(32).optional(), // Vercel sends it with /api requests: then its X-Forwarded-For is the visitor (ADR-0024)
     REDIS_URL: z.url().default("redis://localhost:6379"), // the submissions queue
     E2B_API_KEY: z.string().optional(), // only needed to run learner code (ADR-0003)
     GEMINI_API_KEY: z.string().optional(), // live hints and generation; without it hints fall back to frozen ones
@@ -20,4 +21,6 @@ export const env = z
     MAIL_FROM: z.email().default("no-reply@nidanos.com"), // must be a sender verified in Brevo
   })
   .refine((e) => e.NODE_ENV !== "production" || !!e.BREVO_API_KEY, { error: "BREVO_API_KEY is required in production", path: ["BREVO_API_KEY"] })
+  // Without it every web learner would share Vercel's addresses, and so each per-IP limit.
+  .refine((e) => e.NODE_ENV !== "production" || !!e.ORIGIN_SECRET, { error: "ORIGIN_SECRET is required in production", path: ["ORIGIN_SECRET"] })
   .parse(process.env);

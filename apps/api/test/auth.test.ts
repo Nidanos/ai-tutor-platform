@@ -1,5 +1,6 @@
 import { randomInt } from "node:crypto";
 import { eq } from "drizzle-orm";
+import type { Request, Response } from "express";
 import request from "supertest";
 import { describe, expect, it } from "vitest";
 import { app } from "../src/app.js";
@@ -8,6 +9,7 @@ import { db } from "../src/infrastructure/database/index.js";
 import { consents, refreshTokens, users } from "../src/infrastructure/database/schema/index.js";
 import { ageOn } from "../src/modules/m1_auth/services/age.js";
 import { sha256 } from "../src/shared/auth/tokens.js";
+import { vercelVisitor } from "../src/shared/middlewares/vercel-visitor.js";
 import { uniq } from "./helpers.js";
 
 const AUTH = "/api/v1/auth";
@@ -128,6 +130,21 @@ describe("client IP for the per-IP limits", () => {
   it("comes from our own proxy, never from a caller on the internet", () => {
     expect(ipFrom("172.18.0.2")).toBe("6.6.6.6"); // Caddy on the Docker network
     expect(ipFrom("203.0.113.9")).toBe("203.0.113.9"); // a direct caller can't choose its IP
+  });
+
+  it("is Vercel's visitor only with our secret, behind Render's proxy (ADR-0024)", () => {
+    // Render's proxy (private address) has appended Vercel's address after the visitor's.
+    const viaRender = (headers: Record<string, string>) => {
+      const req = Object.create(app.request, { socket: { value: { remoteAddress: "10.201.3.4" } }, headers: { value: { ...headers } } });
+      vercelVisitor(req, {} as Response, () => {});
+      return req as Request;
+    };
+    const chain = { "x-forwarded-for": "6.6.6.6, 76.76.21.9" };
+    const signed = viaRender({ ...chain, "x-origin-secret": env.ORIGIN_SECRET! });
+    expect(signed.ip).toBe("6.6.6.6");
+    expect(signed.headers["x-origin-secret"]).toBeUndefined(); // never passed further in
+    expect(viaRender({ ...chain, "x-origin-secret": "a-wrong-secret-of-the-same-sort-0000" }).ip).toBe("76.76.21.9");
+    expect(viaRender(chain).ip).toBe("76.76.21.9"); // without it, the first entry could be made up
   });
 });
 
