@@ -175,7 +175,7 @@ With no updates, a **sparse table** answers range minimums in O(1) after O(n log
 
 ```mermaid
 flowchart TB
-    A["t1: min of all"] --> B["t2"]
+    A["t1: the whole range"] --> B["t2"]
     A --> C["t3"]
     B --> D["t4"]
     B --> E["t5"]
@@ -188,61 +188,65 @@ flowchart TB
 ## example
 
 ```cpp
-#include <algorithm>
-#include <climits>
 #include <iostream>
+#include <numeric>
 #include <random>
-#include <utility>
 #include <vector>
 
-// Bottom-up range minimum over (value, position) pairs: leaves at t[n..2n-1]; ties go to the left.
-struct MinTree {
-    int n;
-    std::vector<std::pair<int, int>> t;
-    explicit MinTree(const std::vector<int>& a) : n((int)a.size()), t(2 * a.size()) {
-        for (int i = 0; i < n; i++) t[n + i] = {a[i], i};
-        for (int i = n - 1; i > 0; i--) t[i] = std::min(t[2 * i], t[2 * i + 1]);
+// Bottom-up gcd over ranges: leaves at node[size..2·size-1]; gcd's identity is 0, since gcd(0, x) = x.
+struct GcdTree {
+    int size;
+    std::vector<long long> node;
+    explicit GcdTree(const std::vector<long long>& a) : size((int)a.size()), node(2 * a.size(), 0) {
+        for (int i = 0; i < size; i++) node[size + i] = a[i];
+        for (int p = size - 1; p >= 1; p--) node[p] = std::gcd(node[2 * p], node[2 * p + 1]);
     }
-    void set(int i, int x) {
-        int at = n + i;
-        for (t[at] = {x, i}; at > 1; at /= 2) t[at / 2] = std::min(t[at], t[at ^ 1]);
+    void change(int i, long long x) {
+        node[size + i] = x;
+        for (int p = (size + i) / 2; p >= 1; p /= 2) node[p] = std::gcd(node[2 * p], node[2 * p + 1]);
     }
-    std::pair<int, int> query(int l, int r) const {  // minimum over [l, r)
-        std::pair<int, int> best = {INT_MAX, -1};
-        for (l += n, r += n; l < r; l /= 2, r /= 2) {
-            if (l & 1) best = std::min(best, t[l++]);
-            if (r & 1) best = std::min(best, t[--r]);
+    long long gcdOf(int from, int to) const {  // over [from, to)
+        long long g = 0;
+        for (from += size, to += size; from < to; from /= 2, to /= 2) {
+            if (from % 2 == 1) g = std::gcd(g, node[from++]);
+            if (to % 2 == 1) g = std::gcd(g, node[--to]);
         }
-        return best;
+        return g;
     }
 };
+
 int main() {
-    MinTree m({7, 3, 9, 3, 6, 1, 8, 4});
-    std::cout << "[2, 7): " << m.query(2, 7).first << " at " << m.query(2, 7).second;
-    m.set(5, 10);
-    std::cout << "; after a[5] = 10: " << m.query(2, 7).first << " at " << m.query(2, 7).second << '\n';
-    std::vector<int> a(1000, 50000);  // all equal at first, so early queries test the ties
+    GcdTree t({12, 18, 24, 36, 9, 27, 30, 6});
+    std::cout << "[0, 4): " << t.gcdOf(0, 4) << ", [2, 7): " << t.gcdOf(2, 7);
+    t.change(4, 48), t.change(5, 72);
+    std::cout << "; after a[4] = 48 and a[5] = 72: " << t.gcdOf(2, 7) << '\n';
+
     std::mt19937 rng(11);
-    MinTree big(a);
+    std::vector<long long> a(1000);
+    for (auto& v : a) v = 6 * (1 + rng() % 1000);  // every value a multiple of 6, so gcds stay interesting
+    GcdTree big(a);
     int wrong = 0;
     for (int op = 0; op < 3000; op++) {
-        int i = int(rng() % 1000), x = int(rng() % 100000), l = int(rng() % 1000), r = l + 1 + int(rng() % (1000 - l));
-        big.set(i, x), a[i] = x;
-        if (big.query(l, r).first != *std::min_element(a.begin() + l, a.begin() + r)) wrong++;
+        int i = int(rng() % 1000), from = int(rng() % 1000), to = from + 1 + int(rng() % (1000 - from));
+        long long x = 6 * (1 + rng() % 1000);
+        big.change(i, x), a[i] = x;
+        long long slow = 0;
+        for (int k = from; k < to; k++) slow = std::gcd(slow, a[k]);
+        if (big.gcdOf(from, to) != slow) wrong++;
     }
-    std::cout << "3000 random updates and queries on 1000 items: " << wrong << " wrong\n";
+    std::cout << "3000 random changes and queries on 1000 items: " << wrong << " wrong\n";
 }
 ```
 
 ```text
-[2, 7): 1 at 5; after a[5] = 10: 3 at 3
-3000 random updates and queries on 1000 items: 0 wrong
+[0, 4): 6, [2, 7): 3; after a[4] = 48 and a[5] = 72: 6
+3000 random changes and queries on 1000 items: 0 wrong
 ```
 
-1. Over positions 2 to 6 (9, 3, 6, 1, 8) the minimum is 1, at position 5.
-2. After a[5] becomes 10, the new minimum of that range is 3 at position 3. Pairs compare by value first, so a tie would go to the smaller position.
-3. The random test changes one item and asks one range minimum per round, then compares with a plain scan. All 3000 answers agree.
-4. The tree uses 2n entries and no recursion. Each `set` and `query` climbs about log₂ 1000 ≈ 10 levels.
+1. The gcd of 12, 18, 24 and 36 is 6. Over positions 2 to 6 (24, 36, 9, 27, 30) the 9 and 27 bring it down to 3.
+2. After a[4] becomes 48 and a[5] becomes 72, that range holds 24, 36, 48, 72 and 30, whose gcd is 6. Each `change` recomputed only the leaf's ancestors.
+3. The identity is 0, because gcd(0, x) = x: an empty piece doesn't change the answer, just as 0 doesn't change a sum.
+4. The random test changes one item and asks one range per round, then compares with a plain scan. All 3000 answers agree. The tree uses 2n entries and no recursion; each operation climbs about log₂ 1000 ≈ 10 levels.
 
 ## mistakes
 
@@ -319,28 +323,28 @@ flowchart TB
 #include <random>
 #include <vector>
 
-// Range add, range sum: a fully covered node fixes its own sum and tags its children, pushed down later.
+// Range add, range sum: a fully covered node fixes its own total at once and leaves the rest pending for its children.
 struct LazyTree {
-    std::vector<long long> sum, tag;
-    explicit LazyTree(int n) : sum(4 * n), tag(4 * n) {}
-    void apply(int v, int lo, int hi, long long d) { sum[v] += d * (hi - lo + 1); tag[v] += d; }
-    void push(int v, int lo, int mid, int hi) {
-        apply(2 * v, lo, mid, tag[v]), apply(2 * v + 1, mid + 1, hi, tag[v]), tag[v] = 0;
+    std::vector<long long> sums, pending;
+    explicit LazyTree(int n) : sums(4 * n), pending(4 * n) {}
+    void bump(int at, int b, int e, long long d) { sums[at] += d * (e - b + 1); pending[at] += d; }
+    void handDown(int at, int b, int half, int e) {
+        bump(2 * at, b, half, pending[at]), bump(2 * at + 1, half + 1, e, pending[at]), pending[at] = 0;
     }
-    void add(int v, int lo, int hi, int l, int r, long long d) {
-        if (r < lo || hi < l) return;
-        if (l <= lo && hi <= r) return apply(v, lo, hi, d);
-        int mid = (lo + hi) / 2;
-        push(v, lo, mid, hi);
-        add(2 * v, lo, mid, l, r, d), add(2 * v + 1, mid + 1, hi, l, r, d);
-        sum[v] = sum[2 * v] + sum[2 * v + 1];
+    void raise(int at, int b, int e, int ql, int qr, long long d) {
+        if (qr < b || e < ql) return;
+        if (ql <= b && e <= qr) return bump(at, b, e, d);
+        int half = (b + e) / 2;
+        handDown(at, b, half, e);
+        raise(2 * at, b, half, ql, qr, d), raise(2 * at + 1, half + 1, e, ql, qr, d);
+        sums[at] = sums[2 * at] + sums[2 * at + 1];
     }
-    long long query(int v, int lo, int hi, int l, int r) {
-        if (r < lo || hi < l) return 0;
-        if (l <= lo && hi <= r) return sum[v];
-        int mid = (lo + hi) / 2;
-        push(v, lo, mid, hi);
-        return query(2 * v, lo, mid, l, r) + query(2 * v + 1, mid + 1, hi, l, r);
+    long long ask(int at, int b, int e, int ql, int qr) {
+        if (qr < b || e < ql) return 0;
+        if (ql <= b && e <= qr) return sums[at];
+        int half = (b + e) / 2;
+        handDown(at, b, half, e);
+        return ask(2 * at, b, half, ql, qr) + ask(2 * at + 1, half + 1, e, ql, qr);
     }
 };
 int main() {
@@ -350,13 +354,13 @@ int main() {
     std::mt19937 rng(5);
     int wrong = 0;
     for (int op = 0; op < 3000; op++) {
-        int l = int(rng() % n), r = l + int(rng() % (n - l)), d = int(rng() % 11) - 5;
-        t.add(1, 0, n - 1, l, r, d);
+        int ql = int(rng() % n), qr = ql + int(rng() % (n - ql)), d = int(rng() % 11) - 5;
+        t.raise(1, 0, n - 1, ql, qr, d);
         long long expect = 0;
-        for (int i = l; i <= r; i++) { plain[i] += d; expect += plain[i]; }
-        if (t.query(1, 0, n - 1, l, r) != expect) wrong++;
+        for (int i = ql; i <= qr; i++) { plain[i] += d; expect += plain[i]; }
+        if (t.ask(1, 0, n - 1, ql, qr) != expect) wrong++;
     }
-    std::cout << "3000 range adds and range sums: " << wrong << " wrong, total " << t.query(1, 0, n - 1, 0, n - 1) << '\n';
+    std::cout << "3000 range adds and range sums: " << wrong << " wrong, total " << t.ask(1, 0, n - 1, 0, n - 1) << '\n';
 }
 ```
 
@@ -365,14 +369,14 @@ int main() {
 ```
 
 1. An add over a node's whole range costs O(1) there: its sum grows by d times its length, and the tag remembers d for the children.
-2. Both `add` and `query` push a node's tag before going below it, so the children are up to date whenever they're read.
+2. Both `raise` (the add) and `ask` (the sum) hand a node's pending value down before going below it, so the children are up to date whenever they're read.
 3. After each random add, the tree's sum over the same range matches a plain array. The plain loop visits every position in the range; the tree visits O(log n) nodes, however wide the range is.
 
 ## mistakes
 
 - **Not pushing before descending.** The children's sums are then missing the pending adds, and queries come out too small.
 - **Applying a tag without fixing the sum.** The node's own answer must change at once, by d × its length for sums, or its parent's recomputation goes wrong.
-- **Forgetting to recompute after the children change.** `add` must set the node's sum from its children after the recursive calls.
+- **Forgetting to recompute after the children change.** The add must set the node's sum from its children after the recursive calls.
 - **Composing different tags carelessly.** A "set" tag must clear pending adds below; an "add" after a "set" changes the set value. Write the rule down first.
 - **`int` sums.** d × length over large ranges overflows quickly; keep sums and tags `long long`.
 
@@ -382,10 +386,10 @@ int main() {
 #include <algorithm>
 #include <iostream>
 
-struct Node { long long sum, pre, suf, best; };  // total, best prefix, best suffix, best subarray
+struct Node { long long sums, pre, suf, best; };  // total, best prefix, best suffix, best subarray
 Node leaf(long long x) { return {x, x, x, x}; }
 Node join(const Node& a, const Node& b) {
-    return {a.sum + b.sum, std::max(a.pre, a.sum + b.pre), std::max(b.suf, b.sum + a.suf),
+    return {a.sums + b.sums, std::max(a.pre, a.sums + b.pre), std::max(b.suf, b.sums + a.suf),
             std::max({a.best, b.best, a.suf + b.pre})};
 }
 
@@ -393,7 +397,7 @@ int main() {
     Node left = join(leaf(2), leaf(-5));
     Node right = join(leaf(4), leaf(3));
     Node all = join(left, right);  // the array 2 -5 4 3
-    std::cout << all.sum << ' ' << all.pre << ' ' << all.suf << ' ' << all.best << '\n';
+    std::cout << all.sums << ' ' << all.pre << ' ' << all.suf << ' ' << all.best << '\n';
 }
 ```
 

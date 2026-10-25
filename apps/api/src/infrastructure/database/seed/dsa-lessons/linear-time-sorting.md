@@ -157,26 +157,24 @@ struct Person {
     int age;
 };
 
-// Stable counting sort by a small key: running totals give each key's starting position.
+// Stable counting sort by a small key: count each age, then each age's first slot is the count of younger people.
 std::vector<Person> byAge(const std::vector<Person>& people, int maxAge) {
-    std::vector<int> start(maxAge + 2, 0);
-    for (const auto& p : people) start[p.age + 1]++;
-    for (int a = 1; a <= maxAge + 1; a++) start[a] += start[a - 1];  // start[a] = how many are younger
-    std::vector<Person> out(people.size());
-    for (const auto& p : people) out[start[p.age]++] = p;  // input order, so ties keep their order
-    return out;
+    std::vector<int> count(maxAge + 1, 0), firstSlot(maxAge + 1, 0);
+    for (const auto& p : people) count[p.age]++;
+    for (int a = 1; a <= maxAge; a++) firstSlot[a] = firstSlot[a - 1] + count[a - 1];
+    std::vector<Person> sorted(people.size());
+    for (const auto& p : people) sorted[firstSlot[p.age]++] = p;  // input order, so ties keep their order
+    return sorted;
 }
 
-// LSD radix sort: stable counting sort on the units, then the tens, then the hundreds...
+// LSD radix sort: deal the numbers into ten buckets by one digit, in order, then collect them; units first.
 void radixSort(std::vector<int>& v) {
-    int biggest = 0;
-    for (int x : v) biggest = std::max(biggest, x);
-    for (int place = 1; biggest / place > 0; place *= 10) {
-        std::vector<int> start(11, 0), out(v.size());
-        for (int x : v) start[x / place % 10 + 1]++;
-        for (int d = 1; d <= 10; d++) start[d] += start[d - 1];
-        for (int x : v) out[start[x / place % 10]++] = x;
-        v = out;
+    int biggest = *std::max_element(v.begin(), v.end());
+    for (long long place = 1; biggest / place > 0; place *= 10) {
+        std::vector<std::vector<int>> bucket(10);
+        for (int x : v) bucket[x / place % 10].push_back(x);  // appending keeps equal digits in order
+        v.clear();
+        for (const auto& b : bucket) v.insert(v.end(), b.begin(), b.end());
     }
 }
 
@@ -199,7 +197,7 @@ Ben19 Om25 Ana25 Ira31 Zia31
 1. `byAge` counts each age, then turns the counts into starting positions: age 19 starts at 0, age 25 at 1, age 31 at 3.
 2. Placing people in their original order puts Om before Ana and Ira before Zia: equal ages keep their order, so the sort is stable.
 3. `radixSort` makes three passes, for units, tens and hundreds, because the biggest number, 802, has three digits.
-4. Each pass is a stable counting sort on one digit. After the last pass, the numbers are sorted by all three digits.
+4. Each pass deals the numbers into ten buckets by one digit and collects them bucket by bucket. Appending keeps numbers with the same digit in their previous order, so each pass is stable, and after the last one the numbers are sorted by all three digits.
 
 ## mistakes
 

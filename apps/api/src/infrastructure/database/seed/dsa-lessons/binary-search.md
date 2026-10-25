@@ -281,16 +281,16 @@ Underneath, binary search finds where a yes/no test changes. In a sorted list, "
 
 ### Invariants make it correct
 
-For lower bound on `[lo, hi)`: everything before `lo` is known to be `< x`, and everything from `hi` on is known to be `≥ x`. Each step keeps this true and shrinks `hi − lo`. When `lo == hi`, the boundary is found. Writing the invariant first is the reliable way to get the `+ 1`s right.
+For lower bound on `[low, high)`: everything before `low` is known to be `< x`, and everything from `high` on is known to be `≥ x`. Each step keeps this true and shrinks `high − low`. When `low == high`, the boundary is found. Writing the invariant first is the reliable way to get the `+ 1`s right.
 
 ### Not quite sorted, still searchable
 
-- **Rotated sorted arrays** (like 40, 50, 60, 10, 20, 30): around any `mid`, at least one half is sorted. Check whether the target lies inside that sorted half's range, and keep that half or the other.
-- **A list that rises then falls**: compare `v[mid]` with `v[mid + 1]`. If it's still rising, the peak is to the right; otherwise it's at `mid` or to the left.
+- **Rotated sorted arrays** (like 40, 50, 60, 10, 20, 30): around any `guess`, at least one half is sorted. Check whether the target lies inside that sorted half's range, and keep that half or the other. Where the list starts again is a boundary too: the first value that isn't bigger than the last one.
+- **A list that rises then falls**: compare `v[guess]` with `v[guess + 1]`. If it's still rising, the peak is to the right; otherwise it's at `guess` or to the left.
 
 ### Real numbers
 
-On real values there's no "next" value, so instead of `lo <= hi`, run a fixed number of halvings. Each one halves the error, so 60 iterations shrink an interval of size 1 below 10⁻¹⁸, beyond `double` precision.
+On real values there's no "next" value, so instead of `low <= high`, run a fixed number of halvings. Each one halves the error, so 60 iterations shrink an interval of size 1 below 10⁻¹⁸, beyond `double` precision.
 
 ### Costs beyond the step count
 
@@ -300,12 +300,12 @@ Binary search makes about log₂ n + 1 comparisons, but each jumps to a far-away
 
 ```mermaid
 flowchart TB
-    A["v[mid] == target?"] -->|"Yes"| B["Found"]
-    A -->|"No"| C{"v[lo] <= v[mid]? left half sorted"}
-    C -->|"Yes"| D{"v[lo] <= target < v[mid]?"}
-    D -->|"Yes"| E["hi = mid - 1"]
-    D -->|"No"| F["lo = mid + 1"]
-    C -->|"No: right half sorted"| G{"v[mid] < target <= v[hi]?"}
+    A["v[guess] == target?"] -->|"Yes"| B["Found"]
+    A -->|"No"| C{"v[low] <= v[guess]? left half sorted"}
+    C -->|"Yes"| D{"v[low] <= target < v[guess]?"}
+    D -->|"Yes"| E["high = guess - 1"]
+    D -->|"No"| F["low = guess + 1"]
+    C -->|"No: right half sorted"| G{"v[guess] < target <= v[high]?"}
     G -->|"Yes"| F
     G -->|"No"| E
 ```
@@ -316,59 +316,53 @@ flowchart TB
 #include <iostream>
 #include <vector>
 
-// Search a sorted array that was rotated, like {40, 50, 60, 10, 20, 30}.
-// One half around mid is always sorted; check whether the target lies in it.
-int searchRotated(const std::vector<int>& v, int target) {
-    int lo = 0, hi = static_cast<int>(v.size()) - 1;
-    while (lo <= hi) {
-        int mid = lo + (hi - lo) / 2;
-        if (v[mid] == target) return mid;
-        if (v[lo] <= v[mid]) {  // left half lo..mid is sorted
-            if (v[lo] <= target && target < v[mid]) hi = mid - 1;
-            else lo = mid + 1;
-        } else {  // right half mid..hi is sorted
-            if (v[mid] < target && target <= v[hi]) lo = mid + 1;
-            else hi = mid - 1;
-        }
+// Where a rotated sorted list, like {40, 50, 60, 10, 20, 30}, starts again: the index of its smallest value.
+// "Bigger than the last value?" is yes for the part that was moved to the front and no after it.
+int rotationPoint(const std::vector<int>& vals) {
+    int low = 0, high = static_cast<int>(vals.size()) - 1;
+    while (low < high) {
+        const int guess = low + (high - low) / 2;
+        if (vals[guess] > vals.back()) low = guess + 1;  // still in the moved part
+        else high = guess;
     }
-    return -1;
+    return low;
 }
 
-// A peak in a list that rises then falls: compare mid with its right neighbour.
-int peakIndex(const std::vector<int>& v) {
-    int lo = 0, hi = static_cast<int>(v.size()) - 1;
-    while (lo < hi) {
-        int mid = lo + (hi - lo) / 2;
-        if (v[mid] < v[mid + 1]) lo = mid + 1;  // still rising: the peak is to the right
-        else hi = mid;
+// A peak in a list that rises then falls: compare the guess with its right neighbour.
+int peakIndex(const std::vector<int>& vals) {
+    int low = 0, high = static_cast<int>(vals.size()) - 1;
+    while (low < high) {
+        const int guess = low + (high - low) / 2;
+        if (vals[guess] < vals[guess + 1]) low = guess + 1;  // still rising: the peak is to the right
+        else high = guess;
     }
-    return lo;
+    return low;
 }
 
 int main() {
-    std::vector<int> rotated = {40, 50, 60, 10, 20, 30};
-    std::cout << searchRotated(rotated, 20) << ' ' << searchRotated(rotated, 50) << ' ' << searchRotated(rotated, 35) << '\n';
-    std::vector<int> hill = {1, 4, 9, 15, 12, 6, 2};
-    std::cout << "peak at " << peakIndex(hill) << '\n';
+    const std::vector<int> rotated = {40, 50, 60, 10, 20, 30}, sorted = {10, 20, 30, 40};
+    const int start = rotationPoint(rotated);
+    std::cout << "rotated by " << start << ", smallest " << rotated[start] << "; sorted: " << rotationPoint(sorted) << '\n';
+    std::cout << "peak at " << peakIndex({1, 4, 9, 15, 12, 6, 2}) << '\n';
 }
 ```
 
 ```text
-4 1 -1
+rotated by 3, smallest 10; sorted: 0
 peak at 3
 ```
 
-1. Searching for 20: the middle is 60, and the left half 40, 50, 60 is sorted but can't hold 20, so the search moves right and finds 20 at index 4.
-2. Searching for 50: 50 lies within the sorted left half's range 40 to 60, so the search stays left and finds it at index 1.
-3. 35 lies in neither sorted half's range at any step, so the range empties: -1.
-4. For the hill, `v[3] < v[4]` is false (15 > 12), so the peak is at 3 or to its left; earlier middles were still rising, which pushed `lo` up to 3.
+1. In 40, 50, 60, 10, 20, 30, the values bigger than the last one, 30, are the part that was moved to the front: 40, 50 and 60. The test goes yes, yes, yes, then no, no, no, so it can be binary searched.
+2. The first no is at index 3, the value 10: the list was rotated by 3, and 10 is its smallest value. From there, the list is two sorted runs.
+3. A list that wasn't rotated has no yes at all, so the search ends at 0.
+4. For the hill, `vals[3] < vals[4]` is false (15 > 12), so the peak is at 3 or to its left; earlier guesses were still rising, which pushed `low` up to 3.
 
 ## mistakes
 
-- **Writing the loop before the invariant.** Most binary search bugs are `+ 1`s in the wrong place. Decide what `lo` and `hi` mean, inclusive or exclusive, and check that every branch keeps that meaning.
-- **Using `<` where the rotated-array test needs `<=`.** With `v[lo] < v[mid]`, a range of two elements where `lo == mid` is classified wrongly. The `<=` covers that case.
-- **Comparing real numbers until they're equal.** `while (lo != hi)` on `double`s may never stop. Run a fixed number of iterations, or stop when the gap is below your tolerance.
-- **Assuming any monotone-looking data is searchable.** The yes/no test must change only once. With duplicates, the rotated-array trick can't tell which half is sorted (as in 3, 3, 1, 3) and may need a linear step.
+- **Writing the loop before the invariant.** Most binary search bugs are `+ 1`s in the wrong place. Decide what `low` and `high` mean, inclusive or exclusive, and check that every branch keeps that meaning.
+- **Comparing with the first value instead of the last.** In a list that wasn't rotated, every value is at least the first, so that test never flips and the search ends on the last index instead of 0. The last value works for both.
+- **Comparing real numbers until they're equal.** `while (low != high)` on `double`s may never stop. Run a fixed number of iterations, or stop when the gap is below your tolerance.
+- **Assuming any monotone-looking data is searchable.** The yes/no test must change only once. With duplicates, the rotated-array tests can't tell which part a value belongs to (as in 3, 3, 1, 3) and may need a linear step.
 - **Binary searching tiny arrays.** For a handful of elements, a simple scan is as fast and harder to get wrong.
 
 ## check
@@ -381,13 +375,13 @@ peak at 3
 int main() {
     std::vector<int> t = {3, 5, 8, 13, 21, 34, 55};
     auto p = std::partition_point(t.begin(), t.end(), [](int x) { return x * x < 200; });
-    int lo = 0, hi = 1000, steps = 0;
-    while (lo < hi) {
-        int mid = lo + (hi - lo) / 2;
+    int low = 0, high = 1000, steps = 0;
+    while (low < high) {
+        int guess = low + (high - low) / 2;
         steps++;
-        if (mid * mid * mid < 500) lo = mid + 1; else hi = mid;
+        if (guess * guess * guess < 500) low = guess + 1; else high = guess;
     }
-    std::cout << (p - t.begin()) << ' ' << *p << ' ' << lo << ' ' << steps << '\n';
+    std::cout << (p - t.begin()) << ' ' << *p << ' ' << low << ' ' << steps << '\n';
 }
 ```
 

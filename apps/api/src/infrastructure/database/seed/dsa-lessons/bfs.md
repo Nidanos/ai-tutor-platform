@@ -302,27 +302,28 @@ flowchart LR
 
 int main() {
     // Distance from every open cell to the nearest hospital H: one BFS that starts from all of them.
-    std::vector<std::string> city = {"H....", ".##..", "....H", "#...."};
-    const int rows = 4, cols = 5, dr[] = {-1, 1, 0, 0}, dc[] = {0, 0, -1, 1};
-    std::vector<std::vector<int>> dist(rows, std::vector<int>(cols, -1));
-    std::queue<std::pair<int, int>> q;
-    for (int r = 0; r < rows; r++)
-        for (int c = 0; c < cols; c++)
-            if (city[r][c] == 'H') { dist[r][c] = 0; q.push({r, c}); }
+    const std::vector<std::string> city = {"H....", ".##..", "....H", "#...."};
+    const int height = city.size(), width = city[0].size();
+    const std::pair<int, int> steps[] = {{-1, 0}, {1, 0}, {0, -1}, {0, 1}};
+    auto open = [&](int y, int x) { return 0 <= y && y < height && 0 <= x && x < width && city[y][x] != '#'; };
+    std::vector<std::vector<int>> away(height, std::vector<int>(width, -1));
+    std::queue<std::pair<int, int>> frontier;
+    for (int y = 0; y < height; ++y)
+        for (int x = 0; x < width; ++x)
+            if (city[y][x] == 'H') away[y][x] = 0, frontier.emplace(y, x);
     int farthest = 0;
-    while (!q.empty()) {
-        auto [r, c] = q.front();
-        q.pop();
-        farthest = std::max(farthest, dist[r][c]);
-        for (int k = 0; k < 4; k++) {
-            int nr = r + dr[k], nc = c + dc[k];
-            if (nr < 0 || nr >= rows || nc < 0 || nc >= cols || city[nr][nc] == '#' || dist[nr][nc] >= 0) continue;
-            dist[nr][nc] = dist[r][c] + 1;
-            q.push({nr, nc});
-        }
+    while (!frontier.empty()) {
+        auto [y, x] = frontier.front();
+        frontier.pop();
+        farthest = std::max(farthest, away[y][x]);
+        for (auto [dy, dx] : steps)
+            if (open(y + dy, x + dx) && away[y + dy][x + dx] == -1) {
+                away[y + dy][x + dx] = away[y][x] + 1;
+                frontier.emplace(y + dy, x + dx);
+            }
     }
-    for (int r = 0; r < rows; r++) {
-        for (int c = 0; c < cols; c++) std::cout << (city[r][c] == '#' ? '#' : char('0' + dist[r][c]));
+    for (int y = 0; y < height; ++y) {
+        for (int x = 0; x < width; ++x) std::cout << (city[y][x] == '#' ? '#' : char('0' + away[y][x]));
         std::cout << '\n';
     }
     std::cout << "farthest from any hospital: " << farthest << '\n';
@@ -359,17 +360,17 @@ farthest from any hospital: 4
 
 int main() {
     const int limit = 100;  // states are numbers; a move doubles one or adds 3
-    std::vector<int> dist(limit + 1, -1);
-    std::queue<int> q;
-    dist[2] = 0;
-    q.push(2);
-    while (!q.empty()) {
-        int x = q.front();
-        q.pop();
-        for (int y : {x * 2, x + 3})
-            if (y <= limit && dist[y] < 0) { dist[y] = dist[x] + 1; q.push(y); }
+    std::vector<int> moves(limit + 1, -1);
+    std::queue<int> frontier;
+    moves[2] = 0;
+    frontier.push(2);
+    while (!frontier.empty()) {
+        const int at = frontier.front();
+        frontier.pop();
+        for (int to : {at * 2, at + 3})
+            if (to <= limit && moves[to] < 0) moves[to] = moves[at] + 1, frontier.push(to);
     }
-    std::cout << dist[25] << ' ' << dist[3] << '\n';
+    std::cout << moves[25] << ' ' << moves[3] << '\n';
 }
 ```
 

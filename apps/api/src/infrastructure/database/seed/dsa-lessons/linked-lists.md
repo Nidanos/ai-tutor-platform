@@ -213,38 +213,39 @@ Node* reverse(Node* head) {
     return prev;
 }
 
-// Merge two sorted lists by relinking their nodes: no new nodes, O(1) extra memory.
-Node* merge(Node* a, Node* b) {
-    Node dummy{0, nullptr}, *tail = &dummy;
-    while (a && b) {
-        Node*& smaller = a->value <= b->value ? a : b;
-        tail = tail->next = smaller;
-        smaller = smaller->next;
+// Put every node below pivot before the rest, keeping both groups in their order: no new nodes, O(1) memory.
+Node* partition(Node* head, int pivot) {
+    Node lowDummy{0, nullptr}, highDummy{0, nullptr};
+    Node *low = &lowDummy, *high = &highDummy;
+    for (; head; head = head->next) {
+        if (head->value < pivot) low = low->next = head;
+        else high = high->next = head;
     }
-    tail->next = a ? a : b;
-    return dummy.next;
+    high->next = nullptr;  // the last high node may still point into the low group
+    low->next = highDummy.next;
+    return lowDummy.next;
 }
 
 int main() {
     printAndFree(reverse(build({1, 2, 3, 4})));
-    printAndFree(merge(build({1, 4, 9}), build({2, 3, 10})));
+    printAndFree(partition(build({7, 2, 9, 4, 3, 8}), 5));
 }
 ```
 
 ```text
 4 3 2 1
-1 2 3 4 9 10
+2 4 3 7 9 8
 ```
 
 1. `build` appends each value after the tail, so the list keeps the order given, with no walk to the end.
 2. `reverse` saves `next`, points the current node backwards, and steps on. After four steps, `prev` holds 4, the new head.
-3. In `merge`, `smaller` is a reference to whichever of `a` or `b` has the smaller front node; that node is attached after the tail, and the reference moves that list on.
-4. When 9 is left alone in the first list, the loop stops and the rest of the second list, 10, is attached in one step.
+3. `partition` walks the list once and hangs each node after one of two tails: 2, 4 and 3 go to the low list, 7, 9 and 8 to the high one. Both dummies make the first node of each group no special case.
+4. The last high node, 8, still pointed at its old successor, so `high->next = nullptr` ends the list before the low tail is joined to the high group. Forgetting that line can leave a cycle.
 
 ## mistakes
 
 - **Losing the rest of the list while reversing.** Save `next` before changing the current node's arrow; after that, nothing points to the rest.
-- **Forgetting the leftover in a merge.** When one list runs out, `tail->next` must point at the rest of the other, or those nodes are lost.
+- **Leaving the last node pointing into the list.** When nodes are moved to a new list, the final one still holds its old `next`. End the new list with `nullptr`, or a walk can run into the other group, or loop forever.
 - **Returning the dummy instead of `dummy.next`.** The dummy isn't part of the list, and it lives on the stack.
 - **Changing `head` inside a function that took it by value.** The caller's head doesn't change. Return the new head, or take `Node*&`.
 - **Merging by creating new nodes.** It works, but doubles the memory and leaks unless the old nodes are freed. Relink the existing ones.

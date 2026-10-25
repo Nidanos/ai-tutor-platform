@@ -48,13 +48,15 @@ graph LR
 ```cpp
 #include <algorithm>
 #include <iostream>
-#include <numeric>
 #include <vector>
 
 struct Edge { int u, v, cost; };
 
-std::vector<int> parent;
-int find(int x) { return parent[x] == x ? x : parent[x] = find(parent[x]); }
+std::vector<int> group;  // group[x]: who x points to; a village pointing to itself leads its group
+int leader(int x) {
+    while (group[x] != x) x = group[x] = group[group[x]];  // path halving: each step skips a level
+    return x;
+}
 
 int main() {
     // Villages, and the cost of laying a cable between pairs of them.
@@ -62,13 +64,13 @@ int main() {
     std::vector<Edge> edges = {{0, 1, 4}, {0, 2, 3}, {1, 2, 1}, {1, 3, 2}, {2, 3, 4}, {3, 4, 2}, {4, 5, 6}, {3, 5, 7}};
     // Kruskal: cheapest cables first, skipping any that would close a loop. Equal costs keep input order.
     std::stable_sort(edges.begin(), edges.end(), [](const Edge& a, const Edge& b) { return a.cost < b.cost; });
-    parent.resize(n);
-    std::iota(parent.begin(), parent.end(), 0);
+    group.resize(n);
+    for (int v = 0; v < n; v++) group[v] = v;
     int total = 0, used = 0;
     for (const Edge& e : edges) {
-        int a = find(e.u), b = find(e.v);
+        int a = leader(e.u), b = leader(e.v);
         if (a == b) { std::cout << "skip " << e.u << '-' << e.v << " (" << e.cost << "): would close a loop\n"; continue; }
-        parent[a] = b;
+        group[a] = b;
         total += e.cost;
         used++;
         std::cout << "take " << e.u << '-' << e.v << " (" << e.cost << ")\n";

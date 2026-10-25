@@ -59,25 +59,25 @@ int main() {
     for (auto& r : roads) { adj[r[0]].push_back({r[1], r[2]}); adj[r[1]].push_back({r[0], r[2]}); }
 
     // Dijkstra: settle the closest unsettled vertex next, then relax its edges.
-    std::vector<long long> dist(n, INF);
+    std::vector<long long> best(n, INF);
     std::vector<int> from(n, -1);
     using Item = std::pair<long long, int>;  // (distance, vertex), smallest distance on top
-    std::priority_queue<Item, std::vector<Item>, std::greater<Item>> pq;
-    dist[0] = 0;
-    pq.push({0, 0});
-    while (!pq.empty()) {
-        auto [d, u] = pq.top();
-        pq.pop();
-        if (d > dist[u]) continue;  // stale: u was settled earlier with a smaller distance
-        for (auto [v, w] : adj[u])
-            if (dist[u] + w < dist[v]) {
-                dist[v] = dist[u] + w;
-                from[v] = u;
-                pq.push({dist[v], v});
+    std::priority_queue<Item, std::vector<Item>, std::greater<Item>> todo;
+    best[0] = 0;
+    todo.push({0, 0});
+    while (!todo.empty()) {
+        auto [cost, here] = todo.top();
+        todo.pop();
+        if (cost > best[here]) continue;  // stale: here was settled earlier with a smaller distance
+        for (auto [next, time] : adj[here])
+            if (best[here] + time < best[next]) {
+                best[next] = best[here] + time;
+                from[next] = here;
+                todo.push({best[next], next});
             }
     }
     std::cout << "times from 0:";
-    for (long long d : dist) std::cout << ' ' << d;
+    for (long long t : best) std::cout << ' ' << t;
     std::vector<int> path;
     for (int v = 4; v != -1; v = from[v]) path.push_back(v);
     std::cout << "\nfastest route to 4:";
@@ -99,7 +99,7 @@ fastest route to 4: 0 2 5 4
 ## mistakes
 
 - **A max-heap by mistake.** `std::priority_queue` puts the largest on top. Pass `std::greater` so the smallest distance comes first.
-- **Not skipping stale entries.** Without `if (d > dist[u]) continue`, old entries relax edges again, which wastes time and can blow up on large graphs.
+- **Not skipping stale entries.** Without `if (cost > best[here]) continue`, old entries relax edges again, which wastes time and can blow up on large graphs.
 - **Dijkstra with negative weights.** A settled vertex may later get cheaper, and the answer can be wrong. Use Bellman–Ford.
 - **`int` distances.** Sums of large weights overflow. Use `long long`, and an ∞ that can't overflow when added to.
 - **Settling the target and continuing anyway.** If you only need one target, you can stop when it's popped (not when it's pushed).
@@ -115,16 +115,16 @@ fastest route to 4: 0 2 5 4
 
 int main() {
     std::vector<std::vector<std::pair<int, int>>> adj = {{{1, 1}, {2, 5}}, {{2, 1}}, {{3, 1}}, {}};
-    std::vector<int> dist(4, 1000);
-    std::priority_queue<std::pair<int, int>, std::vector<std::pair<int, int>>, std::greater<>> pq;
-    dist[0] = 0, pq.push({0, 0});
+    std::vector<int> best(4, 1000);
+    std::priority_queue<std::pair<int, int>, std::vector<std::pair<int, int>>, std::greater<>> todo;
+    best[0] = 0, todo.push({0, 0});
     int stale = 0;
-    while (!pq.empty()) {
-        auto [d, u] = pq.top(); pq.pop();
-        if (d > dist[u]) { stale++; continue; }
-        for (auto [v, w] : adj[u]) if (dist[u] + w < dist[v]) { dist[v] = dist[u] + w; pq.push({dist[v], v}); }
+    while (!todo.empty()) {
+        auto [cost, here] = todo.top(); todo.pop();
+        if (cost > best[here]) { stale++; continue; }
+        for (auto [next, time] : adj[here]) if (best[here] + time < best[next]) { best[next] = best[here] + time; todo.push({best[next], next}); }
     }
-    std::cout << dist[2] << ' ' << dist[3] << ' ' << stale << '\n';
+    std::cout << best[2] << ' ' << best[3] << ' ' << stale << '\n';
 }
 ```
 
@@ -319,28 +319,28 @@ flowchart LR
 const long long INF = 1e18;
 
 int main() {
-    const int n = 4;
-    std::vector<std::vector<long long>> d(n, std::vector<long long>(n, INF));
-    std::vector<std::vector<int>> next(n, std::vector<int>(n, -1));  // first step on a best i -> j path
-    for (int i = 0; i < n; i++) d[i][i] = 0, next[i][i] = i;
+    const int towns = 4;
+    std::vector<std::vector<long long>> d(towns, std::vector<long long>(towns, INF));
+    std::vector<std::vector<int>> next(towns, std::vector<int>(towns, -1));  // first step on a best from -> to path
+    for (int from = 0; from < towns; from++) d[from][from] = 0, next[from][from] = from;
     int edges[][3] = {{0, 1, 5}, {0, 3, 10}, {1, 2, 3}, {2, 3, 1}, {3, 1, -2}};
     for (auto& e : edges) d[e[0]][e[1]] = e[2], next[e[0]][e[1]] = e[1];
-    // After round k, d[i][j] is the best path whose stops in between are all among 0..k.
-    for (int k = 0; k < n; k++)
-        for (int i = 0; i < n; i++)
-            for (int j = 0; j < n; j++)
-                if (d[i][k] < INF && d[k][j] < INF && d[i][k] + d[k][j] < d[i][j]) {
-                    d[i][j] = d[i][k] + d[k][j];
-                    next[i][j] = next[i][k];
+    // After round via, d[from][to] is the best path whose stops in between are all among 0..via.
+    for (int via = 0; via < towns; via++)
+        for (int from = 0; from < towns; from++)
+            for (int to = 0; to < towns; to++)
+                if (d[from][via] < INF && d[via][to] < INF && d[from][via] + d[via][to] < d[from][to]) {
+                    d[from][to] = d[from][via] + d[via][to];
+                    next[from][to] = next[from][via];
                 }
-    for (int i = 0; i < n; i++)
-        for (int j = 0; j < n; j++)
-            std::cout << (d[i][j] == INF ? std::string(".") : std::to_string(d[i][j])) << (j + 1 < n ? ' ' : '\n');
+    for (int from = 0; from < towns; from++)
+        for (int to = 0; to < towns; to++)
+            std::cout << (d[from][to] == INF ? std::string(".") : std::to_string(d[from][to])) << (to + 1 < towns ? ' ' : '\n');
     std::cout << "path 0 -> 3:";
     for (int at = 0; at != 3; at = next[at][3]) std::cout << ' ' << at;
     std::cout << " 3\n";
     bool negativeCycle = false;
-    for (int i = 0; i < n; i++) if (d[i][i] < 0) negativeCycle = true;
+    for (int from = 0; from < towns; from++) if (d[from][from] < 0) negativeCycle = true;
     std::cout << "negative cycle: " << negativeCycle << '\n';
 }
 ```
@@ -374,12 +374,12 @@ negative cycle: 0
 #include <iostream>
 
 int main() {
-    // cap[i][j]: the heaviest load one road can carry (0 = no road). The best route has the widest bottleneck.
+    // cap[from][to]: the heaviest load one road can carry (0 = no road). The best route has the widest bottleneck.
     int cap[4][4] = {{0, 5, 6, 0}, {5, 0, 0, 2}, {6, 0, 0, 4}, {0, 2, 4, 0}};
-    for (int k = 0; k < 4; k++)
-        for (int i = 0; i < 4; i++)
-            for (int j = 0; j < 4; j++)
-                cap[i][j] = std::max(cap[i][j], std::min(cap[i][k], cap[k][j]));
+    for (int via = 0; via < 4; via++)
+        for (int from = 0; from < 4; from++)
+            for (int to = 0; to < 4; to++)
+                cap[from][to] = std::max(cap[from][to], std::min(cap[from][via], cap[via][to]));
     std::cout << cap[0][3] << ' ' << cap[1][2] << ' ' << cap[1][3] << '\n';
 }
 ```

@@ -177,45 +177,63 @@ flowchart LR
 #include <algorithm>
 #include <iostream>
 #include <queue>
+#include <utility>
 #include <vector>
 
-int main() {
-    const int n = 6, s = 0, t = 5;
-    std::vector<std::vector<int>> cap(n, std::vector<int>(n, 0));
-    int pipes[][3] = {{0, 1, 10}, {0, 2, 10}, {1, 2, 2}, {1, 3, 4}, {1, 4, 8}, {2, 4, 9}, {3, 5, 10}, {4, 3, 6}, {4, 5, 10}};
-    for (auto& p : pipes) cap[p[0]][p[1]] = p[2];
-    const auto original = cap;
-    // Edmonds-Karp: always augment along a path with the fewest edges, found by BFS.
-    int flow = 0, rounds = 0;
-    while (true) {
-        std::vector<int> from(n, -1);
-        from[s] = s;
-        std::queue<int> q;
-        q.push(s);
-        while (!q.empty() && from[t] < 0) {
-            int u = q.front();
-            q.pop();
-            for (int v = 0; v < n; v++) if (from[v] < 0 && cap[u][v] > 0) { from[v] = u; q.push(v); }
-        }
-        if (from[t] < 0) break;  // t is unreachable: the flow is maximum
-        int push = 1 << 30;
-        for (int v = t; v != s; v = from[v]) push = std::min(push, cap[from[v]][v]);
-        for (int v = t; v != s; v = from[v]) cap[from[v]][v] -= push, cap[v][from[v]] += push;
-        flow += push, rounds++;
+// The residual graph as edge lists: each pipe and its way back are stored side by side, at e and e ^ 1.
+struct Network {
+    struct Pipe { int to, room, size; };  // size: the pipe's capacity (0 for a way back)
+    std::vector<Pipe> pipes;
+    std::vector<std::vector<int>> out;  // for each vertex, the indexes of the pipes leaving it
+    explicit Network(int n) : out(n) {}
+    void addPipe(int a, int b, int room) {
+        out[a].push_back((int)pipes.size()), pipes.push_back({b, room, room});
+        out[b].push_back((int)pipes.size()), pipes.push_back({a, 0, 0});  // the way back starts empty
     }
-    // The vertices still reachable from s in the residual graph form the source side of a minimum cut.
-    std::vector<bool> side(n, false);
-    std::vector<int> stack = {s};
-    side[s] = true;
-    while (!stack.empty()) {
-        int u = stack.back();
-        stack.pop_back();
-        for (int v = 0; v < n; v++) if (!side[v] && cap[u][v] > 0) { side[v] = true; stack.push_back(v); }
+    // Edmonds-Karp: augment along a path with the fewest pipes, found by BFS. Returns (flow, rounds).
+    std::pair<int, int> maxFlow(int s, int t) {
+        int total = 0, rounds = 0;
+        for (;;) {
+            std::vector<int> via(out.size(), -1);  // the pipe that first reached each vertex
+            std::queue<int> frontier;
+            frontier.push(s);
+            while (!frontier.empty() && via[t] == -1) {
+                int at = frontier.front();
+                frontier.pop();
+                for (int e : out[at])
+                    if (pipes[e].room > 0 && pipes[e].to != s && via[pipes[e].to] == -1) {
+                        via[pipes[e].to] = e;
+                        frontier.push(pipes[e].to);
+                    }
+            }
+            if (via[t] == -1) return {total, rounds};  // t is unreachable: the flow is maximum
+            int amount = 1 << 30;
+            for (int x = t; x != s; x = pipes[via[x] ^ 1].to) amount = std::min(amount, pipes[via[x]].room);
+            for (int x = t; x != s; x = pipes[via[x] ^ 1].to) pipes[via[x]].room -= amount, pipes[via[x] ^ 1].room += amount;
+            total += amount, rounds++;
+        }
+    }
+};
+
+int main() {
+    Network net(6);
+    int list[][3] = {{0, 1, 10}, {0, 2, 10}, {1, 2, 2}, {1, 3, 4}, {1, 4, 8}, {2, 4, 9}, {3, 5, 10}, {4, 3, 6}, {4, 5, 10}};
+    for (auto& p : list) net.addPipe(p[0], p[1], p[2]);
+    auto [flow, rounds] = net.maxFlow(0, 5);
+    // The vertices still reachable from 0 through pipes with room left form the source side of a minimum cut.
+    std::vector<bool> side(6, false);
+    std::vector<int> todo = {0};
+    side[0] = true;
+    while (!todo.empty()) {
+        int at = todo.back();
+        todo.pop_back();
+        for (int e : net.out[at])
+            if (net.pipes[e].room > 0 && !side[net.pipes[e].to]) side[net.pipes[e].to] = true, todo.push_back(net.pipes[e].to);
     }
     std::cout << "maximum flow " << flow << " in " << rounds << " augmentations\nminimum cut:";
-    for (int u = 0; u < n; u++)
-        for (int v = 0; v < n; v++)
-            if (side[u] && !side[v] && original[u][v] > 0) std::cout << ' ' << u << "->" << v << " (" << original[u][v] << ')';
+    for (int at = 0; at < 6; at++)
+        for (int e : net.out[at])
+            if (e % 2 == 0 && side[at] && !side[net.pipes[e].to]) std::cout << ' ' << at << "->" << net.pipes[e].to << " (" << net.pipes[e].size << ')';
     std::cout << '\n';
 }
 ```
@@ -228,6 +246,7 @@ minimum cut: 0->1 (10) 2->4 (9)
 1. Each round, BFS finds a path with the fewest edges among those with spare capacity. That needs only 4 rounds here, against 6 for the depth-first version on the same network.
 2. After the last round, a search over the residual graph from 0 reaches only 0 and 2.
 3. The original edges from {0, 2} to the rest are 0 → 1 (10) and 2 → 4 (9). Their total, 19, equals the maximum flow, so this is a minimum cut: no flow can do better.
+4. Each pipe's way back sits right next to it, at index `e ^ 1`, so sending flow along a pipe and opening room on its way back are two updates to neighbouring entries. That keeps memory at O(E), where a matrix needs O(V²).
 
 ## mistakes
 
@@ -324,32 +343,35 @@ graph LR
 #include <string>
 #include <vector>
 
-std::vector<std::vector<int>> canDo;  // canDo[w]: the jobs worker w can do
-std::vector<int> jobOwner;            // jobOwner[j]: the worker holding job j, or -1
-std::vector<bool> tried;
+std::vector<std::vector<int>> canDo;  // canDo[p]: the jobs person p can do
+std::vector<int> heldBy;              // heldBy[task]: the person holding that job, or -1
+std::vector<bool> visited;            // jobs already looked at while placing this person
 
-// Kuhn's algorithm: give w a job, moving other workers to other jobs if needed (an augmenting path).
-bool assign(int w) {
-    for (int j : canDo[w]) {
-        if (tried[j]) continue;
-        tried[j] = true;
-        if (jobOwner[j] < 0 || assign(jobOwner[j])) { jobOwner[j] = w; return true; }
+// Kuhn's algorithm: find p a job, moving other people to other jobs if needed (an augmenting path).
+bool place(int p) {
+    bool placed = false;
+    for (std::size_t k = 0; k < canDo[p].size() && !placed; k++) {
+        int task = canDo[p][k];
+        if (visited[task]) continue;
+        visited[task] = true;
+        int holder = heldBy[task];
+        if (holder < 0 || place(holder)) heldBy[task] = p, placed = true;  // free, or its holder can move on
     }
-    return false;
+    return placed;
 }
 
 int main() {
     std::vector<std::string> worker = {"Asha", "Ben", "Chen", "Dev"};
     std::vector<std::string> job = {"design", "backend", "testing", "docs"};
     canDo = {{0, 1}, {0}, {1, 2}, {1}};
-    jobOwner.assign(4, -1);
+    heldBy.assign(4, -1);
     int matched = 0;
-    for (int w = 0; w < 4; w++) {
-        tried.assign(4, false);
-        if (assign(w)) matched++;
+    for (int p = 0; p < 4; p++) {
+        visited.assign(4, false);
+        if (place(p)) matched++;
     }
     std::cout << "matched " << matched << " of 4\n";
-    for (int j = 0; j < 4; j++) std::cout << job[j] << ": " << (jobOwner[j] < 0 ? std::string("nobody") : worker[jobOwner[j]]) << '\n';
+    for (int j = 0; j < 4; j++) std::cout << job[j] << ": " << (heldBy[j] < 0 ? std::string("nobody") : worker[heldBy[j]]) << '\n';
 }
 ```
 
@@ -368,7 +390,7 @@ docs: nobody
 
 ## mistakes
 
-- **Not resetting `tried` for each new worker.** Each attempt is a fresh search; leftover marks block valid moves.
+- **Not resetting `visited` for each new person.** Each attempt is a fresh search; leftover marks block valid moves.
 - **Marking a job as tried after recursing.** Mark it before asking the owner to move, or the recursion can loop on the same job.
 - **Greedy matching without moves.** Giving each worker their first free job can leave people out who a rearrangement could place.
 - **Using matching for weighted assignment.** Kuhn's algorithm maximises the *number* of pairs. For costs or preferences, use min-cost flow or the Hungarian algorithm.

@@ -187,27 +187,27 @@ flowchart TB
 #include <vector>
 
 // Three ways to ask "is any value repeated?", each counting its basic steps.
-bool repeatedNested(const std::vector<int>& v, long long& steps) {
-    for (std::size_t i = 0; i < v.size(); i++)
-        for (std::size_t j = i + 1; j < v.size(); j++) {
+bool repeatedNested(const std::vector<int>& vals, long long& steps) {
+    for (std::size_t pos = 0; pos < vals.size(); pos++)
+        for (std::size_t other = pos + 1; other < vals.size(); other++) {
             steps++;
-            if (v[i] == v[j]) return true;
+            if (vals[pos] == vals[other]) return true;
         }
     return false;
 }
 
-bool repeatedSorted(std::vector<int> v, long long& steps) {  // a copy: we may reorder it
-    std::sort(v.begin(), v.end());
-    for (std::size_t i = 1; i < v.size(); i++) {
+bool repeatedSorted(std::vector<int> vals, long long& steps) {  // a copy: we may reorder it
+    std::sort(vals.begin(), vals.end());
+    for (std::size_t pos = 1; pos < vals.size(); pos++) {
         steps++;
-        if (v[i] == v[i - 1]) return true;
+        if (vals[pos] == vals[pos - 1]) return true;
     }
     return false;
 }
 
-bool repeatedHashed(const std::vector<int>& v, long long& steps) {
+bool repeatedHashed(const std::vector<int>& vals, long long& steps) {
     std::unordered_set<int> seen;
-    for (int x : v) {
+    for (int x : vals) {
         steps++;
         if (!seen.insert(x).second) return true;
     }
@@ -215,10 +215,10 @@ bool repeatedHashed(const std::vector<int>& v, long long& steps) {
 }
 
 int main() {
-    std::vector<int> v;
-    for (int i = 0; i < 2000; i++) v.push_back(i * 7 % 2003);  // 2000 distinct values: the worst case
+    std::vector<int> vals;
+    for (int pos = 0; pos < 2000; pos++) vals.push_back(pos * 7 % 2003);  // 2000 distinct values: the worst case
     long long a = 0, b = 0, c = 0;
-    std::cout << repeatedNested(v, a) << repeatedSorted(v, b) << repeatedHashed(v, c) << '\n';
+    std::cout << repeatedNested(vals, a) << repeatedSorted(vals, b) << repeatedHashed(vals, c) << '\n';
     std::cout << "nested " << a << ", after sorting " << b << " (+ the sort), hashed " << c << '\n';
 }
 ```
@@ -228,7 +228,7 @@ int main() {
 nested 1999000, after sorting 1999 (+ the sort), hashed 2000
 ```
 
-1. The values `i * 7 % 2003` are all different, so every method must look at everything before answering "no": the worst case.
+1. The values `pos * 7 % 2003` are all different, so every method must look at everything before answering "no": the worst case.
 2. Comparing every pair takes 2000 × 1999 / 2 = 1,999,000 steps.
 3. After sorting, repeats would be neighbours, so one pass of 1,999 comparisons is enough. The sort itself costs about n log n, roughly 22,000 comparisons here.
 4. The hash set checks each value once: 2,000 steps, at the price of storing up to 2,000 values.
@@ -248,10 +248,10 @@ nested 1999000, after sorting 1999 (+ the sort), hashed 2000
 
 int main() {
     long long n = 1024, s1 = 0, s2 = 0, s3 = 0;
-    for (long long i = 1; i < n; i *= 2) s1++;
-    for (long long i = 0; i < n; i++)
-        for (long long j = 1; j < n; j *= 2) s2++;
-    for (long long i = 0; i < n; i += 64) s3++;
+    for (long long pos = 1; pos < n; pos *= 2) s1++;
+    for (long long pos = 0; pos < n; pos++)
+        for (long long other = 1; other < n; other *= 2) s2++;
+    for (long long pos = 0; pos < n; pos += 64) s3++;
     std::cout << s1 << ' ' << s2 << ' ' << s3 << '\n';
 }
 ```

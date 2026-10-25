@@ -153,59 +153,50 @@ flowchart LR
 
 ```cpp
 #include <iostream>
+#include <iterator>
 #include <list>
-#include <string>
 #include <unordered_map>
-#include <utility>
 
-// LRU cache: a list keeps entries from most to least recently used; a hash map finds each entry's
-// node in the list. Both get and put are O(1).
-class LruCache {
+// The first value seen exactly once so far, in O(1) per value: a list holds the values seen once, in arrival
+// order, and a hash map finds each value's node, so a value seen again leaves the list without a search.
+class FirstUnique {
 public:
-    explicit LruCache(std::size_t capacity) : capacity_(capacity) {}
-    const std::string* get(int key) {
-        auto it = where_.find(key);
-        if (it == where_.end()) return nullptr;
-        order_.splice(order_.begin(), order_, it->second);  // move to the front: just used
-        return &it->second->second;
-    }
-    void put(int key, const std::string& value) {
-        if (auto it = where_.find(key); it != where_.end()) {
-            it->second->second = value;
-            order_.splice(order_.begin(), order_, it->second);
-            return;
+    void add(int x) {
+        auto it = node_.find(x);
+        if (it == node_.end()) {  // first time: joins the back of the line
+            onceOnly_.push_back(x);
+            node_[x] = std::prev(onceOnly_.end());
+        } else if (it->second != onceOnly_.end()) {  // second time: leaves the line for good
+            onceOnly_.erase(it->second);
+            it->second = onceOnly_.end();  // end() marks "repeated"; a list's end() never moves
         }
-        if (order_.size() == capacity_) {  // full: evict the least recently used, at the back
-            where_.erase(order_.back().first);
-            order_.pop_back();
-        }
-        order_.push_front({key, value});
-        where_[key] = order_.begin();
     }
+    int first() const { return onceOnly_.empty() ? -1 : onceOnly_.front(); }
+
 private:
-    std::size_t capacity_;
-    std::list<std::pair<int, std::string>> order_;
-    std::unordered_map<int, std::list<std::pair<int, std::string>>::iterator> where_;
+    std::list<int> onceOnly_;
+    std::unordered_map<int, std::list<int>::iterator> node_;
 };
 
 int main() {
-    LruCache cache(2);
-    cache.put(1, "one");
-    cache.put(2, "two");
-    cache.get(1);           // 1 is now the most recent
-    cache.put(3, "three");  // full: evicts 2, the least recently used
-    std::cout << (cache.get(2) ? "2 kept" : "2 evicted") << ", 1 is " << *cache.get(1) << ", 3 is " << *cache.get(3) << '\n';
+    FirstUnique stream;
+    std::cout << "first unique after each value:";
+    for (int x : {2, 3, 5, 2, 3, 7, 5}) {
+        stream.add(x);
+        std::cout << ' ' << x << ':' << stream.first();
+    }
+    std::cout << '\n';
 }
 ```
 
 ```text
-2 evicted, 1 is one, 3 is three
+first unique after each value: 2:2 3:2 5:2 2:3 3:5 7:5 5:7
 ```
 
-1. After putting 1 and 2, the list order is 2, 1, with 2 most recent.
-2. `get(1)` splices 1's node to the front: 1, 2. Nothing is copied, and the map's iterators stay valid.
-3. Putting 3 into a full cache evicts the back entry, 2, from both the list and the map, then adds 3 at the front.
-4. Looking up 2 now finds nothing, while 1 and 3 are still there.
+1. 2, 3 and 5 each arrive once and join the line in that order, so the first unique value stays 2.
+2. The second 2 is found in the map, and its node is erased from the list in O(1): no search through the line. 3 is now first.
+3. The map entry of a repeated value points at the list's `end()`, which never moves, so any later copy is recognised and changes nothing.
+4. This is the same pairing as the LRU cache: a list keeps the order, and a hash map of list iterators reaches any node at once. Each `add` is one lookup and at most one list change, O(1) however long the stream is.
 
 ## mistakes
 

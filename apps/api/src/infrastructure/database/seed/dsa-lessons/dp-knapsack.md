@@ -94,11 +94,11 @@ best value for each capacity: 0 10 30 50 70 80 100 120 130
 int main() {
     std::vector<int> nums = {3, 34, 4, 12, 5, 2};
     const int limit = 13;
-    std::vector<bool> can(limit + 1, false);  // can[s]: some of the numbers so far add up to s
+    std::vector<bool> can(limit + 1, false);  // can[amt]: some of the numbers so far add up to amt
     can[0] = true;
-    for (int x : nums)
-        for (int s = limit; s >= x; s--)  // downwards, so each number is used at most once
-            if (can[s - x]) can[s] = true;
+    for (int item : nums)
+        for (int amt = limit; amt >= item; amt--)  // downwards, so each number is used at most once
+            if (can[amt - item]) can[amt] = true;
     std::cout << can[9] << ' ' << can[11] << ' ' << can[13] << '\n';
 }
 ```
@@ -169,10 +169,10 @@ int main() {
     // Equal partition: does some subset reach exactly half the total?
     std::vector<int> nums = {1, 5, 11, 5};
     int total = std::accumulate(nums.begin(), nums.end(), 0);
-    std::vector<long long> ways(total / 2 + 1, 0);  // ways[s]: how many subsets add up to s
+    std::vector<long long> ways(total / 2 + 1, 0);  // ways[amt]: how many subsets add up to amt
     ways[0] = 1;
-    for (int x : nums)
-        for (int s = total / 2; s >= x; s--) ways[s] += ways[s - x];
+    for (int item : nums)
+        for (int amt = total / 2; amt >= item; amt--) ways[amt] += ways[amt - item];
     std::cout << "1 5 11 5: total " << total << ", subsets reaching " << total / 2 << ": " << ways[total / 2] << '\n';
 }
 ```
@@ -203,9 +203,9 @@ capacity 8: each item once 130, any number of times 140
 int main() {
     std::vector<int> down(8, 0), up(8, 0);
     down[0] = up[0] = 1;
-    for (int x : {2, 3}) {
-        for (int s = 7; s >= x; s--) down[s] += down[s - x];
-        for (int s = x; s <= 7; s++) up[s] += up[s - x];
+    for (int item : {2, 3}) {
+        for (int amt = 7; amt >= item; amt--) down[amt] += down[amt - item];
+        for (int amt = item; amt <= 7; amt++) up[amt] += up[amt - item];
     }
     std::cout << down[5] << ' ' << down[6] << ' ' << up[6] << '\n';
 }

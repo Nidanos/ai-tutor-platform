@@ -293,68 +293,63 @@ flowchart LR
 ## example
 
 ```cpp
-#include <cstdlib>
+#include <algorithm>
 #include <iostream>
-#include <queue>
 #include <random>
-#include <utility>
 #include <vector>
 
-using Grid = std::vector<std::vector<int>>;
-// Can we walk from the top-left to the bottom-right if no step may climb or drop by more than limit?
-bool reachable(const Grid& h, int limit) {
-    const int R = h.size(), C = h[0].size(), dr[] = {-1, 1, 0, 0}, dc[] = {0, 0, -1, 1};
-    std::vector<std::vector<bool>> seen(R, std::vector<bool>(C, false));
-    std::queue<std::pair<int, int>> q;
-    q.push({0, 0});
-    seen[0][0] = true;
-    while (!q.empty()) {
-        auto [r, c] = q.front(); q.pop();
-        for (int k = 0; k < 4; k++) {
-            int nr = r + dr[k], nc = c + dc[k];
-            if (nr < 0 || nr >= R || nc < 0 || nc >= C || seen[nr][nc] || std::abs(h[nr][nc] - h[r][c]) > limit) continue;
-            seen[nr][nc] = true, q.push({nr, nc});
-        }
-    }
-    return seen[R - 1][C - 1];
+// Can k routers go on these houses (sorted positions), every two at least gap apart?
+// Greedy: the first goes on the first house, each next one on the first house far enough from the last.
+bool fits(const std::vector<long long>& house, int k, long long gap) {
+    int placed = 1;
+    long long last = house[0];
+    for (std::size_t i = 1; i < house.size(); i++)
+        if (house[i] - last >= gap) { placed++; last = house[i]; }
+    return placed >= k;
 }
-int leastEffort(const Grid& h) {  // a bigger limit never hurts, so binary search it
-    int lo = 0, hi = 1000000;
-    while (lo < hi) { int mid = (lo + hi) / 2; if (reachable(h, mid)) hi = mid; else lo = mid + 1; }
-    return lo;
+// A smaller gap is always easier to meet, so binary search the largest gap that still fits.
+long long widestGap(std::vector<long long> house, int k) {
+    std::ranges::sort(house);
+    long long low = 0, high = house.back() - house.front();
+    while (low < high) {
+        long long mid = low + (high - low + 1) / 2;
+        if (fits(house, k, mid)) low = mid; else high = mid - 1;
+    }
+    return low;
 }
 int main() {
-    Grid hills = {{1, 9, 2, 3}, {2, 8, 7, 3}, {4, 4, 9, 2}, {7, 5, 4, 1}};
-    std::cout << "least effort: " << leastEffort(hills) << '\n';
+    std::cout << "3 routers, widest gap: " << widestGap({1, 2, 8, 4, 9}, 3) << '\n';
     std::mt19937 rng(6);
     int wrong = 0;
-    for (int t = 0; t < 100; t++) {  // stress test: try every limit from 0 upwards
-        Grid h(5, std::vector<int>(5));
-        for (auto& row : h) for (int& x : row) x = int(rng() % 30);
-        int brute = 0;
-        while (!reachable(h, brute)) brute++;
-        if (brute != leastEffort(h)) wrong++;
+    for (int t = 0; t < 100; t++) {  // stress test: try every gap, from the largest possible downwards
+        std::vector<long long> street(8);
+        for (auto& x : street) x = rng() % 50;
+        int k = 2 + int(rng() % 4);
+        std::ranges::sort(street);
+        long long brute = street.back() - street.front();
+        while (!fits(street, k, brute)) brute--;
+        if (brute != widestGap(street, k)) wrong++;
     }
-    std::cout << "100 random grids against trying every limit: " << wrong << " wrong\n";
+    std::cout << "100 random streets against trying every gap: " << wrong << " wrong\n";
 }
 ```
 
 ```text
-least effort: 3
-100 random grids against trying every limit: 0 wrong
+3 routers, widest gap: 3
+100 random streets against trying every gap: 0 wrong
 ```
 
-1. The question "the route with the smallest largest step" is turned into "is there a route using only steps up to L?", which one BFS answers. Here the right-hand column can only be entered by a step of 7 or more, so the route goes along the bottom, where the last step, from 4 down to 1, is 3.
-2. A larger L allows every route a smaller one does, so the yes/no answers are monotone, and binary search finds the smallest L in about 20 BFS runs.
-3. The stress test compares against the obvious method of trying L = 0, 1, 2, … on 100 random grids, and the two agree every time.
+1. "The widest spacing" is turned into "can the routers all be at least L apart?", which one greedy pass answers. Putting each router on the first house far enough from the last can never hurt: it leaves the most room for the rest.
+2. A smaller L allows every placement a larger one does, so the answers are yes up to some L and no after it, and binary search finds the last yes in about log₂(street length) checks. With houses at 1, 2, 4, 8 and 9, a gap of 3 works (1, 4, 8) but 4 doesn't.
+3. The stress test compares against the obvious method of trying every gap on 100 random streets, and the two agree every time.
 
 ## mistakes
 
 - **Reaching for a new algorithm before a reduction.** Many hard problems are an easy check plus a binary search, or a known algorithm on a bigger state.
-- **A brute force that shares the fast solution's bug.** Here both use the same BFS, so the stress test checks only the binary search. Ideally, keep the brute force independent.
-- **Random inputs that never hit the edge cases.** Add hand-made cases: one cell, all equal, the largest values.
+- **A brute force that shares the fast solution's bug.** Here both use the same `fits`, so the stress test checks only the binary search. Ideally, keep the brute force independent.
+- **Random inputs that never hit the edge cases.** Add hand-made cases: one house, every house at the same spot, the largest positions.
 - **Stopping at the first passing sample.** The given examples are small and friendly; the hidden tests include worst cases and corner cases.
-- **Unbounded searches.** Set `hi` to a value that is certainly enough, such as the largest height difference, or the loop may miss the answer.
+- **Unbounded or off-by-one searches.** Start `high` at a value that is certainly enough, such as the distance from the first house to the last, and round `mid` up when the answer moves `low`, or the loop never ends.
 
 ## check
 

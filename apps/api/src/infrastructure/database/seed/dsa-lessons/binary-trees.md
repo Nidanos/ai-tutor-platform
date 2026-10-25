@@ -55,20 +55,20 @@ flowchart TB
 
 struct Node { int value; Node* left = nullptr; Node* right = nullptr; };
 
-void preorder(const Node* n) {  // the node, then its left subtree, then its right subtree
-    if (!n) return;
-    std::cout << n->value << ' ';
-    preorder(n->left);
-    preorder(n->right);
+void preorder(const Node* t) {  // the node, then its left subtree, then its right subtree
+    if (!t) return;
+    std::cout << t->value << ' ';
+    preorder(t->left);
+    preorder(t->right);
 }
-void inorder(const Node* n) {  // left subtree, the node, right subtree
-    if (!n) return;
-    inorder(n->left);
-    std::cout << n->value << ' ';
-    inorder(n->right);
+void inorder(const Node* t) {  // left subtree, the node, right subtree
+    if (!t) return;
+    inorder(t->left);
+    std::cout << t->value << ' ';
+    inorder(t->right);
 }
-int height(const Node* n) { return n ? 1 + std::max(height(n->left), height(n->right)) : 0; }
-int size(const Node* n) { return n ? 1 + size(n->left) + size(n->right) : 0; }
+int height(const Node* t) { return t ? 1 + std::max(height(t->left), height(t->right)) : 0; }
+int size(const Node* t) { return t ? 1 + size(t->left) + size(t->right) : 0; }
 
 int main() {
     Node n4{4}, n5{5}, n6{6};
@@ -79,14 +79,14 @@ int main() {
     std::cout << "size " << size(&root) << ", height " << height(&root) << '\n';
 
     // Level order: a queue visits the tree row by row.
-    std::queue<const Node*> q;
-    q.push(&root);
-    while (!q.empty()) {
-        const Node* n = q.front();
-        q.pop();
-        std::cout << n->value << ' ';
-        if (n->left) q.push(n->left);
-        if (n->right) q.push(n->right);
+    std::queue<const Node*> line;
+    line.push(&root);
+    while (!line.empty()) {
+        const Node* at = line.front();
+        line.pop();
+        std::cout << at->value << ' ';
+        for (const Node* child : {at->left, at->right})
+            if (child) line.push(child);  // a missing child is never queued
     }
     std::cout << '\n';
 }
@@ -120,13 +120,13 @@ size 6, height 3
 
 struct Node { int value; Node* left = nullptr; Node* right = nullptr; };
 
-void post(const Node* n) {
-    if (!n) return;
-    post(n->left);
-    post(n->right);
-    std::cout << n->value;
+void post(const Node* t) {
+    if (!t) return;
+    post(t->left);
+    post(t->right);
+    std::cout << t->value;
 }
-int leaves(const Node* n) { return !n ? 0 : (!n->left && !n->right) ? 1 : leaves(n->left) + leaves(n->right); }
+int leaves(const Node* t) { return !t ? 0 : (!t->left && !t->right) ? 1 : leaves(t->left) + leaves(t->right); }
 
 int main() {
     Node d{4}, e{5}, b{2, &d, &e}, c{3};

@@ -168,14 +168,15 @@ flowchart TB
 
 ```cpp
 #include <algorithm>
-#include <functional>
 #include <iostream>
 #include <queue>
 #include <vector>
 
 int main() {
     // The 3 largest values of a stream: a min-heap of size 3; its top is the smallest of the best.
-    std::priority_queue<int, std::vector<int>, std::greater<int>> best;
+    // The comparator says when a comes after b; "after the larger" puts the smallest on top.
+    auto smallestOnTop = [](int a, int b) { return a > b; };
+    std::priority_queue<int, std::vector<int>, decltype(smallestOnTop)> best(smallestOnTop);
     for (int x : {12, 87, 45, 3, 66, 91, 20, 58}) {
         best.push(x);
         if (best.size() > 3) best.pop();  // drop the smallest of the four
@@ -215,18 +216,15 @@ after make_heap the largest is first: 9
 ## check
 
 ```cpp
-#include <functional>
 #include <iostream>
 #include <queue>
-#include <vector>
 
 int main() {
-    std::priority_queue<int> maxH;
-    std::priority_queue<int, std::vector<int>, std::greater<int>> minH;
-    for (int x : {5, 1, 9, 3}) { maxH.push(x); minH.push(x); }
+    std::priority_queue<int> maxH, negatives;  // a max-heap of negated values behaves as a min-heap
+    for (int x : {5, 1, 9, 3}) { maxH.push(x); negatives.push(-x); }
     maxH.pop();
-    minH.pop();
-    std::cout << maxH.top() << ' ' << minH.top() << ' ' << maxH.size() + minH.size() << '\n';
+    negatives.pop();
+    std::cout << maxH.top() << ' ' << -negatives.top() << ' ' << maxH.size() + negatives.size() << '\n';
 }
 ```
 
@@ -234,7 +232,7 @@ int main() {
 5 3 6
 ```
 
-Both heaps receive 5, 1, 9 and 3. The max-heap pops its largest, 9, leaving 5 on top; the min-heap pops its smallest, 1, leaving 3 on top. Each holds 3 values.
+The max-heap receives 5, 1, 9 and 3, pops its largest, 9, and has 5 on top. The other heap receives −5, −1, −9 and −3. Its largest is −1, so it pops the smallest original value, 1, and has −3 on top, which prints as 3. Each holds 3 values.
 
 # strong
 

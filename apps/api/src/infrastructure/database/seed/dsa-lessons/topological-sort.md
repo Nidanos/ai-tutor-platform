@@ -175,11 +175,12 @@ std::vector<int> smallestOrder(const Graph& g) {
     if (order.size() < g.size()) order.clear();  // some vertices never became ready: a cycle
     return order;
 }
-// A vertex finishes after everything it points to, so the reversed finish order is topological.
-void finish(const Graph& g, std::vector<bool>& seen, std::vector<int>& out, int v) {
-    seen[v] = true;
-    for (int w : g[v]) if (!seen[w]) finish(g, seen, out, w);
-    out.push_back(v);
+// A vertex is settled once everything it points to is settled; reading the settled list backwards is topological.
+void settle(const Graph& g, std::vector<char>& done, std::vector<int>& settled, int v) {
+    done[v] = 1;
+    for (std::size_t i = 0; i < g[v].size(); i++)
+        if (!done[g[v][i]]) settle(g, done, settled, g[v][i]);
+    settled.push_back(v);
 }
 void print(const char* label, const std::vector<int>& order) {
     std::cout << label << (order.empty() ? " impossible" : "");
@@ -189,11 +190,10 @@ void print(const char* label, const std::vector<int>& order) {
 int main() {
     Graph g = {{}, {0}, {1}, {0}, {1, 3}, {2}};
     print("smallest first:", smallestOrder(g));
-    std::vector<bool> seen(g.size(), false);
-    std::vector<int> out;
-    for (int v = 0; v < (int)g.size(); v++) if (!seen[v]) finish(g, seen, out, v);
-    std::reverse(out.begin(), out.end());
-    print("by DFS finish:", out);
+    std::vector<char> done(g.size(), 0);
+    std::vector<int> settled;
+    for (int v = 0; v < (int)g.size(); v++) if (!done[v]) settle(g, done, settled, v);
+    print("by DFS finish:", std::vector<int>(settled.rbegin(), settled.rend()));
     g[0].push_back(4);
     print("with 0 -> 4:", smallestOrder(g));
 }
@@ -288,42 +288,40 @@ graph LR
 
 ```cpp
 #include <iostream>
-#include <queue>
 #include <string>
 #include <vector>
 
-int main() {
-    // Tasks, their durations in days, and dependencies a -> b ("a must finish before b starts").
-    std::vector<std::string> task = {"design", "backend", "frontend", "tests", "docs", "release"};
-    std::vector<int> days = {3, 5, 4, 2, 1, 1};
-    int deps[][2] = {{0, 1}, {0, 2}, {1, 3}, {2, 3}, {0, 4}, {3, 5}, {4, 5}};
-    const int n = 6;
-    std::vector<std::vector<int>> adj(n);
-    std::vector<int> indegree(n, 0);
-    for (auto& d : deps) { adj[d[0]].push_back(d[1]); indegree[d[1]]++; }
+// Tasks, their durations in days, and what each one waits for ("design must finish before backend starts").
+std::vector<std::string> task = {"design", "backend", "frontend", "tests", "docs", "release"};
+std::vector<int> days = {3, 5, 4, 2, 1, 1};
+std::vector<std::vector<int>> needs = {{}, {0}, {0}, {1, 2}, {0}, {3, 4}};
+std::vector<int> startDay(6, -1), decidedBy(6, -1);
+std::vector<long long> chains(6, 0);  // how many dependency chains lead to each task
 
-    // DP in topological order: when a task is taken, all its prerequisites are already final.
-    std::vector<int> start(n, 0), before(n, -1);
-    std::vector<long long> ways(n, 0);  // how many dependency chains lead to each task
-    std::queue<int> ready;
-    for (int v = 0; v < n; v++) if (indegree[v] == 0) { ready.push(v); ways[v] = 1; }
-    while (!ready.empty()) {
-        int u = ready.front();
-        ready.pop();
-        for (int v : adj[u]) {
-            if (start[u] + days[u] > start[v]) { start[v] = start[u] + days[u]; before[v] = u; }
-            ways[v] += ways[u];
-            if (--indegree[v] == 0) ready.push(v);
-        }
+// Earliest start = the latest finish among the tasks it waits for. Memoised, so each task is worked out once;
+// the recursion settles every prerequisite before the task itself, which is a topological order.
+int earliest(int t) {
+    if (startDay[t] != -1) return startDay[t];
+    int day = 0;
+    long long count = needs[t].empty() ? 1 : 0;
+    for (int p : needs[t]) {
+        int done = earliest(p) + days[p];
+        if (done > day) { day = done; decidedBy[t] = p; }
+        count += chains[p];
     }
+    chains[t] = count;
+    return startDay[t] = day;
+}
+
+int main() {
     const int last = 5;
-    std::cout << "project takes " << start[last] + days[last] << " days; chains into release: " << ways[last] << '\n';
+    std::cout << "project takes " << earliest(last) + days[last] << " days; chains into release: " << chains[last] << '\n';
     std::vector<int> path;
-    for (int v = last; v != -1; v = before[v]) path.push_back(v);
+    for (int t = last; t != -1; t = decidedBy[t]) path.push_back(t);
     std::cout << "critical path:";
     for (auto it = path.rbegin(); it != path.rend(); ++it) std::cout << ' ' << task[*it];
     std::cout << "\nstart days:";
-    for (int v = 0; v < n; v++) std::cout << ' ' << task[v] << '=' << start[v];
+    for (int t = 0; t < 6; t++) std::cout << ' ' << task[t] << '=' << earliest(t);
     std::cout << '\n';
 }
 ```
@@ -335,10 +333,11 @@ start days: design=0 backend=3 frontend=3 tests=8 docs=3 release=10
 ```
 
 1. Design takes days 0–3, so backend, frontend and docs can all start on day 3.
-2. Tests wait for the later of backend (done on day 8) and frontend (day 7), so they start on day 8, and `before` records backend.
+2. Tests wait for the later of backend (done on day 8) and frontend (day 7), so they start on day 8, and `decidedBy` records backend.
 3. Release waits for tests (day 10) and docs (day 4), so it starts on day 10 and the project ends on day 11.
-4. Walking back through `before` from release gives the critical path. Frontend has a day of slack, and docs has six.
+4. Walking back through `decidedBy` from release gives the critical path. Frontend has a day of slack, and docs has six.
 5. Three chains lead to release: through backend, through frontend, and through docs.
+6. Here each task *pulls* its start from what it waits for, instead of pushing finish times forward through a queue of ready tasks. Both compute the same longest-path DP.
 
 ## mistakes
 

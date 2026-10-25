@@ -233,31 +233,31 @@ lca(7, 4) = 2, lca(6, 4) = 5, lca(5, 8) = 3
 ## check
 
 ```cpp
-#include <algorithm>
 #include <iostream>
 
 struct Node { int value; Node* left = nullptr; Node* right = nullptr; };
 
-int best = 0;
-int down(const Node* n) {  // the best path sum going down from n (it may stop at n)
+// How many paths from the root down to a leaf add up to target?
+int pathsTo(const Node* n, int target) {
     if (!n) return 0;
-    int l = std::max(0, down(n->left)), r = std::max(0, down(n->right));
-    best = std::max(best, n->value + l + r);
-    return n->value + std::max(l, r);
+    target -= n->value;
+    if (!n->left && !n->right) return target == 0;
+    return pathsTo(n->left, target) + pathsTo(n->right, target);
 }
 
 int main() {
-    Node a{9}, b{15}, c{7}, d{20, &b, &c}, root{-10, &a, &d};
-    down(&root);
-    std::cout << best << '\n';
+    Node a{0}, b{-2}, c{1}, g{11};
+    Node d{3, &a, &b}, e{2, nullptr, &c}, h{3, nullptr, &g};
+    Node f{5, &d, &e}, root{10, &f, &h};
+    std::cout << pathsTo(&root, 18) << ' ' << pathsTo(&root, 24) << '\n';
 }
 ```
 
 ```text
-42
+2 1
 ```
 
-The best path goes 15 → 20 → 7: 42. It doesn't pass through the root, whose −10 would only lower the sum. At node 20, both downward branches (15 and 7) are positive, so the path through 20 uses both, and that's recorded as the best.
+The root-to-leaf paths add up to 18 (10 → 5 → 3 → 0), 16 (10 → 5 → 3 → −2), 18 (10 → 5 → 2 → 1) and 24 (10 → 3 → 11), so two reach 18 and one reaches 24. 10 → 5 → 3 also adds up to 18, but it stops at a node with children, so it isn't counted: the check for zero happens only at leaves.
 
 # strong
 

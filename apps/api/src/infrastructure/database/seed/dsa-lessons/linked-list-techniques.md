@@ -168,20 +168,20 @@ flowchart LR
 
 struct Node { int value; Node* next; };
 
-// Floyd: if there's a loop, fast catches up with slow inside it.
+// Floyd: if there's a loop, hare catches up with tortoise inside it.
 Node* loopStart(Node* head) {
-    Node* slow = head;
-    Node* fast = head;
-    while (fast && fast->next) {
-        slow = slow->next;
-        fast = fast->next->next;
-        if (slow == fast) {  // they met inside the loop
+    Node* tortoise = head;
+    Node* hare = head;
+    while (hare && hare->next) {
+        tortoise = tortoise->next;
+        hare = hare->next->next;
+        if (tortoise == hare) {  // they met inside the loop
             Node* a = head;
-            while (a != slow) { a = a->next; slow = slow->next; }  // same speed: they meet at the entrance
+            while (a != tortoise) { a = a->next; tortoise = tortoise->next; }  // same speed: they meet at the entrance
             return a;
         }
     }
-    return nullptr;  // fast reached the end: no loop
+    return nullptr;  // hare reached the end: no loop
 }
 // Where two lists join: each pointer walks its own list, then the other; both cover the same distance.
 Node* meetingPoint(Node* a, Node* b) {
@@ -199,8 +199,10 @@ int main() {
     std::cout << "loop? " << (loopStart(&n[0]) != nullptr) << '\n';
     n[7].next = &n[3];  // 0 -> ... -> 7 -> back to 3
     Node* start = loopStart(&n[0]);
-    int length = 1;
-    for (Node* p = start->next; p != start; p = p->next) length++;
+    int length = 0;
+    Node* walker = start;
+    do walker = walker->next, length++;
+    while (walker != start);
     std::cout << "loop starts at " << start->value << ", length " << length << '\n';
 
     n[7].next = nullptr;              // remove the loop again
@@ -215,8 +217,8 @@ loop starts at 3, length 5
 lists join at 5
 ```
 
-1. Without a loop, `fast` reaches the end and `loopStart` returns `nullptr`.
-2. After `n[7]` is pointed back at node 3, slow and fast meet somewhere in the loop; restarting one from the head and walking both one step at a time brings them together at node 3.
+1. Without a loop, `hare` reaches the end and `loopStart` returns `nullptr`.
+2. After `n[7]` is pointed back at node 3, the tortoise and the hare meet somewhere in the loop; restarting one from the head and walking both one step at a time brings them together at node 3.
 3. Walking from node 3 until returning to it counts 3, 4, 5, 6, 7: length 5.
 4. The second list, 200 → 100, joins the first at node 5. `p` walks all of list A and then the start of list B; `q` walks list B and then the start of list A. Having covered the same distance, they reach node 5 at the same moment.
 
@@ -238,11 +240,11 @@ struct Node { int value; Node* next; };
 int main() {
     Node n[5];
     for (int i = 0; i < 5; i++) n[i] = {i * 10, &n[(i + 1) % 5]};  // a full circle
-    Node* slow = &n[0];
-    Node* fast = &n[0];
+    Node* tortoise = &n[0];
+    Node* hare = &n[0];
     int steps = 0;
-    do { slow = slow->next; fast = fast->next->next; steps++; } while (slow != fast);
-    std::cout << steps << ' ' << slow->value << '\n';
+    do { tortoise = tortoise->next; hare = hare->next->next; steps++; } while (tortoise != hare);
+    std::cout << steps << ' ' << tortoise->value << '\n';
 }
 ```
 

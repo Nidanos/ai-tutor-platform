@@ -301,20 +301,22 @@ stateDiagram-v2
 
 using Graph = std::vector<std::vector<int>>;
 
-// 0 = unvisited, 1 = on the current path, 2 = finished. An edge to an on-path vertex closes a cycle.
-bool cycleFrom(const Graph& g, std::vector<int>& state, int v) {
-    state[v] = 1;
-    for (int w : g[v]) {
-        if (state[w] == 1) return true;
-        if (state[w] == 0 && cycleFrom(g, state, w)) return true;
+// Each vertex is UNSEEN, ON_PATH (its search is still running) or DONE. An edge to an ON_PATH vertex closes a cycle.
+enum Mark { UNSEEN, ON_PATH, DONE };
+bool cycleFrom(const Graph& g, std::vector<Mark>& mark, int v) {
+    mark[v] = ON_PATH;
+    bool found = false;
+    for (std::size_t k = 0; k < g[v].size() && !found; k++) {
+        int w = g[v][k];
+        found = mark[w] == ON_PATH || (mark[w] == UNSEEN && cycleFrom(g, mark, w));
     }
-    state[v] = 2;
-    return false;
+    mark[v] = DONE;
+    return found;
 }
 bool hasDirectedCycle(const Graph& g) {
-    std::vector<int> state(g.size(), 0);
+    std::vector<Mark> mark(g.size(), UNSEEN);
     for (std::size_t v = 0; v < g.size(); v++)
-        if (state[v] == 0 && cycleFrom(g, state, (int)v)) return true;
+        if (mark[v] == UNSEEN && cycleFrom(g, mark, (int)v)) return true;
     return false;
 }
 // Bipartite: neighbours get the other colour; two neighbours with the same colour mean an odd cycle.

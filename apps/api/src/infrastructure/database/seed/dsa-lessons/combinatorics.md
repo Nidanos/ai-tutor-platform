@@ -163,35 +163,42 @@ flowchart TB
 #include <iostream>
 #include <vector>
 
-const long long MOD = 1'000'000'007;
+constexpr long long P = 1'000'000'007;  // prime, so every non-zero value has an inverse
 
-long long power(long long b, long long e) {
-    long long r = 1;
-    for (b %= MOD; e > 0; e >>= 1, b = b * b % MOD) if (e & 1) r = r * b % MOD;
-    return r;
+long long modPow(long long base, long long exp) {  // squaring halves exp each call: O(log exp)
+    if (exp == 0) return 1;
+    long long half = modPow(base, exp / 2);
+    half = half * half % P;
+    return exp % 2 == 1 ? half * base % P : half;
 }
 
-// Factorials and their inverses once, then any C(n, k) mod p in O(1).
-struct Binomial {
-    std::vector<long long> fact, inv;
-    explicit Binomial(int n) : fact(n + 1, 1), inv(n + 1, 1) {
-        for (int i = 1; i <= n; i++) fact[i] = fact[i - 1] * i % MOD;
-        inv[n] = power(fact[n], MOD - 2);                           // Fermat: MOD is prime
-        for (int i = n; i > 0; i--) inv[i - 1] = inv[i] * i % MOD;  // 1/(i-1)! = i x 1/i!
+// n! and 1/n! for every n up to a limit, built once; after that any C(n, k) mod P is three multiplications.
+class Choose {
+public:
+    explicit Choose(int limit) : up_{1}, down_(limit + 1) {
+        for (int k = 1; k <= limit; ++k) up_.push_back(up_.back() * k % P);
+        down_[limit] = modPow(up_[limit], P - 2);                          // Fermat: a^(P-2) is 1/a
+        for (int k = limit; k >= 1; --k) down_[k - 1] = down_[k] * k % P;  // 1/(k-1)! = k · 1/k!
     }
-    long long C(int n, int k) const {
+    long long operator()(int n, int k) const {
         if (k < 0 || k > n) return 0;
-        return fact[n] * inv[k] % MOD * inv[n - k] % MOD;
+        return up_[n] * down_[k] % P * down_[n - k] % P;
     }
+    long long factorial(int n) const { return up_[n]; }
+    long long inverseFactorial(int n) const { return down_[n]; }
+
+private:
+    std::vector<long long> up_, down_;
 };
 
 int main() {
-    Binomial b(200000);
-    std::cout << "C(10, 3) = " << b.C(10, 3) << '\n';
-    std::cout << "paths through a 3 x 4 grid: " << b.C(3 + 4, 3) << '\n';         // 3 downs among 7 moves
-    std::cout << "10 sweets among 4 children: " << b.C(10 + 4 - 1, 4 - 1) << '\n';  // stars and bars
-    std::cout << "arrangements of BANANA: " << b.fact[6] * b.inv[3] % MOD * b.inv[2] % MOD << '\n';
-    std::cout << "C(200000, 100000) mod p = " << b.C(200000, 100000) << '\n';
+    const Choose C(200000);
+    std::cout << "C(10, 3) = " << C(10, 3) << '\n';
+    std::cout << "paths through a 3 x 4 grid: " << C(7, 3) << '\n';        // 3 downs among 7 moves
+    std::cout << "10 sweets among 4 children: " << C(13, 3) << '\n';       // 10 stars and 3 bars
+    std::cout << "arrangements of BANANA: "
+              << C.factorial(6) * C.inverseFactorial(3) % P * C.inverseFactorial(2) % P << '\n';
+    std::cout << "C(200000, 100000) mod p = " << C(200000, 100000) << '\n';
 }
 ```
 
@@ -211,7 +218,7 @@ C(200000, 100000) mod p = 879467333
 
 ## mistakes
 
-- **Dividing under the modulus.** `fact[n] / (fact[k] * fact[n - k]) % MOD` is wrong once the values are reduced. Multiply by inverse factorials.
+- **Dividing under the modulus.** Computing n! / (k! · (n − k)!) with `/` is wrong once the values are reduced mod P. Multiply by inverse factorials.
 - **Computing every inverse with its own exponentiation.** That's O(n log p). One exponentiation plus the walk down is O(n).
 - **Sizing the tables too small.** Stars and bars uses n + k − 1, not n. Precompute up to the largest value any formula needs.
 - **Stars and bars when each child must get at least one.** Then give everyone one sweet first: C(n − 1, k − 1). Read the condition carefully.
@@ -222,11 +229,11 @@ C(200000, 100000) mod p = 879467333
 ```cpp
 #include <iostream>
 
+long long factorial(int n) { return n < 2 ? 1 : n * factorial(n - 1); }
+
 int main() {
-    long long fact[12] = {1};
-    for (int i = 1; i < 12; i++) fact[i] = fact[i - 1] * i;
-    long long word = fact[11] / (fact[4] * fact[4] * fact[2]);  // MISSISSIPPI: 4 I, 4 S, 2 P, 1 M
-    long long paths = fact[5] / (fact[2] * fact[3]);             // a 2 x 3 grid: 2 downs among 5 moves
+    long long word = factorial(11) / (factorial(4) * factorial(4) * factorial(2));  // MISSISSIPPI: 4 I, 4 S, 2 P, 1 M
+    long long paths = factorial(5) / (factorial(2) * factorial(3));                // a 2 x 3 grid: 2 downs among 5 moves
     std::cout << word << ' ' << paths << '\n';
 }
 ```

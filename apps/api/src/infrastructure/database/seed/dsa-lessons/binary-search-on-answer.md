@@ -24,7 +24,7 @@ Each test halves the range, so even a range of a billion possible answers needs 
 ### The recipe
 
 1. Decide what the answer is: a speed, a size, a limit.
-2. Find a range `lo..hi` that surely contains it.
+2. Find a range `low..high` that surely contains it.
 3. Write a check `ok(x)` that answers yes or no for one guess.
 4. Make sure `ok` only flips once.
 5. Binary search for the first `x` where `ok(x)` is yes.
@@ -54,13 +54,13 @@ flowchart LR
 
 // Largest x with x * x <= n: "x * x <= n" is yes for small x, then no forever after.
 long long integerSqrt(long long n) {
-    long long lo = 0, hi = n;  // the answer is somewhere in [lo, hi]
-    while (lo < hi) {
-        long long mid = lo + (hi - lo + 1) / 2;  // round up, so lo = mid always moves
-        if (mid <= n / mid) lo = mid;            // mid * mid <= n, written to avoid overflow
-        else hi = mid - 1;
+    long long low = 0, high = n;  // the answer is somewhere in [low, high]
+    while (low < high) {
+        long long guess = low + (high - low + 1) / 2;  // round up, so low = guess always moves
+        if (guess <= n / guess) low = guess;            // guess * guess <= n, written to avoid overflow
+        else high = guess - 1;
     }
-    return lo;
+    return low;
 }
 
 // Days needed to read every chapter at `speed` pages a day; a chapter never shares a day.
@@ -74,13 +74,13 @@ int main() {
     std::cout << integerSqrt(50) << ' ' << integerSqrt(81) << ' ' << integerSqrt(1'000'000'000'000LL) << '\n';
     std::vector<int> chapters = {30, 11, 23, 4, 20};
     int deadline = 6;
-    long long lo = 1, hi = 30;  // speed 30 always works: one day per chapter
-    while (lo < hi) {
-        long long mid = lo + (hi - lo) / 2;
-        if (daysNeeded(chapters, mid) <= deadline) hi = mid;  // fast enough: try slower
-        else lo = mid + 1;                                    // too slow
+    long long low = 1, high = 30;  // speed 30 always works: one day per chapter
+    while (low < high) {
+        long long guess = low + (high - low) / 2;
+        if (daysNeeded(chapters, guess) <= deadline) high = guess;  // fast enough: try slower
+        else low = guess + 1;                                    // too slow
     }
-    std::cout << "slowest speed that meets " << deadline << " days: " << lo << " pages a day\n";
+    std::cout << "slowest speed that meets " << deadline << " days: " << low << " pages a day\n";
 }
 ```
 
@@ -89,7 +89,7 @@ int main() {
 slowest speed that meets 6 days: 23 pages a day
 ```
 
-1. `integerSqrt` searches for the last x where x × x ≤ n. It compares `mid <= n / mid` instead of `mid * mid <= n`, so even huge n can't overflow. The square root of 10¹² is found in about 40 steps.
+1. `integerSqrt` searches for the last x where x × x ≤ n. It compares `guess <= n / guess` instead of `guess * guess <= n`, so even huge n can't overflow. The square root of 10¹² is found in about 40 steps.
 2. `daysNeeded` is the check: it simulates reading at one speed and counts the days.
 3. The speed search looks for the first speed that's fast enough. At 23 pages a day, the chapters take 2 + 1 + 1 + 1 + 1 = 6 days; at 22, the 23-page chapter needs two days, making 7.
 4. Searching speeds 1 to 30 took only 5 checks; trying every speed would have taken up to 30.
@@ -97,9 +97,9 @@ slowest speed that meets 6 days: 23 pages a day
 ## mistakes
 
 - **A check that flips more than once.** If the answers go yes, no, yes, binary search may land on the wrong one. Convince yourself that once a guess works, every bigger (or every smaller) guess works too.
-- **A range that doesn't contain the answer.** If `hi` is too small, the search returns `hi` even though it fails the check. Pick `hi` so that it surely works.
-- **Endless loops from rounding.** When the code does `lo = mid`, `mid` must round **up**, or a range of two values never shrinks. When it does `hi = mid`, round down.
-- **Overflow in the check.** `mid * mid` overflows for large `mid`. Compare `mid <= n / mid`, or use a wider type.
+- **A range that doesn't contain the answer.** If `high` is too small, the search returns `high` even though it fails the check. Pick `high` so that it surely works.
+- **Endless loops from rounding.** When the code does `low = guess`, `guess` must round **up**, or a range of two values never shrinks. When it does `high = guess`, round down.
+- **Overflow in the check.** `guess * guess` overflows for large `guess`. Compare `guess <= n / guess`, or use a wider type.
 - **Looking for the wrong boundary.** "Slowest speed that works" is the first yes; "largest square root" is the last yes. Decide which one before writing the loop.
 
 ## check
@@ -108,13 +108,13 @@ slowest speed that meets 6 days: 23 pages a day
 #include <iostream>
 
 int main() {
-    int lo = 1, hi = 100, tries = 0;
-    while (lo < hi) {
-        int mid = lo + (hi - lo) / 2;
+    int low = 1, high = 100, tries = 0;
+    while (low < high) {
+        int guess = low + (high - low) / 2;
         tries++;
-        if (mid * mid * mid >= 300) hi = mid; else lo = mid + 1;
+        if (guess * guess * guess >= 300) high = guess; else low = guess + 1;
     }
-    std::cout << lo << ' ' << tries << '\n';
+    std::cout << low << ' ' << tries << '\n';
 }
 ```
 
@@ -137,22 +137,22 @@ When a yes/no check on a guessed answer flips only once, binary search finds the
 **First yes** (answers go no…no, yes…yes), for "the smallest value that works":
 
 ```cpp
-while (lo < hi) {
-    long long mid = lo + (hi - lo) / 2;
-    if (ok(mid)) hi = mid; else lo = mid + 1;
+while (low < high) {
+    long long guess = low + (high - low) / 2;
+    if (ok(guess)) high = guess; else low = guess + 1;
 }
 ```
 
 **Last yes** (answers go yes…yes, no…no), for "the largest value that works":
 
 ```cpp
-while (lo < hi) {
-    long long mid = lo + (hi - lo + 1) / 2;
-    if (ok(mid)) lo = mid; else hi = mid - 1;
+while (low < high) {
+    long long guess = low + (high - low + 1) / 2;
+    if (ok(guess)) low = guess; else high = guess - 1;
 }
 ```
 
-Both end with `lo == hi`, the answer.
+Both end with `low == high`, the answer.
 
 ### Two classic shapes
 
@@ -175,8 +175,8 @@ flowchart TB
     A["Hard: what is the best limit?"] --> B["Easy: does limit L work?"]
     B --> C["Greedy check in O(n)"]
     C --> D{"Works?"}
-    D -->|"Yes"| E["Try smaller: hi = mid"]
-    D -->|"No"| F["Try bigger: lo = mid + 1"]
+    D -->|"Yes"| E["Try smaller: high = guess"]
+    D -->|"No"| F["Try bigger: low = guess + 1"]
     E --> G["O(n log range) in total"]
     F --> G
 ```
@@ -211,19 +211,19 @@ bool spreadsOut(const std::vector<int>& spots, int routers, int gap) {
 int main() {
     // Smallest workload limit that works: the first yes.
     std::vector<int> jobs = {7, 2, 5, 10, 8};
-    long long lo = 1, hi = std::accumulate(jobs.begin(), jobs.end(), 0LL);
-    while (lo < hi) {
-        long long mid = lo + (hi - lo) / 2;
-        if (fitsInRuns(jobs, 2, mid)) hi = mid; else lo = mid + 1;
+    long long low = 1, high = std::accumulate(jobs.begin(), jobs.end(), 0LL);
+    while (low < high) {
+        long long guess = low + (high - low) / 2;
+        if (fitsInRuns(jobs, 2, guess)) high = guess; else low = guess + 1;
     }
-    std::cout << "busiest worker does " << lo << '\n';
+    std::cout << "busiest worker does " << low << '\n';
 
-    // Largest gap that works: the last yes, so mid rounds up.
+    // Largest gap that works: the last yes, so guess rounds up.
     std::vector<int> spots = {1, 2, 4, 8, 9};
     int a = 0, b = spots.back() - spots.front();
     while (a < b) {
-        int mid = a + (b - a + 1) / 2;
-        if (spreadsOut(spots, 3, mid)) a = mid; else b = mid - 1;
+        int guess = a + (b - a + 1) / 2;
+        if (spreadsOut(spots, 3, guess)) a = guess; else b = guess - 1;
     }
     std::cout << "3 routers, widest spacing " << a << '\n';
 }
@@ -237,31 +237,29 @@ busiest worker does 18
 1. `fitsInRuns` hands out jobs in order and starts a new worker only when the next job would push past the limit. With limit 18, the jobs split as 7 + 2 + 5 = 14 and 10 + 8 = 18: two workers. With 17, a third worker is needed.
 2. The first search finds the smallest limit that two workers can manage: 18.
 3. `spreadsOut` places routers at the earliest spots that keep the gap. With gap 3 it uses spots 1, 4 and 8; with gap 4 it can only place two.
-4. The second search wants the largest gap that works, so it rounds `mid` up and moves `lo` to `mid` on success.
+4. The second search wants the largest gap that works, so it rounds `guess` up and moves `low` to `guess` on success.
 
 ## mistakes
 
 - **A check that isn't monotone.** "Exactly k workers" isn't monotone; "at most k workers" is. Phrase the check so that once a guess works, all easier guesses work too.
-- **Rounding the wrong way.** With `lo = mid`, round `mid` up; with `hi = mid`, round down. The other combination can loop forever on a range of two.
+- **Rounding the wrong way.** With `low = guess`, round `guess` up; with `high = guess`, round down. The other combination can loop forever on a range of two.
 - **Forgetting impossible single items.** If one job is bigger than the limit, no split works. The check must say no, not quietly start a run that's already over the limit.
-- **A lower bound that's too high.** Starting `lo` above the true answer returns `lo` without ever testing smaller values. Start at a value that's surely too small, or surely the minimum.
+- **A lower bound that's too high.** Starting `low` above the true answer returns `low` without ever testing smaller values. Start at a value that's surely too small, or surely the minimum.
 - **Unsorted positions in a gap check.** The greedy placement assumes the spots are in order. Sort them first.
 
 ## check
 
 ```cpp
 #include <iostream>
-#include <vector>
 
 int main() {
-    std::vector<int> c = {4, 9, 6};  // piles; each hour, take at most s items from one pile
-    int lo = 1, hi = 9;
-    while (lo < hi) {
-        int s = lo + (hi - lo) / 2, hours = 0;
-        for (int p : c) hours += (p + s - 1) / s;
-        if (hours <= 5) hi = s; else lo = s + 1;
+    const long long coins = 20;  // row r of a staircase needs r coins: how many full rows can be built?
+    long long low = 0, high = coins;
+    while (low < high) {
+        long long rows = low + (high - low + 1) / 2;
+        if (rows * (rows + 1) / 2 <= coins) low = rows; else high = rows - 1;
     }
-    std::cout << lo << '\n';
+    std::cout << low << '\n';
 }
 ```
 
@@ -269,7 +267,7 @@ int main() {
 5
 ```
 
-At rate s, a pile of p items takes p / s hours, rounded up. At 4 per hour the piles take 1 + 3 + 2 = 6 hours, too many; at 5 they take 1 + 2 + 2 = 5. Faster rates only need fewer hours, so the check flips once, and the first rate that fits in 5 hours is 5.
+Building r full rows takes 1 + 2 + … + r = r(r + 1) / 2 coins. 5 rows take 15 coins, and 6 would take 21, more than 20. More rows always need more coins, so the check flips once. This is a last yes, so the guess rounds up, and the answer is 5.
 
 # strong
 

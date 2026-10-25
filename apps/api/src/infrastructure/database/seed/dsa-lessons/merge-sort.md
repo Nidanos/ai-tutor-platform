@@ -177,31 +177,31 @@ flowchart LR
 #include <iostream>
 #include <vector>
 
-// Sorts v[lo, hi) using buf as scratch space. Returns how many inversions it removed.
-long long sortCount(std::vector<int>& v, std::vector<int>& buf, std::size_t lo, std::size_t hi) {
-    if (hi - lo <= 1) return 0;
-    std::size_t mid = lo + (hi - lo) / 2;
-    long long count = sortCount(v, buf, lo, mid) + sortCount(v, buf, mid, hi);
-    std::size_t i = lo, j = mid, k = lo;
-    while (i < mid && j < hi) {
-        if (v[i] <= v[j]) {
-            buf[k++] = v[i++];
+// Sorts arr[from, to), merging through the shared scratch list. Returns how many inversions it removed.
+long long sortCount(std::vector<int>& arr, std::vector<int>& scratch, std::size_t from, std::size_t to) {
+    if (to - from <= 1) return 0;
+    std::size_t half = from + (to - from) / 2;
+    long long count = sortCount(arr, scratch, from, half) + sortCount(arr, scratch, half, to);
+    std::size_t i = from, j = half, k = from;
+    while (i < half && j < to) {
+        if (arr[i] <= arr[j]) {
+            scratch[k++] = arr[i++];
         } else {
-            count += mid - i;  // v[j] is smaller than every item left in the left half
-            buf[k++] = v[j++];
+            count += half - i;  // arr[j] is smaller than every item left in the left half
+            scratch[k++] = arr[j++];
         }
     }
-    while (i < mid) buf[k++] = v[i++];
-    while (j < hi) buf[k++] = v[j++];
-    for (std::size_t t = lo; t < hi; t++) v[t] = buf[t];
+    while (i < half) scratch[k++] = arr[i++];
+    while (j < to) scratch[k++] = arr[j++];
+    for (std::size_t t = from; t < to; t++) arr[t] = scratch[t];
     return count;
 }
 
 int main() {
-    std::vector<int> v = {8, 4, 2, 1, 9, 6, 3};
-    std::vector<int> buf(v.size());
-    long long inversions = sortCount(v, buf, 0, v.size());
-    for (int x : v) std::cout << x << ' ';
+    std::vector<int> arr = {8, 4, 2, 1, 9, 6, 3};
+    std::vector<int> scratch(arr.size());
+    long long inversions = sortCount(arr, scratch, 0, arr.size());
+    for (int x : arr) std::cout << x << ' ';
     std::cout << "\ninversions: " << inversions << '\n';
 }
 ```
@@ -211,9 +211,9 @@ int main() {
 inversions: 12
 ```
 
-1. `sortCount` works on the range `v[lo, hi)` and one shared buffer, so no vector is created after the start.
+1. `sortCount` works on the range `arr[from, to)` and one shared buffer, `scratch`, so no vector is created after the start.
 2. Each call sorts and counts its two halves, then merges them. Whenever the right half's item wins, it jumps ahead of every left item still waiting, and those are counted as inversions.
-3. The merged range is copied back from `buf`, so the caller sees its range sorted.
+3. The merged range is copied back from `scratch`, so the caller sees its range sorted.
 4. Checking by hand: 8 is ahead of five smaller numbers, 4 of three, 2 of one, 9 of two and 6 of one: 12 inversions.
 
 ## mistakes
@@ -235,9 +235,9 @@ int main() {
     std::vector<int> a = {1, 4, 6}, b = {2, 3, 7};
     std::vector<int> out(6);
     std::merge(a.begin(), a.end(), b.begin(), b.end(), out.begin());
-    std::vector<int> v = {5, 9, 1, 4};  // two sorted halves: 5 9 | 1 4
-    std::inplace_merge(v.begin(), v.begin() + 2, v.end());
-    std::cout << out[2] << out[3] << ' ' << v[0] << v[3] << '\n';
+    std::vector<int> arr = {5, 9, 1, 4};  // two sorted halves: 5 9 | 1 4
+    std::inplace_merge(arr.begin(), arr.begin() + 2, arr.end());
+    std::cout << out[2] << out[3] << ' ' << arr[0] << arr[3] << '\n';
 }
 ```
 

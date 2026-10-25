@@ -126,17 +126,17 @@ Grid DP fills one entry per cell from the cells it can be reached from (above an
 
 ### DP over intervals
 
-Some problems are about a **range** of items, and the best way to handle the range depends on where it is **split**. Let `cost[i][j]` be the best answer for items i to j. Then try every split point k:
+Some problems are about a **range** of items, and the best way to handle the range depends on where it is **split**. Let best(i, j) be the best answer for items i to j. Then try every split point k:
 
-`cost[i][j] = min over k of cost[i][k] + cost[k + 1][j] + (the cost of joining the two parts)`
+best(i, j) = min over k of best(i, k) + best(k + 1, j) + (the cost of joining the two parts)
 
 Fill the table **by length**: all ranges of length 1, then 2, and so on, so both parts of any split are already known. There are O(n²) ranges and O(n) splits each, so it's **O(n³)**.
 
 ### Matrix-chain multiplication
 
-Multiplying a p × q matrix by a q × r matrix takes p · q · r multiplications. For a chain A · B · C · D the result is the same in any bracketing, but the cost isn't: one order can be several times cheaper than another. With `dims` giving the sizes (matrix i is dims[i] × dims[i + 1]):
+Multiplying a p × q matrix by a q × r matrix takes p · q · r multiplications. For a chain A · B · C · D the result is the same in any bracketing, but the cost isn't: one order can be several times cheaper than another. With d giving the sizes (matrix i is d(i) × d(i + 1)):
 
-`cost[i][j] = min over k of cost[i][k] + cost[k + 1][j] + dims[i] · dims[k + 1] · dims[j + 1]`
+best(i, j) = min over k of best(i, k) + best(k + 1, j) + d(i) · d(k + 1) · d(j + 1)
 
 Record the best k for each range in `split[i][j]`, then rebuild the bracketing recursively.
 
@@ -168,49 +168,50 @@ flowchart TB
 #include <string>
 #include <vector>
 
+std::vector<int> piles = {4, 5, 9, 4};
 std::vector<std::vector<int>> split;
-std::string order(int i, int j) {  // the best bracketing of matrices i..j
-    if (i == j) return std::string(1, char('A' + i));
-    return "(" + order(i, split[i][j]) + order(split[i][j] + 1, j) + ")";
+std::string order(int lo, int hi) {  // the best way to merge piles lo..hi, as brackets
+    if (lo == hi) return std::to_string(piles[lo]);
+    return "(" + order(lo, split[lo][hi]) + " " + order(split[lo][hi] + 1, hi) + ")";
 }
 
 int main() {
-    // Matrix i is dims[i] x dims[i + 1]. Multiplying p x q by q x r costs p * q * r.
-    std::vector<long long> dims = {40, 20, 30, 10, 30};
-    const int n = dims.size() - 1;
-    // cost[i][j]: the cheapest way to multiply matrices i..j; k is where the last multiplication splits them.
-    std::vector<std::vector<long long>> cost(n, std::vector<long long>(n, 0));
+    // Merging two neighbouring piles costs their total, so joining lo..mid with mid+1..hi costs every stone in lo..hi.
+    const int n = piles.size();
+    std::vector<long long> prefix(n + 1, 0);
+    for (int lo = 0; lo < n; lo++) prefix[lo + 1] = prefix[lo] + piles[lo];
+    // least[lo][hi]: the cheapest way to merge piles lo..hi into one; the last merge joins lo..mid with mid+1..hi.
+    std::vector<std::vector<long long>> least(n, std::vector<long long>(n, 0));
     split.assign(n, std::vector<int>(n, 0));
     for (int len = 2; len <= n; len++)  // shorter ranges first: they are the parts of longer ones
-        for (int i = 0; i + len - 1 < n; i++) {
-            int j = i + len - 1;
-            cost[i][j] = LLONG_MAX;
-            for (int k = i; k < j; k++) {
-                long long c = cost[i][k] + cost[k + 1][j] + dims[i] * dims[k + 1] * dims[j + 1];
-                if (c < cost[i][j]) cost[i][j] = c, split[i][j] = k;
-            }
+        for (int lo = 0; lo + len - 1 < n; lo++) {
+            int hi = lo + len - 1;
+            least[lo][hi] = LLONG_MAX;
+            for (int mid = lo; mid < hi; mid++)
+                if (least[lo][mid] + least[mid + 1][hi] < least[lo][hi]) least[lo][hi] = least[lo][mid] + least[mid + 1][hi], split[lo][hi] = mid;
+            least[lo][hi] += prefix[hi + 1] - prefix[lo];  // the same for every mid, so it's added once the best mid is known
         }
-    long long leftToRight = 0;
-    for (int k = 1; k < n; k++) leftToRight += dims[0] * dims[k] * dims[k + 1];
-    std::cout << "best: " << order(0, n - 1) << " with " << cost[0][n - 1] << " multiplications\n";
+    long long leftToRight = 0, pile = piles[0];
+    for (int mid = 1; mid < n; mid++) pile += piles[mid], leftToRight += pile;
+    std::cout << "best: " << order(0, n - 1) << " costs " << least[0][n - 1] << '\n';
     std::cout << "left to right: " << leftToRight << '\n';
 }
 ```
 
 ```text
-best: ((A(BC))D) with 26000 multiplications
-left to right: 48000
+best: ((4 5) (9 4)) costs 44
+left to right: 49
 ```
 
-1. The four matrices are 40×20, 20×30, 30×10 and 10×30.
-2. Multiplying B and C first costs 20·30·10 = 6000 and leaves a small 20×10 result. A times that costs 40·20·10 = 8000, and the final step 40·10·30 = 12000.
-3. Left to right, A·B creates a large 40×30 matrix first, so every later step is expensive: 48,000 in total, nearly double.
-4. `split` remembers the best k for every range, and `order` rebuilds the bracketing from it.
+1. Merging 4 and 5 costs 9, and 9 and 4 costs 13. The last merge moves all 22 stones: 9 + 13 + 22 = 44.
+2. Left to right, the growing pile is paid for again at every step: 9 + 18 + 22 = 49.
+3. The joining cost of a range is its total, the same whichever k is chosen, so it's added after the best k is found, read from prefix sums in O(1).
+4. This is the same table as matrix-chain multiplication, filled by length and split at k; only the cost of joining the two parts differs. `split` remembers the best k for every range, and `order` rebuilds the brackets from it.
 
 ## mistakes
 
 - **Filling ranges in the wrong order.** Both parts of a split must be finished first; go by increasing length.
-- **Off-by-one in the dimensions.** Matrix i is dims[i] × dims[i + 1], so the chain i..j joins at dims[k + 1].
+- **Off-by-one in the dimensions.** Matrix i is d(i) × d(i + 1), so the chain i..j joins at d(k + 1).
 - **Allowing k = j.** The right part would be empty. k goes from i to j − 1.
 - **Overflow.** Products of three dimensions add up fast; use `long long`.
 - **The palindrome table read before it's filled.** `lps[i + 1][j − 1]` needs i going downwards, or filling by length.
@@ -226,11 +227,11 @@ left to right: 48000
 int main() {
     std::string s = "character";
     const int n = s.size();
-    std::vector<std::vector<int>> lps(n, std::vector<int>(n, 0));  // lps[i][j]: in s[i..j]
-    for (int i = n - 1; i >= 0; i--) {
-        lps[i][i] = 1;
-        for (int j = i + 1; j < n; j++)
-            lps[i][j] = s[i] == s[j] ? lps[i + 1][j - 1] + 2 : std::max(lps[i + 1][j], lps[i][j - 1]);
+    std::vector<std::vector<int>> lps(n, std::vector<int>(n, 0));  // lps[lo][hi]: in s[lo..hi]
+    for (int lo = n - 1; lo >= 0; lo--) {
+        lps[lo][lo] = 1;
+        for (int hi = lo + 1; hi < n; hi++)
+            lps[lo][hi] = s[lo] == s[hi] ? lps[lo + 1][hi - 1] + 2 : std::max(lps[lo + 1][hi], lps[lo][hi - 1]);
     }
     std::cout << lps[0][n - 1] << '\n';
 }
@@ -240,7 +241,7 @@ int main() {
 5
 ```
 
-The two c's at positions 0 and 5 wrap the inside "hara", whose longest palindromic subsequence is "ara". Together they give "carac", 5 letters. Going i downwards guarantees that `lps[i + 1][…]` is filled before it's used.
+The two c's at positions 0 and 5 wrap the inside "hara", whose longest palindromic subsequence is "ara". Together they give "carac", 5 letters. Going `lo` downwards guarantees that `lps[lo + 1][…]` is filled before it's used.
 
 # strong
 
@@ -288,48 +289,54 @@ flowchart LR
 #include <algorithm>
 #include <climits>
 #include <iostream>
+#include <string>
 #include <vector>
 
+// Keys in sorted order and how often each is searched for. A search costs one step per level it goes down,
+// so the best tree puts the frequent keys near the root.
+std::vector<std::string> key = {"ant", "bee", "cat", "dog", "eel"};
+std::vector<int> freq = {4, 2, 6, 3, 1};
+
+int total(int lo, int hi) {  // searches for keys lo..hi
+    int s = 0;
+    for (int t = lo; t <= hi; t++) s += freq[t];
+    return s;
+}
+// Brute force: try every key as the root of every range, recursively; no table, so it rebuilds every subtree.
+long long tryAll(int lo, int hi) {
+    if (lo > hi) return 0;
+    long long best = LLONG_MAX;
+    for (int r = lo; r <= hi; r++) best = std::min(best, tryAll(lo, r - 1) + tryAll(r + 1, hi));
+    return best + total(lo, hi);  // one level deeper for every key in the range
+}
+
 int main() {
-    // A stick of length 10 is cut at the marks 2, 3, 7 and 8; each cut costs the length of the piece cut.
-    std::vector<int> cuts = {2, 3, 7, 8};
-    const int length = 10;
-    std::vector<int> p = {0};  // the ends and the marks, in order
-    p.insert(p.end(), cuts.begin(), cuts.end());
-    p.push_back(length);
-    const int m = p.size();
-    // cost[i][j]: the cheapest way to make every cut strictly between p[i] and p[j]; p[k] is cut first.
-    std::vector<std::vector<long long>> cost(m, std::vector<long long>(m, 0));
-    for (int gap = 2; gap < m; gap++)
-        for (int i = 0; i + gap < m; i++) {
-            int j = i + gap;
-            cost[i][j] = LLONG_MAX;
-            for (int k = i + 1; k < j; k++) cost[i][j] = std::min(cost[i][j], cost[i][k] + cost[k][j] + (p[j] - p[i]));
+    const int n = key.size();
+    // table[lo][hi]: the best tree for keys lo..hi, and root[lo][hi] its root.
+    std::vector<std::vector<long long>> table(n + 1, std::vector<long long>(n + 1, 0));
+    std::vector<std::vector<int>> root(n, std::vector<int>(n, 0));
+    for (int width = 1; width <= n; width++)
+        for (int lo = 0; lo + width <= n; lo++) {
+            int hi = lo + width - 1;
+            long long best = LLONG_MAX;
+            for (int r = lo; r <= hi; r++) {
+                long long left = r > lo ? table[lo][r - 1] : 0, right = r < hi ? table[r + 1][hi] : 0;
+                if (left + right < best) best = left + right, root[lo][hi] = r;
+            }
+            table[lo][hi] = best + total(lo, hi);
         }
-    std::vector<int> order = cuts;  // check against every order of cutting
-    long long best = LLONG_MAX, worst = 0;
-    do {
-        std::vector<int> made = {0, length};
-        long long total = 0;
-        for (int c : order) {
-            auto it = std::upper_bound(made.begin(), made.end(), c);
-            total += *it - *(it - 1);  // the piece that contains c
-            made.insert(it, c);
-        }
-        best = std::min(best, total);
-        worst = std::max(worst, total);
-    } while (std::next_permutation(order.begin(), order.end()));
-    std::cout << "interval DP: " << cost[0][m - 1] << "; all 24 orders: best " << best << ", worst " << worst << '\n';
+    std::cout << "best tree costs " << table[0][n - 1] << " steps, root " << key[root[0][n - 1]] << "; trying every tree: " << tryAll(0, n - 1) << '\n';
 }
 ```
 
 ```text
-interval DP: 23; all 24 orders: best 23, worst 30
+best tree costs 29 steps, root cat; trying every tree: 29
 ```
 
-1. Each range between two marks is solved by trying every mark inside it as the first cut. The first cut always costs the length of the whole range.
-2. Ranges are filled by gap, so both pieces of any first cut are already solved.
-3. The brute force tries all 4! = 24 cutting orders and agrees with the DP: 23, for example cutting at 3, then 2, 7 and 8 (10 + 3 + 7 + 3). The order 2, 3, 8, 7 costs 10 + 8 + 7 + 5 = 30.
+1. cat, searched 6 times, goes at the root, one step away. Below it, ant (4 searches) roots the left side with bee under it, and dog roots the right side with eel under it.
+2. The cost is cat 6 × 1, ant 4 × 2, dog 3 × 2, bee 2 × 3 and eel 1 × 3: 6 + 8 + 6 + 6 + 3 = 29.
+3. Each range tries every key as its root. Whichever root is chosen, every key in the range sits one level deeper than in its own subtree, so the range's total searches are added once.
+4. The brute force tries every root of every range without remembering anything, which visits all 42 possible tree shapes, and agrees: 29.
 
 ## mistakes
 

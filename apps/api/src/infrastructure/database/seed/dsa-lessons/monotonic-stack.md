@@ -162,34 +162,31 @@ int main() {
     }
     std::cout << '\n';
 
-    // Largest rectangle under a histogram: when a bar is popped, the bar that popped it is its right
-    // limit and the bar below it on the stack is its left limit.
-    std::vector<int> h = {2, 1, 5, 6, 2, 3};
-    h.push_back(0);  // a final zero pops every bar
-    std::stack<int> st;
-    long long best = 0;
-    for (int i = 0; i < static_cast<int>(h.size()); i++) {
-        while (!st.empty() && h[st.top()] >= h[i]) {
-            long long height = h[st.top()];
-            st.pop();
-            int left = st.empty() ? -1 : st.top();
-            best = std::max(best, height * (i - left - 1));
-        }
-        st.push(i);
+    // How many buildings can each roof see to its right? Scan from the right: a shorter roof ahead is seen,
+    // then hidden for good behind this one; the first roof at least as tall is seen too and blocks the rest.
+    std::vector<int> roof = {10, 6, 8, 5, 11, 9};
+    std::vector<int> sees(roof.size(), 0);
+    std::stack<int> ahead;  // roofs still visible from further left, shortest on top
+    for (int b = static_cast<int>(roof.size()) - 1; b >= 0; b--) {
+        while (!ahead.empty() && ahead.top() < roof[b]) ahead.pop(), sees[b]++;
+        if (!ahead.empty()) sees[b]++;
+        ahead.push(roof[b]);
     }
-    std::cout << "largest rectangle: " << best << '\n';
+    std::cout << "roofs seen:";
+    for (int count : sees) std::cout << ' ' << count;
+    std::cout << '\n';
 }
 ```
 
 ```text
 1 1 1 2 1 4 6
-largest rectangle: 10
+roofs seen: 3 1 2 1 1 0
 ```
 
 1. On the day priced 70, the 60 before it is popped and the 80 stays on top, so the span is 2. On 75, the 60 and the 70 are popped: span 4. On 85, everything back to the 100 is popped: span 6.
-2. In the histogram, bars of heights 5 and 6 wait until the bar of height 2 arrives.
-3. Popping 6: its rectangle spans only itself, area 6. Popping 5: the bar below it on the stack has height 1, so 5 stretches over two bars, area 10.
-4. The final 0 pops the rest, but none beats 10.
+2. For the roofs, the scan runs from the right. The 11 pops the 9 (seen, and now hidden behind the 11), so it sees 1.
+3. The 8 pops the 5 and then sees the 11 behind it: 2. The 10 pops the 6 and the 8, then sees the 11: 3.
+4. Every roof is pushed once and popped at most once, so the whole answer takes O(n) instead of checking every pair.
 
 ## mistakes
 
@@ -285,25 +282,25 @@ std::vector<int> windowMax(const std::vector<int>& v, int k) {
     return out;
 }
 
-// Sum of the minimum of every subarray: v[i] is the minimum of (i - left) * (right - i) subarrays,
-// where left and right are the nearest smaller values. Ties: non-strict on the left, strict on the right.
+// Sum of the minimum of every subarray: v[i] is the minimum of (i - prevSmaller) * (nextSmaller - i) subarrays,
+// where prevSmaller and nextSmaller are the nearest smaller values. Ties: non-strict on the left, strict on the right.
 long long sumOfMinimums(const std::vector<int>& v) {
     int n = v.size();
-    std::vector<int> left(n), right(n);
-    std::stack<int> st;
+    std::vector<int> prevSmaller(n), nextSmaller(n);
+    std::stack<int> waiting;
     for (int i = 0; i < n; i++) {
-        while (!st.empty() && v[st.top()] > v[i]) st.pop();
-        left[i] = st.empty() ? -1 : st.top();
-        st.push(i);
+        while (!waiting.empty() && v[waiting.top()] > v[i]) waiting.pop();
+        prevSmaller[i] = waiting.empty() ? -1 : waiting.top();
+        waiting.push(i);
     }
-    st = {};
+    waiting = {};
     for (int i = n - 1; i >= 0; i--) {
-        while (!st.empty() && v[st.top()] >= v[i]) st.pop();
-        right[i] = st.empty() ? n : st.top();
-        st.push(i);
+        while (!waiting.empty() && v[waiting.top()] >= v[i]) waiting.pop();
+        nextSmaller[i] = waiting.empty() ? n : waiting.top();
+        waiting.push(i);
     }
     long long total = 0;
-    for (int i = 0; i < n; i++) total += 1LL * v[i] * (i - left[i]) * (right[i] - i);
+    for (int i = 0; i < n; i++) total += 1LL * v[i] * (i - prevSmaller[i]) * (nextSmaller[i] - i);
     return total;
 }
 

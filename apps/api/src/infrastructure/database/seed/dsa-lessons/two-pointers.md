@@ -8,10 +8,10 @@ Many list problems become easy if you keep **two** indexes and move them cleverl
 
 ### Shape 1: from both ends
 
-In a **sorted** list, to find two items that add up to a target, start one index at the front (`lo`) and one at the back (`hi`):
+In a **sorted** list, to find two items that add up to a target, start one index at the front (`left`) and one at the back (`right`):
 
-- If the sum is too small, move `lo` right: that's the only way to make it bigger.
-- If the sum is too big, move `hi` left: that's the only way to make it smaller.
+- If the sum is too small, move `left` right: that's the only way to make it bigger.
+- If the sum is too big, move `right` left: that's the only way to make it smaller.
 - If it's just right, you've found the pair.
 
 Each step moves one index, so it takes at most n steps: O(n), instead of O(n²) for checking every pair.
@@ -22,23 +22,23 @@ A **read** index visits every item, and a **write** index marks where the next k
 
 ### Other everyday uses
 
-- Reversing a list: swap `v[lo]` and `v[hi]`, then move both towards the middle.
+- Reversing a list: swap `v[left]` and `v[right]`, then move both towards the middle.
 - Merging two sorted lists: one index in each.
 - Checking a palindrome: compare from both ends.
 
 ### What it needs
 
-The "both ends" shape works because the list is **sorted**: moving `lo` always increases the sum, and moving `hi` always decreases it. On an unsorted list that reasoning fails, so sort first, or use a hash set instead.
+The "both ends" shape works because the list is **sorted**: moving `left` always increases the sum, and moving `right` always decreases it. On an unsorted list that reasoning fails, so sort first, or use a hash set instead.
 
 ## diagram
 
 ```mermaid
 flowchart TB
-    A["lo at the front, hi at the back"] --> B{"v[lo] + v[hi] vs target"}
-    B -->|"Too small"| C["lo++: a bigger left value"]
-    B -->|"Too big"| D["hi--: a smaller right value"]
+    A["left at the front, right at the back"] --> B{"v[left] + v[right] vs target"}
+    B -->|"Too small"| C["left++: a bigger left value"]
+    B -->|"Too big"| D["right--: a smaller right value"]
     B -->|"Equal"| E["Found the pair"]
-    C --> F{"lo < hi?"}
+    C --> F{"left < right?"}
     D --> F
     F -->|"Yes"| B
     F -->|"No"| G["No pair exists"]
@@ -54,14 +54,14 @@ int main() {
     // Two ends: does any pair in a sorted list add up to the target?
     std::vector<int> prices = {120, 250, 300, 410, 560, 680};
     int budget = 860;
-    std::size_t lo = 0, hi = prices.size() - 1;
-    while (lo < hi) {
-        int sum = prices[lo] + prices[hi];
-        if (sum == budget) break;
-        if (sum < budget) lo++;  // need more: move the small end up
-        else hi--;               // too much: move the big end down
+    std::size_t left = 0, right = prices.size() - 1;
+    while (left < right) {
+        int total = prices[left] + prices[right];
+        if (total == budget) break;
+        if (total > budget) right--;  // too much: move the big end down
+        else left++;                  // need more: move the small end up
     }
-    if (lo < hi) std::cout << prices[lo] << " + " << prices[hi] << " = " << budget << '\n';
+    if (left < right) std::cout << prices[left] << " + " << prices[right] << " = " << budget << '\n';
 
     // Same direction: remove repeats from a sorted list in place.
     std::vector<int> ids = {3, 3, 5, 8, 8, 8, 9};
@@ -79,18 +79,18 @@ int main() {
 3 5 8 9
 ```
 
-1. 120 + 680 = 800 is too small, so `lo` moves to 250. 250 + 680 = 930 is too big, so `hi` moves to 560.
-2. 250 + 560 = 810 is still too small, so `lo` moves to 300, and 300 + 560 = 860. Four checks instead of up to 15 pairs.
+1. 120 + 680 = 800 is too small, so `left` moves to 250. 250 + 680 = 930 is too big, so `right` moves to 560.
+2. 250 + 560 = 810 is still too small, so `left` moves to 300, and 300 + 560 = 860. Four checks instead of up to 15 pairs.
 3. The second loop reads every id. It writes one only if it differs from the last value written, so each run of repeats keeps one copy.
 4. `resize(write)` cuts off the leftover tail, leaving 3 5 8 9.
 
 ## mistakes
 
-- **Using both ends on unsorted data.** The rule "move `lo` to increase the sum" only holds when the list is sorted. Sort first.
-- **`lo <= hi` in a pair search.** When `lo == hi`, both indexes point at the same item, which would count it twice. Stop at `lo < hi`.
+- **Using both ends on unsorted data.** The rule "move `left` to increase the sum" only holds when the list is sorted. Sort first.
+- **`left <= right` in a pair search.** When `left == right`, both indexes point at the same item, which would count it twice. Stop at `left < right`.
 - **`size() - 1` on an empty vector.** It wraps around to a huge number with `std::size_t`. Check for an empty list first.
 - **Forgetting to shrink.** After the write-index loop, everything from `write` on is leftover. Call `resize(write)`, or remember the new length.
-- **Moving the wrong index.** If the sum is too big, moving `lo` right makes it even bigger. Write down which move makes the sum smaller before coding.
+- **Moving the wrong index.** If the sum is too big, moving `left` right makes it even bigger. Write down which move makes the sum smaller before coding.
 
 ## check
 
@@ -263,7 +263,7 @@ One index per list, always taking the smaller front item; once `b` runs out or `
 
 ### Counting pairs, not just finding one
 
-In a sorted list, if `v[lo] + v[hi] < k`, then `v[lo]` pairs with **every** index from `lo + 1` to `hi`, because those values are all at most `v[hi]`. Add `hi − lo` at once and move `lo`. Otherwise drop `hi`. This counts all pairs with sum below k in O(n), even though there can be O(n²) of them.
+In a sorted list, if `v[left] + v[right] < k`, then `v[left]` pairs with **every** index from `left + 1` to `right`, because those values are all at most `v[right]`. Add `right − left` at once and move `left`. Otherwise drop `right`. This counts all pairs with sum below k in O(n), even though there can be O(n²) of them.
 
 ### Moving the side that limits you
 
@@ -303,25 +303,25 @@ flowchart LR
 // How many pairs i < j in a sorted list have v[i] + v[j] < k? Each step counts a whole block.
 long long pairsBelow(const std::vector<int>& v, int k) {
     long long count = 0;
-    std::size_t lo = 0, hi = v.size() - 1;
-    while (lo < hi) {
-        if (v[lo] + v[hi] < k) count += hi - lo++;  // v[lo] pairs with every index lo+1..hi
-        else hi--;
+    std::size_t left = 0, right = v.size() - 1;
+    while (left < right) {
+        if (v[left] + v[right] < k) count += right - left++;  // v[left] pairs with every index left+1..right
+        else right--;
     }
     return count;
 }
 
 // Water trapped between bars: move the lower side inward; its level is set by its own running max.
 int trappedWater(const std::vector<int>& h) {
-    std::size_t lo = 0, hi = h.size() - 1;
+    std::size_t left = 0, right = h.size() - 1;
     int leftMax = 0, rightMax = 0, water = 0;
-    while (lo < hi) {
-        if (h[lo] < h[hi]) {
-            leftMax = std::max(leftMax, h[lo]);
-            water += leftMax - h[lo++];
+    while (left < right) {
+        if (h[left] < h[right]) {
+            leftMax = std::max(leftMax, h[left]);
+            water += leftMax - h[left++];
         } else {
-            rightMax = std::max(rightMax, h[hi]);
-            water += rightMax - h[hi--];
+            rightMax = std::max(rightMax, h[right]);
+            water += rightMax - h[right--];
         }
     }
     return water;
@@ -352,7 +352,7 @@ int main() {
 
 ## mistakes
 
-- **Adding 1 instead of the whole block.** When `v[lo] + v[hi] < k`, all `hi − lo` pairs with `v[lo]` qualify. Counting them one by one turns O(n) back into O(n²).
+- **Adding 1 instead of the whole block.** When `v[left] + v[right] < k`, all `right − left` pairs with `v[left]` qualify. Counting them one by one turns O(n) back into O(n²).
 - **Moving the taller side.** In max-area and water problems, the shorter side is the limit. Moving the taller one can never help.
 - **Floyd's method on values out of range.** The "values as pointers" trick needs every value to be a valid index. With a 0 or a value above n, it reads out of bounds.
 - **Using two pointers where sums aren't monotone.** With negative values, extending a window can lower the sum, so window and two-ends arguments break. Use prefix sums with a hash map.
@@ -367,11 +367,11 @@ int main() {
 
 int main() {
     std::vector<int> h = {1, 8, 6, 2, 5, 4, 8, 3, 7};
-    std::size_t lo = 0, hi = h.size() - 1;
+    std::size_t left = 0, right = h.size() - 1;
     int best = 0, moves = 0;
-    while (lo < hi) {
-        best = std::max(best, static_cast<int>(hi - lo) * std::min(h[lo], h[hi]));
-        if (h[lo] < h[hi]) lo++; else hi--;
+    while (left < right) {
+        best = std::max(best, static_cast<int>(right - left) * std::min(h[left], h[right]));
+        if (h[left] < h[right]) left++; else right--;
         moves++;
     }
     std::cout << best << ' ' << moves << '\n';

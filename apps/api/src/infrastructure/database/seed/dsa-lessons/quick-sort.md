@@ -306,37 +306,37 @@ long long comparisons = 0;
 int deepest = 0;
 std::mt19937 rng(7);  // fixed seed: the same "random" pivots on every run
 
-// Lomuto partition around v[hi], after optionally swapping a random item there.
-int partition(std::vector<int>& v, int lo, int hi, bool randomPivot) {
-    if (randomPivot) std::swap(v[lo + static_cast<int>(rng() % (hi - lo + 1))], v[hi]);
+// Lomuto partition around vals[hi], after optionally swapping a random item there.
+int partition(std::vector<int>& vals, int lo, int hi, bool randomPivot) {
+    if (randomPivot) std::swap(vals[lo + static_cast<int>(rng() % (hi - lo + 1))], vals[hi]);
     int store = lo;
-    for (int i = lo; i < hi; i++) {
+    for (int idx = lo; idx < hi; idx++) {
         comparisons++;
-        if (v[i] < v[hi]) std::swap(v[i], v[store++]);
+        if (vals[idx] < vals[hi]) std::swap(vals[idx], vals[store++]);
     }
-    std::swap(v[store], v[hi]);
+    std::swap(vals[store], vals[hi]);
     return store;
 }
 
 // Recurse into the smaller side, loop on the larger: the stack stays O(log n) deep.
-void quickSort(std::vector<int>& v, int lo, int hi, bool randomPivot, int depth) {
+void quickSort(std::vector<int>& vals, int lo, int hi, bool randomPivot, int depth) {
     deepest = std::max(deepest, depth);
     while (lo < hi) {
-        int p = partition(v, lo, hi, randomPivot);
-        if (p - lo < hi - p) { quickSort(v, lo, p - 1, randomPivot, depth + 1); lo = p + 1; }
-        else { quickSort(v, p + 1, hi, randomPivot, depth + 1); hi = p - 1; }
+        int p = partition(vals, lo, hi, randomPivot);
+        if (p - lo < hi - p) { quickSort(vals, lo, p - 1, randomPivot, depth + 1); lo = p + 1; }
+        else { quickSort(vals, p + 1, hi, randomPivot, depth + 1); hi = p - 1; }
     }
 }
 
 int main() {
     for (bool randomPivot : {false, true}) {
-        std::vector<int> v(3000);
-        for (int i = 0; i < 3000; i++) v[i] = i;  // already sorted: the worst case for a last-item pivot
+        std::vector<int> vals(3000);
+        for (int idx = 0; idx < 3000; idx++) vals[idx] = idx;  // already sorted: the worst case for a last-item pivot
         comparisons = 0;
         deepest = 0;
-        quickSort(v, 0, 2999, randomPivot, 0);
+        quickSort(vals, 0, 2999, randomPivot, 0);
         std::cout << (randomPivot ? "random pivot: " : "last pivot: ") << comparisons << " comparisons, stack depth " << deepest
-                  << ", sorted " << std::is_sorted(v.begin(), v.end()) << '\n';
+                  << ", sorted " << std::is_sorted(vals.begin(), vals.end()) << '\n';
     }
 }
 ```
@@ -370,9 +370,9 @@ int main() {
     long long n = 1000, worst = n * (n - 1) / 2;
     int a = 31, b = 5, c = 17;
     int median3 = std::max(std::min(a, b), std::min(std::max(a, b), c));
-    std::vector<int> v = {5, 1, 4, 1, 5, 9, 2, 6};
-    std::nth_element(v.begin(), v.begin() + 5, v.end());
-    std::cout << worst << ' ' << median3 << ' ' << v[5] << '\n';
+    std::vector<int> vals = {5, 1, 4, 1, 5, 9, 2, 6};
+    std::nth_element(vals.begin(), vals.begin() + 5, vals.end());
+    std::cout << worst << ' ' << median3 << ' ' << vals[5] << '\n';
 }
 ```
 

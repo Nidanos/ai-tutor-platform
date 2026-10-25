@@ -149,6 +149,8 @@ The order of keys is preserved in every case, and the cost is O(height).
 
 Comparing each node only with its own children isn't enough: a key deep in the left subtree must be smaller than **every** ancestor it sits to the left of. Pass down limits: the root may be anything; going left, the node's key becomes the upper limit; going right, it becomes the lower limit. Every key must lie strictly between its inherited limits. Use a wider type, such as `long long`, for the limits, so they can start beyond any `int` key.
 
+Another way: a binary search tree's inorder walk is strictly increasing, and only a valid one's is. Walk it and compare each key with the one before.
+
 ### The k-th smallest
 
 An inorder walk visits keys in sorted order, so the k-th key visited is the k-th smallest. Stop as soon as you reach it: O(height + k).
@@ -166,7 +168,6 @@ flowchart TB
 ## example
 
 ```cpp
-#include <climits>
 #include <iostream>
 
 struct Node { int key; Node* left = nullptr; Node* right = nullptr; };
@@ -193,10 +194,12 @@ Node* erase(Node* r, int key) {
     }
     return r;
 }
-bool valid(const Node* n, long long lo = LLONG_MIN, long long hi = LLONG_MAX) {  // limits from ancestors
-    if (!n) return true;
-    if (n->key <= lo || n->key >= hi) return false;
-    return valid(n->left, lo, n->key) && valid(n->right, n->key, hi);
+// Valid exactly when the inorder walk only goes up; `prev` is the last node it visited.
+bool increasing(const Node* t, const Node*& prev) {
+    if (!t) return true;
+    if (!increasing(t->left, prev) || (prev && prev->key >= t->key)) return false;
+    prev = t;
+    return increasing(t->right, prev);
 }
 void inorder(const Node* n) { if (n) { inorder(n->left); std::cout << n->key << ' '; inorder(n->right); } }
 void destroy(Node* n) { if (n) { destroy(n->left); destroy(n->right); delete n; } }
@@ -207,7 +210,8 @@ int main() {
     root = erase(root, 30);  // one child left (40)
     root = erase(root, 50);  // two children: 60 takes its place
     inorder(root);
-    std::cout << "| root " << root->key << ", valid " << valid(root) << '\n';
+    const Node* prev = nullptr;
+    std::cout << "| root " << root->key << ", valid " << increasing(root, prev) << '\n';
     destroy(root);
 }
 ```
@@ -218,37 +222,38 @@ int main() {
 
 1. Deleting 20, a leaf, just removes it. Deleting 30, which now has only the child 40, lets 40 take its place.
 2. Deleting 50 needs its successor: one step right to 70, then left to 60. 60 is copied into the root, and the old 60, a leaf, is deleted from the right subtree.
-3. The keys left are still in order, and `valid` confirms every key lies within its ancestors' limits.
+3. `increasing` walks the tree in order and checks that each key is bigger than the one before it, which is the search-tree rule seen from the side: still valid.
 
 ## mistakes
 
 - **Deleting a two-child node directly.** Its two subtrees would be orphaned. Replace its key with the successor's (or the predecessor's) and delete that node instead.
 - **Forgetting to return the new subtree root.** After `erase`, the parent must store the result, or it still points at a freed node.
-- **Validating with only parent-child comparisons.** A key can satisfy its parent and still break the rule with a grandparent. Pass limits down.
+- **Validating with only parent-child comparisons.** A key can satisfy its parent and still break the rule with a grandparent. Pass limits down, or check that the inorder walk only goes up.
 - **`int` limits for validation.** Starting at `INT_MIN` or `INT_MAX` wrongly rejects trees containing those very keys. Use `long long`, or optional limits.
 - **Walking the whole inorder for the k-th key.** Stop after k visits.
 
 ## check
 
 ```cpp
-#include <climits>
 #include <iostream>
 
 struct Node { int key; Node* left = nullptr; Node* right = nullptr; };
 
-bool valid(const Node* n, long long lo = LLONG_MIN, long long hi = LLONG_MAX) {
-    if (!n) return true;
-    if (n->key <= lo || n->key >= hi) return false;
-    return valid(n->left, lo, n->key) && valid(n->right, n->key, hi);
+bool increasing(const Node* t, const Node*& prev) {
+    if (!t) return true;
+    if (!increasing(t->left, prev) || (prev && prev->key >= t->key)) return false;
+    prev = t;
+    return increasing(t->right, prev);
 }
-bool onlyParents(const Node* n) {  // checks each node against its own children only: not enough
-    if (!n) return true;
-    if ((n->left && n->left->key >= n->key) || (n->right && n->right->key <= n->key)) return false;
-    return onlyParents(n->left) && onlyParents(n->right);
+bool onlyParents(const Node* t) {  // checks each node against its own children only: not enough
+    if (!t) return true;
+    if ((t->left && t->left->key >= t->key) || (t->right && t->right->key <= t->key)) return false;
+    return onlyParents(t->left) && onlyParents(t->right);
 }
 int main() {
     Node a{5}, b{16}, c{10, &a, &b}, d{20}, root{15, &c, &d};
-    std::cout << onlyParents(&root) << valid(&root) << '\n';
+    const Node* prev = nullptr;
+    std::cout << onlyParents(&root) << increasing(&root, prev) << '\n';
 }
 ```
 
@@ -256,7 +261,7 @@ int main() {
 10
 ```
 
-16 sits to the right of 10, which is fine locally, so the parent-only check says yes. But 16 is inside 15's **left** subtree, where every key must be below 15. Passing the limit down catches it: 16 is not below 15.
+16 sits to the right of 10, which is fine locally, so the parent-only check says yes. But 16 is inside 15's **left** subtree, where every key must be below 15. The inorder walk catches it: it reads 5 10 16 15 20, and 16 followed by 15 is a step down.
 
 # strong
 

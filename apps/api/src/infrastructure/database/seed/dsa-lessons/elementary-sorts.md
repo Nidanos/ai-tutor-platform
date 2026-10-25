@@ -49,32 +49,32 @@ flowchart LR
 #include <utility>
 #include <vector>
 
-void print(const std::vector<int>& v) {
-    for (int x : v) std::cout << x << ' ';
+void print(const std::vector<int>& row) {
+    for (int x : row) std::cout << x << ' ';
     std::cout << '\n';
 }
 
-// Selection sort: find the smallest of the unsorted part, swap it to the front of that part.
-void selectionSort(std::vector<int>& v) {
-    for (std::size_t i = 0; i + 1 < v.size(); i++) {
-        std::size_t smallest = i;
-        for (std::size_t j = i + 1; j < v.size(); j++)
-            if (v[j] < v[smallest]) smallest = j;
-        std::swap(v[i], v[smallest]);
+// Selection sort: find the minAt of the unsorted part, swap it to the front of that part.
+void selectionSort(std::vector<int>& row) {
+    for (std::size_t pos = 0; pos + 1 < row.size(); pos++) {
+        std::size_t minAt = pos;
+        for (std::size_t scan = pos + 1; scan < row.size(); scan++)
+            if (row[scan] < row[minAt]) minAt = scan;
+        std::swap(row[pos], row[minAt]);
     }
 }
 
 // Insertion sort: take the next card and slide it left into place among the sorted ones.
-void insertionSort(std::vector<int>& v) {
-    for (std::size_t i = 1; i < v.size(); i++) {
-        int card = v[i];
-        std::size_t j = i;
-        while (j > 0 && v[j - 1] > card) {
-            v[j] = v[j - 1];  // shift the bigger one right
-            j--;
+void insertionSort(std::vector<int>& row) {
+    for (std::size_t pos = 1; pos < row.size(); pos++) {
+        int card = row[pos];
+        std::size_t scan = pos;
+        while (scan > 0 && row[scan - 1] > card) {
+            row[scan] = row[scan - 1];  // shift the bigger one right
+            scan--;
         }
-        v[j] = card;
-        print(v);
+        row[scan] = card;
+        print(row);
     }
 }
 
@@ -117,12 +117,12 @@ int main() {
 #include <vector>
 
 int main() {
-    std::vector<int> v = {4, 3, 7, 1};
+    std::vector<int> row = {4, 3, 7, 1};
     int swaps = 0;
-    for (std::size_t j = 0; j + 1 < v.size(); j++) {
-        if (v[j] > v[j + 1]) { std::swap(v[j], v[j + 1]); swaps++; }
+    for (std::size_t scan = 0; scan + 1 < row.size(); scan++) {
+        if (row[scan] > row[scan + 1]) { std::swap(row[scan], row[scan + 1]); swaps++; }
     }
-    for (int x : v) std::cout << x << ' ';
+    for (int x : row) std::cout << x << ' ';
     std::cout << swaps << '\n';
 }
 ```
@@ -185,39 +185,39 @@ flowchart TB
 #include <vector>
 
 // Insertion sort, counting comparisons: about n on sorted input, n^2/2 on reversed.
-long long insertionComparisons(std::vector<int> v) {
+long long insertionComparisons(std::vector<int> row) {
     long long count = 0;
-    for (std::size_t i = 1; i < v.size(); i++) {
-        int card = v[i];
-        std::size_t j = i;
-        while (j > 0) {
+    for (std::size_t pos = 1; pos < row.size(); pos++) {
+        int card = row[pos];
+        std::size_t scan = pos;
+        while (scan > 0) {
             count++;
-            if (v[j - 1] <= card) break;
-            v[j] = v[j - 1];
-            j--;
+            if (row[scan - 1] <= card) break;
+            row[scan] = row[scan - 1];
+            scan--;
         }
-        v[j] = card;
+        row[scan] = card;
     }
     return count;
 }
 
 // Selection sort always scans the whole unsorted part.
-long long selectionComparisons(std::vector<int> v) {
+long long selectionComparisons(std::vector<int> row) {
     long long count = 0;
-    for (std::size_t i = 0; i + 1 < v.size(); i++) {
-        std::size_t smallest = i;
-        for (std::size_t j = i + 1; j < v.size(); j++) {
+    for (std::size_t pos = 0; pos + 1 < row.size(); pos++) {
+        std::size_t minAt = pos;
+        for (std::size_t scan = pos + 1; scan < row.size(); scan++) {
             count++;
-            if (v[j] < v[smallest]) smallest = j;
+            if (row[scan] < row[minAt]) minAt = scan;
         }
-        std::swap(v[i], v[smallest]);
+        std::swap(row[pos], row[minAt]);
     }
     return count;
 }
 
 int main() {
     std::vector<int> sorted, reversed, nearly;
-    for (int i = 0; i < 100; i++) { sorted.push_back(i); reversed.push_back(100 - i); nearly.push_back(i); }
+    for (int pos = 0; pos < 100; pos++) { sorted.push_back(pos); reversed.push_back(100 - pos); nearly.push_back(pos); }
     std::swap(nearly[10], nearly[11]);
     std::swap(nearly[50], nearly[52]);
     std::cout << "insertion: " << insertionComparisons(sorted) << ' ' << insertionComparisons(nearly) << ' ' << insertionComparisons(reversed) << '\n';
@@ -252,14 +252,14 @@ selection: 4950 4950 4950
 #include <vector>
 
 int main() {
-    std::vector<std::pair<int, std::string>> v = {{2, "a"}, {1, "b"}, {2, "c"}, {1, "d"}};
-    for (std::size_t i = 1; i < v.size(); i++) {
-        auto card = v[i];
-        std::size_t j = i;
-        while (j > 0 && v[j - 1].first > card.first) { v[j] = v[j - 1]; j--; }
-        v[j] = card;
+    std::vector<std::pair<int, std::string>> row = {{2, "a"}, {1, "b"}, {2, "c"}, {1, "d"}};
+    for (std::size_t pos = 1; pos < row.size(); pos++) {
+        auto card = row[pos];
+        std::size_t scan = pos;
+        while (scan > 0 && row[scan - 1].first > card.first) { row[scan] = row[scan - 1]; scan--; }
+        row[scan] = card;
     }
-    for (const auto& [k, s] : v) std::cout << k << s << ' ';
+    for (const auto& [k, s] : row) std::cout << k << s << ' ';
     std::cout << '\n';
 }
 ```

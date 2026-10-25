@@ -159,65 +159,69 @@ flowchart LR
 ```cpp
 #include <algorithm>
 #include <iostream>
-#include <numeric>
-#include <utility>
 #include <vector>
 
-// Union by size and path compression: almost O(1) per operation.
-struct DSU {
-    std::vector<int> parent, size;
-    explicit DSU(int n) : parent(n), size(n, 1) { std::iota(parent.begin(), parent.end(), 0); }
-    int find(int x) {
-        if (parent[x] != x) parent[x] = find(parent[x]);  // point straight at the root on the way back
-        return parent[x];
+// One array does both jobs: a leader holds minus its club's size, every other member holds who it reports to.
+struct Clubs {
+    std::vector<int> up;
+    explicit Clubs(int n) : up(n, -1) {}  // n clubs of one member each
+    int leader(int x) {
+        int root = x;
+        while (up[root] >= 0) root = up[root];
+        while (up[x] >= 0) {  // second walk: everyone on the way now reports to the leader directly
+            int next = up[x];
+            up[x] = root;
+            x = next;
+        }
+        return root;
     }
-    bool unite(int a, int b) {
-        a = find(a), b = find(b);
-        if (a == b) return false;
-        if (size[a] < size[b]) std::swap(a, b);  // hang the smaller tree under the larger one
-        parent[b] = a;
-        size[a] += size[b];
+    bool join(int a, int b) {
+        int la = leader(a), lb = leader(b);
+        if (la == lb) return false;
+        if (up[la] > up[lb]) std::swap(la, lb);  // la leads the bigger club: its value is more negative
+        up[la] += up[lb];
+        up[lb] = la;
         return true;
     }
 };
-// The plain version, kept only to measure how deep its trees get.
-struct Plain {
-    std::vector<int> parent;
-    explicit Plain(int n) : parent(n) { std::iota(parent.begin(), parent.end(), 0); }
-    int find(int x) const { while (parent[x] != x) x = parent[x]; return x; }
-    void unite(int a, int b) { a = find(a), b = find(b); if (a != b) parent[a] = b; }
-};
-int depth(const std::vector<int>& parent, int x) { int d = 0; for (; parent[x] != x; x = parent[x]) d++; return d; }
 
 int main() {
     const int n = 100000;
-    Plain plain(n);
-    DSU dsu(n);
-    for (int i = 0; i + 1 < n; i++) { plain.unite(i, i + 1); dsu.unite(i, i + 1); }
+    std::vector<int> chain(n);  // without sizes: each merge hangs the old root under the next item
+    for (int i = 0; i < n; i++) chain[i] = i + 1 < n ? i + 1 : i;
+    int steps = 0;
+    for (int x = 0; chain[x] != x; x = chain[x]) steps++;
+
+    Clubs clubs(n);
+    for (int i = 0; i + 1 < n; i++) clubs.join(i, i + 1);
     int deepest = 0;
-    for (int x = 0; x < n; x++) deepest = std::max(deepest, depth(dsu.parent, x));
-    std::cout << "plain: item 0 is " << depth(plain.parent, 0) << " steps from its root\n";
-    std::cout << "by size: deepest item is " << deepest << " step from its root, group size " << dsu.size[dsu.find(0)] << '\n';
+    for (int x = 0; x < n; x++) {
+        int d = 0;
+        for (int y = x; clubs.up[y] >= 0; y = clubs.up[y]) d++;
+        deepest = std::max(deepest, d);
+    }
+    std::cout << "without sizes: item 0 is " << steps << " steps from its root\n";
+    std::cout << "by size: deepest item is " << deepest << " step from its leader, club size " << -clubs.up[clubs.leader(0)] << '\n';
 }
 ```
 
 ```text
-plain: item 0 is 99999 steps from its root
-by size: deepest item is 1 step from its root, group size 100000
+without sizes: item 0 is 99999 steps from its root
+by size: deepest item is 1 step from its leader, club size 100000
 ```
 
-1. In the plain version, each merge puts the whole group under the next item, building one chain of 100,000 items. A `find` from item 0 would climb 99,999 steps.
-2. With union by size, each new item joins the big group, so it's hung under the existing root. Every item ends up one step from it.
-3. The root keeps the size of the whole group: 100,000.
-4. Path compression wasn't even needed here. It's the other half of the guarantee, for orders of merges where sizes alone don't keep trees flat.
+1. Without sizes, merging 0 with 1, then that group with 2, and so on hangs each old root under the next item: one chain of 100,000 items. Climbing from item 0 takes 99,999 steps.
+2. With union by size, the big club's leader always stays the leader, and each new item is hung directly under it. Every item ends up one step away.
+3. The leader's entry is −100,000: minus the size of its club. One array holds both the links and the sizes, so a value of −1 means "a leader of a club of one".
+4. `leader` makes two walks: the first finds the root, the second points everyone it passed straight at it. That's path compression without recursion.
 
 ## mistakes
 
-- **Swapping the items but not the sizes' meaning.** After `std::swap(a, b)`, a must be the larger root, and its size must absorb b's.
-- **Updating the size of a non-root.** Sizes are only meaningful at roots; read them as `size[find(x)]`.
-- **Union by size without finding roots first.** Compare the sizes of the two **roots**, not of the items passed in.
-- **Recursion depth in `find`.** Before compression, a chain can be long. With union by size, depth is at most log₂ n, so recursion is safe.
-- **A `const` find with path compression.** Compression changes the parents, so `find` can't be `const`.
+- **Comparing the sizes the wrong way round.** Leaders hold negative sizes, so the bigger club has the *smaller* (more negative) value. Swap so the more negative one leads.
+- **Reading a size from a member.** Only a leader's entry is a size; ask `leader(x)` first.
+- **Merging without finding the leaders.** Compare and link the two **leaders**, never the items passed in.
+- **Forgetting the second walk.** Finding the root alone gives the right answer but leaves the path long; repoint every member you passed.
+- **Mixing up the two meanings of a value.** In this layout `up[x] >= 0` means "x reports to up[x]", and a negative value means "x leads a club of −up[x]". Every loop has to test for that.
 
 ## check
 
@@ -225,21 +229,26 @@ by size: deepest item is 1 step from its root, group size 100000
 #include <iostream>
 #include <vector>
 
-std::vector<int> parent = {0, 0, 1, 2, 3};  // a chain: 4 -> 3 -> 2 -> 1 -> 0
-int find(int x) { return parent[x] == x ? x : parent[x] = find(parent[x]); }
+std::vector<int> up = {-5, 0, 1, 2, 3};  // a chain: 4 reports to 3, 3 to 2, 2 to 1, 1 to 0; 0 leads 5 members
+int leader(int x) {
+    int root = x;
+    while (up[root] >= 0) root = up[root];
+    while (x != root) { int next = up[x]; up[x] = root; x = next; }
+    return root;
+}
 
 int main() {
-    std::cout << find(4) << ':';
-    for (int p : parent) std::cout << ' ' << p;
+    std::cout << leader(4) << ':';
+    for (int v : up) std::cout << ' ' << v;
     std::cout << '\n';
 }
 ```
 
 ```text
-0: 0 0 0 0 0
+0: -5 0 0 0 0
 ```
 
-`find(4)` climbs the whole chain to the root 0. As each recursive call returns, it sets that item's parent to the root. After one call, every item points straight at 0.
+`leader(4)` first walks the chain 4 → 3 → 2 → 1 → 0 and finds the leader 0, whose −5 says its club has five members. The second walk repoints 4, 3, 2 and 1 straight at 0, so after one call everyone is a single step from the leader.
 
 # strong
 
@@ -282,30 +291,31 @@ flowchart TB
 
 ```cpp
 #include <iostream>
-#include <numeric>
 #include <utility>
 #include <vector>
 
-// A DSU with parity: rel[x] is 0 if x is on its parent's side, 1 if on the other side.
-struct ParityDSU {
-    std::vector<int> parent, rel, size;
-    explicit ParityDSU(int n) : parent(n), rel(n, 0), size(n, 1) { std::iota(parent.begin(), parent.end(), 0); }
-    std::pair<int, int> find(int x) {  // (root, side of x relative to the root)
-        if (parent[x] == x) return {x, 0};
-        auto [root, r] = find(parent[x]);
-        rel[x] ^= r;  // compress: x now points at the root, so its side is taken relative to it
-        parent[x] = root;
-        return {root, rel[x]};
+// A DSU with parity: flip[x] is 0 if x is on its boss's side, 1 if on the other side.
+struct Teams {
+    std::vector<int> boss, flip, members;
+    explicit Teams(int n) : boss(n), flip(n, 0), members(n, 1) {
+        for (int i = 0; i < n; i++) boss[i] = i;
+    }
+    std::pair<int, int> top(int x) {  // (root, side of x relative to the root)
+        if (boss[x] == x) return {x, 0};
+        auto [root, side] = top(boss[x]);
+        flip[x] ^= side;  // compress: x now reports to the root, so its side is taken relative to it
+        boss[x] = root;
+        return {root, flip[x]};
     }
     // Record "a and b differ by d" (0 = same side, 1 = opposite sides); false if it contradicts the past.
     bool relate(int a, int b, int d) {
-        auto [ra, pa] = find(a);
-        auto [rb, pb] = find(b);
+        auto [ra, pa] = top(a);
+        auto [rb, pb] = top(b);
         if (ra == rb) return (pa ^ pb) == d;
-        if (size[ra] < size[rb]) std::swap(ra, rb);
-        parent[rb] = ra;
-        rel[rb] = pa ^ pb ^ d;
-        size[ra] += size[rb];
+        if (members[ra] < members[rb]) std::swap(ra, rb);
+        boss[rb] = ra;
+        flip[rb] = pa ^ pb ^ d;
+        members[ra] += members[rb];
         return true;
     }
 };
@@ -313,7 +323,7 @@ struct ParityDSU {
 int main() {
     // Statements about 5 people: 0 means "same team", 1 means "rival teams".
     int facts[][3] = {{0, 1, 1}, {1, 2, 1}, {3, 4, 0}, {2, 3, 1}, {0, 2, 0}, {0, 4, 0}};
-    ParityDSU d(5);
+    Teams d(5);
     for (auto& f : facts) {
         bool ok = d.relate(f[0], f[1], f[2]);
         std::cout << f[0] << (f[2] ? " rival of " : " same team as ") << f[1] << (ok ? ": consistent\n" : ": contradiction\n");
@@ -340,7 +350,7 @@ int main() {
 ## mistakes
 
 - **Compressing without updating the relation.** When x moves to point at the root, its stored value must become relative to the root: combine it with the parent's value first.
-- **Using the parity before `find`.** `rel[x]` is relative to x's current parent, not to the root, until `find(x)` has run.
+- **Using the parity before `top`.** `flip[x]` is relative to x's current boss, not to the root, until `top(x)` has run.
 - **Deleting with a DSU.** It can't split groups. Reverse the order of operations offline, or use another structure.
 - **Path compression with rollback.** Compression changes many parents, which can't be undone cheaply. Rollback DSUs use union by size only.
 - **Forgetting the same-root case.** A new statement between items already in one group adds no link. It can only agree or contradict.
@@ -349,20 +359,21 @@ int main() {
 
 ```cpp
 #include <iostream>
-#include <numeric>
 #include <vector>
 
-std::vector<int> parent(6);
-int find(int x) { return parent[x] == x ? x : parent[x] = find(parent[x]); }
+std::vector<int> head = {0, 1, 2, 3, 4, 5};
+int rootOf(int x) {
+    while (head[x] != x) x = head[x];
+    return x;
+}
 
 int main() {
-    std::iota(parent.begin(), parent.end(), 0);
     int edges[][2] = {{0, 1}, {1, 2}, {3, 4}, {2, 0}, {4, 5}, {5, 3}};
     int extra = 0;
     for (auto& e : edges) {
-        int a = find(e[0]), b = find(e[1]);
+        int a = rootOf(e[0]), b = rootOf(e[1]);
         if (a == b) { extra++; std::cout << e[0] << '-' << e[1] << ' '; }
-        else parent[a] = b;
+        else head[a] = b;
     }
     std::cout << extra << '\n';
 }
