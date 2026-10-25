@@ -6,9 +6,11 @@ const RUN = 5;
 const MAX_SHARED = 0.25; // share of the solution's own fingerprints a hint may contain
 const MAX_CODE_LINES = 6; // a hint may show a fragment, never a program
 const MIN_OUTPUT_CHARS = 4; // shorter outputs ("3") appear in prose by chance
+// Under this many, the solution's own code is a one-line fix: the idiom a lesson exists to teach (ADR-0019).
+const MIN_OWN_FOR_LESSONS = 15;
 
 export type FilterContext = { reference: string; starter: string; learnerCode?: string; output?: string };
-export type FilterResult = { passed: boolean; shared: number; longestCode: number; givesOutput: boolean };
+export type FilterResult = { passed: boolean; shared: number; own: number; longestCode: number; givesOutput: boolean };
 
 const TOKEN = /[A-Za-z_]\w*|\d+|"(?:\\.|[^"\\])*"|'(?:\\.|[^'\\])*'|\S/g;
 const tokens = (code: string) => code.replace(/\/\/.*$/gm, "").replace(/\/\*[\s\S]*?\*\//g, "").match(TOKEN) ?? [];
@@ -20,10 +22,10 @@ const codeBlocks = (reply: string) => [...reply.matchAll(/```[^\n]*\n([\s\S]*?)`
 const squash = (text: string) => text.replace(/\s+/g, " ").trim();
 
 // For content that may show longer code (lessons): only the solution's own code, or a rung-1 answer,
-// counts as giving it away.
+// counts as giving it away. A one-line fix doesn't: a lesson can't teach the idea without its key line.
 export const leaksSolution = (text: string, context: FilterContext) => {
-  const { shared, givesOutput } = checkHint(text, context);
-  return shared >= MAX_SHARED || givesOutput;
+  const { shared, own, givesOutput } = checkHint(text, context);
+  return (own >= MIN_OWN_FOR_LESSONS && shared >= MAX_SHARED) || givesOutput;
 };
 
 export function checkHint(reply: string, { reference, starter, learnerCode = "", output }: FilterContext): FilterResult {
@@ -34,5 +36,5 @@ export function checkHint(reply: string, { reference, starter, learnerCode = "",
   const longestCode = Math.max(0, ...codeBlocks(reply).map((c) => c.trim().split("\n").length));
   const answer = output ? squash(output) : "";
   const givesOutput = answer.length >= MIN_OUTPUT_CHARS && squash(reply).includes(answer);
-  return { passed: shared < MAX_SHARED && longestCode <= MAX_CODE_LINES && !givesOutput, shared, longestCode, givesOutput };
+  return { passed: shared < MAX_SHARED && longestCode <= MAX_CODE_LINES && !givesOutput, shared, own: own.length, longestCode, givesOutput };
 }

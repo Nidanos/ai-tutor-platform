@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { checkHint } from "../src/modules/m8_socratic/services/solution-filter.js";
+import { checkHint, leaksSolution } from "../src/modules/m8_socratic/services/solution-filter.js";
 
 const starter = `#include <iostream>
 
@@ -40,6 +40,16 @@ describe("solution filter", () => {
   it("blocks more than a fragment of code, even unrelated code", () => {
     const program = Array.from({ length: 8 }, (_, i) => `int a${i} = ${i};`).join("\n");
     expect(checkHint(`\`\`\`cpp\n${program}\n\`\`\``, context)).toMatchObject({ passed: false, longestCode: 8 });
+  });
+
+  it("lets a lesson teach a one-line fix's idiom, but not repeat a larger answer (ADR-0019)", () => {
+    // A one-line fix: only `i -= i & -i` is the answer's own code. A lesson that teaches the idea must show it.
+    const fix = { starter: "int sum(int i) { int s = 0; for (; i > 0; i--) s += t[i]; return s; }", reference: "int sum(int i) { int s = 0; for (; i > 0; i -= i & -i) s += t[i]; return s; }" };
+    expect(checkHint("Step down with `for (; i > 0; i -= i & -i)`.", fix).passed).toBe(false); // a live hint still may not
+    expect(leaksSolution("The walk: `for (; i > 0; i -= i & -i) s += t[i];`", fix)).toBe(false);
+    expect(leaksSolution(`An example:
+\`\`\`cpp
+${reference}\`\`\``, context)).toBe(true); // the whole digit-sum answer
   });
 
   it("blocks a predict-the-output hint that gives the output away", () => {
