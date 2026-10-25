@@ -25,7 +25,8 @@
 - `pnpm lessons:seed` (after `pnpm db:seed` and `pnpm exercises:verify`) freezes the missing ones through the gates, as `model = hand-written`. A unit test checks that every skill of each course has all three levels and that each fits the schema.
 - Writing them, the gates did their job: the leak filter flagged generic code shared with tiny exercise solutions (reworded), and the sandbox caught wrong stated outputs (corrected). Measured numbers in the DSA lessons, such as swap counts, tree heights and random-test totals, are the sandbox's own output.
 - Each lesson avoids the topics of its skill's practice exercises, so it teaches the skill without walking through an exercise.
-- DSA has no exercises yet, so its lessons were checked against none. The DSA exercises, when written, must not reuse a lesson's example or check.
+- The DSA lessons were written before the DSA exercise bank (ADR-0020). Checked against it (26 Oct), 56 of them were refused and rewritten: other names, another technique, or another problem for the check. They must still not reuse a lesson's example or check.
+- **Gate refined (26 Oct).** For lessons, a shared share counts only when the reference's own code has at least 15 fingerprints (`MIN_OWN_FOR_LESSONS`). Below that, the "solution" is a one-line fix such as `i <= n`, and any lesson teaching the idiom shared a quarter of it. A rung-1 output shown in a lesson is still refused at any size. Hints keep the plain 25% rule.
 
 ## Generated lessons (`generate-lesson.ts`)
 | Step | Rule |
