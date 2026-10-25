@@ -1,23 +1,24 @@
 # Deploying AI-Tutor
 
-**The pilot (ADR-0024):** Vercel serves the web app and proxies `/api/*` to the API on **Render** (Singapore), which runs the queue workers in the same process and uses Render **Key Value** for the queue. Postgres is **Supabase** (Mumbai). A laptop takes a nightly encrypted backup. Everything is on free plans.
+**The pilot (ADR-0024):** Vercel serves the web app and proxies `/api/*` to the API on **Render** (Singapore), which runs the queue workers in the same process and uses Render **Key Value** for the queue. Postgres is **Supabase** (Mumbai). The site is **tutor.nidanos.com**. The home server takes a nightly encrypted backup. Everything is on free plans.
 
 **Later (ADR-0010):** an own VM running `docker-compose.yml` here (Caddy, API, Postgres, Redis), at the end of this page.
 
-| File | What it is |
-|---|---|
-| `../render.yaml` | The Render Blueprint: the API web service and the Key Value queue |
-| `../apps/api/Dockerfile` | The API image (Render and the VM both build it) |
-| `../apps/web/vercel.json` | The `/api` proxy to the API, with the secret header |
-| `backup-laptop.sh` | Nightly encrypted `pg_dump` of Supabase, run on the laptop |
-| `docker-compose.yml`, `Caddyfile`, `.env.example`, `backup.sh` | The own-VM setup (later) |
+| File                                                                   | What it is                                                        |
+| ---------------------------------------------------------------------- | ----------------------------------------------------------------- |
+| `../render.yaml`                                                     | The Render Blueprint: the API web service and the Key Value queue |
+| `../apps/api/Dockerfile`                                             | The API image (Render and the VM both build it)                   |
+| `../apps/web/vercel.json`                                            | The `/api` proxy to the API, with the secret header             |
+| `backup-laptop.sh`                                                   | Nightly encrypted `pg_dump` of Supabase, run on the home server |
+| `docker-compose.yml`, `Caddyfile`, `.env.example`, `backup.sh` | The own-VM setup (later)                                          |
 
 Keep secrets out of the repo: they go into Render's and Vercel's settings, and into files under your home folder.
 
 ## 1. Supabase (Postgres)
+
 1. supabase.com → **New project**: name `ai-tutor`, region **South Asia (Mumbai)**, Free plan. Generate a strong database password and keep it in a password manager.
 2. **Connect** (top of the project) → **Session pooler** → copy the URI: `postgresql://postgres.<ref>:<password>@aws-<n>-ap-south-1.pooler.supabase.com:5432/postgres`. Use this one everywhere: Render has no IPv6, so the direct connection doesn't work from it, and transaction mode breaks the API's transactions.
-3. From the laptop, fill the database (it takes a while: every exercise and lesson runs in E2B):
+3. From the dev laptop, fill the database (it takes a while: every exercise and lesson runs in E2B):
    ```bash
    cd apps/api
    export DATABASE_URL='<session pooler URI>'   # this shell only; the rest comes from apps/api/.env
@@ -27,69 +28,89 @@ Keep secrets out of the repo: they go into Render's and Vercel's settings, and i
    ```
 
 ## 2. Render (API and queue)
+
 1. render.com → sign up with GitHub → **New** → **Blueprint** → this repository. It reads `render.yaml` and asks for each secret:
 
-   | Setting | Value |
-   |---|---|
-   | `DATABASE_URL` | The session pooler URI from step 1 |
-   | `WEB_ORIGIN` | The Vercel site's address, e.g. `https://ai-tutor.vercel.app` (no trailing slash). Put a placeholder until step 3 |
-   | `ORIGIN_SECRET` | `openssl rand -hex 32`; the same value goes into Vercel |
-   | `E2B_API_KEY`, `GEMINI_API_KEY`, `BREVO_API_KEY` | From each provider's dashboard |
+   | Setting                                                | Value                                                                                                               |
+   | ------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------- |
+   | `DATABASE_URL`                                       | The session pooler URI from step 1                                                                                  |
+   | `WEB_ORIGIN`                                         | `https://tutor.nidanos.com` (no trailing slash). It builds the links in emails and is the only origin allowed to write |
+   | `ORIGIN_SECRET`                                      | `openssl rand -hex 32`; the same value goes into Vercel                                                           |
+   | `E2B_API_KEY`, `GEMINI_API_KEY`, `BREVO_API_KEY` | From each provider's dashboard                                                                                      |
 
    `JWT_SECRET` is generated by Render; `REDIS_URL` comes from the Key Value instance.
 2. **Apply**. The first build takes a few minutes. Then `https://<service>.onrender.com/health` gives `{"status":"ok"}`.
 3. **Keep it awake:** a free service sleeps after 15 minutes without requests, and asleep it grades nothing and runs no erasure. On cron-job.org (free), add a job: `GET https://<service>.onrender.com/health` every **10 minutes**.
 
 ## 3. Vercel (web)
+
 1. Import the repository. Root directory: `apps/web`. Framework: Next.js.
 2. Environment variables: `API_DOMAIN` = `<service>.onrender.com` (no `https://`), and `ORIGIN_SECRET` (the same value as on Render).
-3. Deploy, then set `WEB_ORIGIN` on Render to the site's address; Render redeploys with it.
+3. Deploy. Then **Settings → Domains → Add** `tutor.nidanos.com`, and in Cloudflare (DNS for nidanos.com) add the record Vercel shows: `CNAME tutor → cname.vercel-dns.com`, **DNS only** (grey cloud), so Vercel can issue its certificate. Vercel says "Valid Configuration" once it resolves.
 
 `vercel.json` sends `/api/*` to Render with `X-Origin-Secret`; Vercel replaces `X-Forwarded-For` with the visitor's IP, and the API trusts that only with the secret (`vercel-visitor.ts`). `next.config.mjs`'s rewrite is only for local dev.
 
 ## 4. Checks after deploying
+
 - `https://<web>/api/v1/auth/me` gives the API's `401` JSON, not a Next.js page. Logged in on the site, `https://<web>/api/v1/progress?course=dsa` shows `"course":{"slug":"dsa"}`: the query string got through.
-- From the laptop: `pnpm sandbox:smoke` (all six verdicts on real E2B), then `API_URL=https://<service>.onrender.com pnpm demo:walk` with the Supabase `DATABASE_URL` set (it picks its exercise from the database).
+- From the dev laptop: `pnpm sandbox:smoke` (all six verdicts on real E2B), then `API_URL=https://<service>.onrender.com pnpm demo:walk` with the Supabase `DATABASE_URL` set (it picks its exercise from the database).
 - **Client IP (ADR-0008, ADR-0024):** log in once through the site and once straight to `https://<service>.onrender.com`, each with a made-up `X-Forwarded-For: 6.6.6.6`. In Supabase's SQL editor, `select ip, created_at from refresh_tokens order by created_at desc limit 2;` must show your real IP for both, never `6.6.6.6`. If the site login shows a Vercel address instead, Render's proxy handles the header differently than expected: stop and fix that before the pilot, or every learner shares one rate limit.
 - Sign up, log in and log out on the site: cookies are set on the web's domain and writes pass the origin check. Note how long pages take: every query crosses Singapore ↔ Mumbai.
-- `pnpm user:admin <your email>` from the laptop (with the Supabase `DATABASE_URL`), after signing up on the site.
+- `pnpm user:admin <your email>` from the dev laptop (with the Supabase `DATABASE_URL`), after signing up on the site.
 
-## 5. Backups (the laptop)
-1. Once, in Git Bash:
+## 5. Backups (the home server)
+The home server is an old laptop running Ubuntu 24.04 (`kfl-server` on the home network). Its clock is UTC. It runs no part of the pilot, only this backup, so it being off loses no learner data: the next run catches up.
+
+1. Once, **on the server**: Supabase runs Postgres 17 and `pg_dump` must be at least that, so install the PostgreSQL project's client next to Ubuntu's 16:
    ```bash
-   mkdir -p ~/.ai-tutor-backup && chmod 700 ~/.ai-tutor-backup
+   sudo apt install -y postgresql-common
+   sudo /usr/share/postgresql-common/pgdg/apt.postgresql.org.sh -y
+   sudo apt install -y postgresql-client-17
+   ```
+2. Once, **from the dev laptop** (Git Bash, repo root): copy the script, then make the settings and the passphrase on the server:
+   ```bash
+   ssh <user>@kfl-server 'mkdir -p ~/.ai-tutor-backup /mnt/data/backups/ai-tutor && chmod 700 ~/.ai-tutor-backup'
+   scp deploy/backup-laptop.sh <user>@kfl-server:.ai-tutor-backup/backup.sh
+   ```
+   Then on the server:
+   ```bash
+   printf "SUPABASE_DB_URL='%s'\nPG_DUMP=/usr/lib/postgresql/17/bin/pg_dump\nBACKUP_DIR=/mnt/data/backups/ai-tutor\n" '<session pooler URI>' > ~/.ai-tutor-backup/config
    openssl rand -hex 32 > ~/.ai-tutor-backup/passphrase   # also save it in a password manager: no backup opens without it
-   printf "SUPABASE_DB_URL='%s'\nPG_IMAGE=postgres:17-alpine\n" '<session pooler URI>' > ~/.ai-tutor-backup/config
    chmod 600 ~/.ai-tutor-backup/*
-   bash deploy/backup-laptop.sh   # Docker Desktop must be running
+   bash ~/.ai-tutor-backup/backup.sh
    ```
-   If `pg_dump` says the server is newer, set `PG_IMAGE` to that version (Supabase shows it under **Settings → Infrastructure**).
-2. Schedule it nightly with Windows Task Scheduler (in PowerShell):
-   ```powershell
-   schtasks /Create /TN "AI-Tutor backup" /SC DAILY /ST 23:30 /TR "\"C:\Program Files\Git\bin\bash.exe\" -lc 'bash /c/SoftwareEngineer/AKP/Me/ai-tutor-platform/deploy/backup-laptop.sh >> ~/ai-tutor-backups/backup.log 2>&1'"
+3. Schedule it with `crontab -e` on the server. 18:00 UTC is 23:30 IST, and `@reboot` catches up a night the server was off:
    ```
-   Then in Task Scheduler → the task → **Settings**, tick **Run task as soon as possible after a scheduled start is missed**, so a night with the laptop off is caught up.
-3. Dumps go to `~/ai-tutor-backups` and are kept 14 days. Check one each month:
+   0 18 * * * bash ~/.ai-tutor-backup/backup.sh >> /mnt/data/backups/ai-tutor/backup.log 2>&1
+   @reboot sleep 300 && bash ~/.ai-tutor-backup/backup.sh >> /mnt/data/backups/ai-tutor/backup.log 2>&1
+   ```
+4. Dumps are kept 14 days on the server's second disk. Check one each month, on the server:
    ```bash
-   openssl enc -d -aes-256-cbc -pbkdf2 -iter 600000 -pass "file:$(cygpath -m ~/.ai-tutor-backup/passphrase)" -in ~/ai-tutor-backups/ai-tutor-<stamp>.dump.enc -out restore.dump
-   docker run --rm -i postgres:17-alpine pg_restore --list < restore.dump | grep -c "TABLE DATA"   # about 40 tables
-   rm restore.dump
+   f=$(ls -t /mnt/data/backups/ai-tutor/ai-tutor-*.dump.enc | head -1)
+   openssl enc -d -aes-256-cbc -pbkdf2 -iter 600000 -pass file:$HOME/.ai-tutor-backup/passphrase -in "$f" | /usr/lib/postgresql/17/bin/pg_restore --list | grep -c "TABLE DATA"   # about 40 tables
    ```
-   For a real restore, `pg_restore --clean --no-owner -d '<session pooler URI>'` from the decrypted dump.
+   For a real restore, decrypt to a file and run `pg_restore --clean --no-owner -d '<session pooler URI>'` on it.
+
+The script also runs on Windows (Git Bash, with Docker Desktop and `PG_IMAGE=postgres:17-alpine` instead of `PG_DUMP`, scheduled with Task Scheduler) if the server is ever unavailable.
 
 ## After the pilot: data for the report
-From the laptop, with the Supabase `DATABASE_URL` set:
+
+From the dev laptop, with the Supabase `DATABASE_URL` set:
+
 ```bash
 pnpm pilot:export --since=2026-11-08 --until=2026-11-11 --out=./pilot-export
 ```
+
 CSV files (placement, submissions, evidence, calibration, hints, sessions) and `summary.json`. Rows are only for adults with a live research opt-in, as `L001`, `L002`…; everyone else is in the totals only. No name, email, birth date, IP, code or free text is exported (privacy policy §3–4).
 
 ## Updating
-A push to `main` redeploys Render (`autoDeploy`). Run `pnpm db:migrate` against Supabase from the laptop **before** pushing code that needs a new migration. Logs: Render → the service → **Logs**. Turning on live AI once billing is active: set `GEMINI_PAID=true` on Render, then run `pnpm hints:generate` from the laptop.
+
+A push to `main` redeploys Render (`autoDeploy`). Run `pnpm db:migrate` against Supabase from the dev laptop **before** pushing code that needs a new migration. Logs: Render → the service → **Logs**. Turning on live AI once billing is active: set `GEMINI_PAID=true` on Render, then run `pnpm hints:generate` from the dev laptop.
 
 ---
 
 ## Later: an own VM (ADR-0010)
+
 One VM (Azure for Startups once Nidanos is registered, or any Ubuntu 24.04 server in India) runs `docker-compose.yml`: Caddy, the API, Postgres and Redis. Checked locally on 23 Oct: the stack builds and starts, migrations and the seed run in the API container, HTTPS works through Caddy, the client-IP rules hold, and a backup restores. Moving the pilot's data there is a `pg_dump` of Supabase restored into the VM's Postgres.
 
 1. **The VM:** open TCP 80 and 443 (and UDP 443) to everyone, SSH to your IP only. Install Docker: `curl -fsSL https://get.docker.com | sudo sh`, then `sudo usermod -aG docker $USER` and log in again. Point the API's DNS name (e.g. `api.<domain>`) at it; Caddy gets the certificate on first start.
