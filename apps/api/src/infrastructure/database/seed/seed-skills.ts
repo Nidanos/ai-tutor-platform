@@ -22,7 +22,8 @@ async function outsideSkills(list: SkillSeed[]) {
 }
 
 // Re-seeding updates skills in place and replaces their resources, so the data file is the source of
-// truth for links. Removing an edge from the data doesn't delete it.
+// truth for links. Removing an edge from the data doesn't delete it. Only this course's links are replaced:
+// a prerequisite from another course keeps its own.
 export async function seedSkills(courseSlug: string, list: SkillSeed[]) {
   const [course] = await db.select({ id: courses.id }).from(courses).where(eq(courses.slug, courseSlug));
 
@@ -58,7 +59,7 @@ export async function seedSkills(courseSlug: string, list: SkillSeed[]) {
 
   const resources = list.flatMap((s) => s.resources.map((r, position) => ({ skillId: idOf.get(s.slug)!, ...r, position })));
   await db.transaction(async (tx) => {
-    await tx.delete(skillResources).where(inArray(skillResources.skillId, [...idOf.values()]));
+    await tx.delete(skillResources).where(inArray(skillResources.skillId, rows.map((r) => r.id)));
     if (resources.length) await tx.insert(skillResources).values(resources);
   });
 }

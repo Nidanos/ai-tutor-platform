@@ -1,7 +1,7 @@
 import { and, eq, inArray } from "drizzle-orm";
 import { describe, expect, it } from "vitest";
 import { db } from "../src/infrastructure/database/index.js";
-import { courses, skillPrerequisites, skills } from "../src/infrastructure/database/schema/index.js";
+import { courses, skillPrerequisites, skillResources, skills } from "../src/infrastructure/database/schema/index.js";
 import type { SkillSeed } from "../src/infrastructure/database/seed/cpp-basics.js";
 import { seedSkills } from "../src/infrastructure/database/seed/seed-skills.js";
 import { getAncestorNames } from "../src/modules/m2_skills/services/skills.service.js";
@@ -39,5 +39,17 @@ describe("curriculum schema", () => {
     expect(await getAncestorNames(deques, "cpp")).toEqual(["linked-lists", "pointers"]); // everything below, across courses
 
     await expect(seedSkills(advanced, [seed("trees", [`${basics}/recursion`])])).rejects.toThrow(`${basics}/recursion`);
+  });
+
+  it("keeps the links of a prerequisite from another course when the course that needs it is seeded", async () => {
+    const [basics, advanced] = [uniq(), uniq()];
+    await db.insert(courses).values([{ slug: basics, title: "Basics" }, { slug: advanced, title: "Advanced" }]);
+    const link = { title: "Pointers", url: `https://example.com/${uniq()}`, kind: "docs" as const };
+    await seedSkills(basics, [{ ...seed("pointers"), resources: [link] }]);
+    await seedSkills(advanced, [seed("linked-lists", [`${basics}/pointers`])]);
+
+    const [pointers] = await db.select({ id: skills.id }).from(skills).innerJoin(courses, eq(courses.id, skills.courseId)).where(and(eq(courses.slug, basics), eq(skills.slug, "pointers")));
+    const kept = await db.select({ url: skillResources.url }).from(skillResources).where(eq(skillResources.skillId, pointers.id));
+    expect(kept).toEqual([{ url: link.url }]);
   });
 });
