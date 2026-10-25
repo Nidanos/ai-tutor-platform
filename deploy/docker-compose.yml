@@ -51,6 +51,7 @@ services:
       GEMINI_PAID: ${GEMINI_PAID:-false}
       BREVO_API_KEY: ${BREVO_API_KEY:?set BREVO_API_KEY in deploy/.env}
       MAIL_FROM: ${MAIL_FROM:?set MAIL_FROM in deploy/.env}
+      ORIGIN_SECRET: ${ORIGIN_SECRET:?set ORIGIN_SECRET in deploy/.env}
 
   caddy:
     image: caddy:2-alpine

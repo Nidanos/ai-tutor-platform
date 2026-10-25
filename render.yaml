@@ -1,0 +1,47 @@
+# The API on Render for the pilot (ADR-0024): one free web service (the API and its queue workers) and a free
+# Key Value instance for the queue, both in Singapore, the region nearest India. Postgres is Supabase (Mumbai).
+# Render asks for each `sync: false` value when the Blueprint is first applied. Runbook: deploy/README.md.
+services:
+  - type: web
+    name: ai-tutor-api
+    runtime: docker
+    plan: free
+    region: singapore
+    dockerfilePath: ./apps/api/Dockerfile
+    dockerContext: .
+    healthCheckPath: /health
+    autoDeploy: true
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: DATABASE_URL # Supabase: shared pooler, session mode (port 5432): Render has no IPv6
+        sync: false
+      - key: REDIS_URL
+        fromService:
+          type: keyvalue
+          name: ai-tutor-queue
+          property: connectionString
+      - key: JWT_SECRET
+        generateValue: true
+      - key: WEB_ORIGIN # the Vercel site's address, no trailing slash
+        sync: false
+      - key: ORIGIN_SECRET # the same value as in the Vercel project
+        sync: false
+      - key: E2B_API_KEY
+        sync: false
+      - key: GEMINI_API_KEY
+        sync: false
+      - key: GEMINI_PAID # "true" only once Gemini billing is active
+        value: "false"
+      - key: BREVO_API_KEY
+        sync: false
+      - key: MAIL_FROM
+        value: no-reply@nidanos.com
+
+  # BullMQ needs noeviction: a queue that silently drops jobs loses learners' submissions.
+  - type: keyvalue
+    name: ai-tutor-queue
+    plan: free
+    region: singapore
+    maxmemoryPolicy: noeviction
+    ipAllowList: [] # only the API, over Render's private network
