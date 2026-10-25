@@ -90,6 +90,15 @@ export async function getResult(userId: string, submissionId: string) {
 }
 
 // For M13: submissions by verdict, learners who ran code, median run time.
+// On start-up: the queue may have lost its jobs (Render's free Key Value keeps nothing on disk, ADR-0024), so every
+// submission not yet graded is queued again. The job id is the submission id, so one still queued isn't doubled,
+// and the worker skips one that is already graded.
+export async function requeueUnfinished() {
+  const ids = await repo.listUnfinished();
+  for (const id of ids) await enqueueSubmission(id);
+  return ids.length;
+}
+
 export const runStats = repo.runStats;
 
 // For M8: the result of the learner's last graded run on this attempt, if any.

@@ -97,6 +97,9 @@ export const hasEarlierCountedTry = async (tx: Tx, userId: string, exerciseId: s
       .limit(1)
   ).length > 0;
 
+export const listUnfinished = async () =>
+  (await db.select({ id: submissions.id }).from(submissions).where(inArray(submissions.status, ["queued", "running"]))).map((s) => s.id);
+
 export const setSubmissionStatus = (id: string, status: "queued" | "running") =>
   db.update(submissions).set({ status }).where(eq(submissions.id, id));
 

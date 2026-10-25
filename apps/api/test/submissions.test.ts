@@ -20,6 +20,7 @@ import {
 import { enqueueSubmission } from "../src/infrastructure/queue/submissions-queue.js";
 import type { RunResult, SandboxProvider, TestRun } from "../src/infrastructure/sandbox/sandbox-provider.js";
 import { runSubmission } from "../src/modules/m7_execution/services/run-submission.js";
+import { requeueUnfinished } from "../src/modules/m7_execution/services/submissions.service.js";
 import { signAccessToken } from "../src/shared/auth/tokens.js";
 import { createAttempt, exerciseRow } from "./helpers.js";
 
@@ -96,6 +97,18 @@ describe("submissions", () => {
     expect((await api.result(first.submissionId).expect(200)).body.data.verdict).toBe("AC");
     expect((await api.post(body).expect(202)).body.data).toEqual(first); // graded once
     expect(enqueueSubmission).not.toHaveBeenCalled();
+  });
+
+  it("queues every ungraded submission again on start-up, when the queue may have lost them (ADR-0024)", async () => {
+    const { attempt, api } = await learnerWithAttempt();
+    const waiting = await submit(api, attempt.id);
+    const graded = await submit(api, attempt.id);
+    await runSubmission(graded, false, sandbox({ tests: [passed("6"), passed("27")] }));
+    vi.mocked(enqueueSubmission).mockClear();
+
+    await requeueUnfinished();
+    expect(enqueueSubmission).toHaveBeenCalledWith(waiting);
+    expect(enqueueSubmission).not.toHaveBeenCalledWith(graded);
   });
 
   it("returns the same submission for a repeated idempotency key, counted once", async () => {
