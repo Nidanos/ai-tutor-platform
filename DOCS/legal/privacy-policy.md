@@ -55,7 +55,8 @@ We **never sell** personal data. We share it only with service providers (data p
 
 | Provider type | What they get | Purpose |
 |---|---|---|
-| Cloud hosting (India region) | All the data in section 2 | Running our servers and database |
+| Database hosting (India region) | All the data in section 2 | Storing it |
+| Application hosting (Singapore) | All the data in section 2, while our servers process it | Running our servers |
 | Code sandbox | Your submitted code and the exercise's tests, but no name or email | Running your code safely, in isolation |
 | AI model provider (on paid, no-training terms) | Your code and the exercise context; for lesson notes, your scores and recent results, not your code. Never your name or email | Writing hints, explanations and lesson notes |
 | Email delivery | Your email address | Sign-in and account emails |
@@ -64,7 +65,7 @@ We **never sell** personal data. We share it only with service providers (data p
 The current list of named providers is at `[DOMAIN]/privacy/providers`. We may also disclose data when Indian law or a court order requires it.
 
 ## 6. Where your data is stored
-Our database is hosted **in India**. Some providers in section 5, like the code sandbox, the AI model provider and the email delivery service, may process data **outside India**. The DPDP Act allows this, except to countries the Government of India restricts, and we never send data to those countries. We send only what each task needs: the code sandbox and AI model provider never get your name or email, and the email delivery service gets only your email address.
+Our database is hosted **in India**. Our application servers run in **Singapore**, and some other providers in section 5, like the code sandbox, the AI model provider and the email delivery service, may also process data **outside India**. The DPDP Act allows this, except to countries the Government of India restricts, and we never send data to those countries. We send only what each task needs: the code sandbox and AI model provider never get your name or email, and the email delivery service gets only your email address.
 
 ## 7. Children (under 18)
 Anyone can learn on [PRODUCT], but **if you are under 18, a parent or legal guardian must approve your account first**. Until then we don't process your learning data.

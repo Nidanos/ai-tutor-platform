@@ -1,6 +1,6 @@
 # ADR-0010: Hosting, LLM provider and how teaching content is made
 
-- **Status:** Accepted
+- **Status:** Accepted. For the pilot, the hosting table is replaced by ADR-0024 (25 Oct: Oracle had no Ampere capacity in Mumbai); the LLM and content decisions stand
 - **Date:** 16 Oct 2026
 - **Decided by:** Ashwani Kumar Puri
 - **Constraint:** almost no budget. Learner data should stay in India (DPDP, `DOCS/legal/dpdp-compliance.md`).

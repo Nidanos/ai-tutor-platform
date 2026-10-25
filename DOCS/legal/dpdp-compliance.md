@@ -74,7 +74,8 @@
 ## 6. Vendor (processor) register
 | Vendor | Data | Region | Contract or DPA | Status |
 |---|---|---|---|---|
-| Hosting + database: Oracle Cloud (fallback Azure), ADR-0010 | Everything | India region | Provider's DPA | To accept |
+| Database: Supabase (on AWS), ADR-0024 | Everything, stored | India (Mumbai) | Supabase DPA | To accept |
+| Application hosting: Render, ADR-0024 (an own VM later, ADR-0010) | Everything, while processed; no storage | Singapore | Render DPA | To accept |
 | Web hosting: Vercel (college phase) | Requests and IP addresses; no database | Global edge | Vercel DPA | To accept |
 | E2B (code sandbox) | Code + tests, no identity | Outside India (check) | E2B terms + DPA | To accept |
 | AI provider: Google Gemini **paid tier** (ADR-0010) | Code + exercise context for hints; level, recent results and weak prerequisites for lesson notes (ADR-0019); no identity | Outside India | Gemini API paid terms (no training on our data) | To accept |

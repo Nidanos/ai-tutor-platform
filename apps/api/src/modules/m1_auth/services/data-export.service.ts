@@ -21,7 +21,8 @@ const ABOUT = {
     learning: "Grade your work, measure what you know, and choose your next lesson",
   },
   sharedWith: [
-    { provider: "Oracle Cloud (India region)", purpose: "Hosting our servers and database", data: "All of this data" },
+    { provider: "Supabase (India region)", purpose: "Storing our database", data: "All of this data" },
+    { provider: "Render (Singapore)", purpose: "Running our servers", data: "All of this data, while our servers process it" },
     { provider: "Vercel", purpose: "Serving the website", data: "Your requests and IP address, no database access" },
     { provider: "E2B", purpose: "Running your code in an isolated sandbox", data: "Your submitted code and the exercise's tests, no name or email" },
     { provider: "Google Gemini (paid, no-training terms)", purpose: "Writing hints and lesson notes", data: "Your code and the exercise context for hints; your scores and recent results for lesson notes; no name or email" },

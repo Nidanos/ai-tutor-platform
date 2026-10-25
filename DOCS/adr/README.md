@@ -27,6 +27,7 @@ Last updated: 19 Oct 2026. These record decisions Ashwani has made. Where no dec
 | [0021](0021-calibration-v1.md) | Calibration: a learner's first counted try at each exercise, against M4's prediction just before it; Brier score and reliability table in the admin overview | Accepted, built |
 | [0022](0022-review-queue-v1.md) | Review queue: due when a cleared skill's effective writing is below 0.5, worked out on read; no decay scan, `review_items` unused | Accepted, built |
 | [0023](0023-generation-cpp-basics-only.md) | Exercise generation covers C++ basics only for the pilot; DSA stays hand-written until the prompt carries speed tests and a brute force | Accepted, built |
+| [0024](0024-pilot-hosting-render-supabase.md) | Pilot hosting: Vercel, Render (API and queue, Singapore) and Supabase (Postgres, Mumbai), nightly encrypted backups to a laptop; Oracle had no capacity | Accepted |
 
 ## Open decisions (Ashwani's to make)
 | # | Question | Blocks |

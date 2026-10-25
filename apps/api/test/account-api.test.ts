@@ -118,7 +118,7 @@ describe("GET /me/data", () => {
     expect(res.text).not.toMatch(/hash|"success"/i); // no password or token hashes, and a plain file, not an API envelope
 
     const data = JSON.parse(res.text);
-    expect(data.about.sharedWith.map((p: { provider: string }) => p.provider.split(" ")[0])).toEqual(["Oracle", "Vercel", "E2B", "Google", "Brevo"]);
+    expect(data.about.sharedWith.map((p: { provider: string }) => p.provider.split(" ")[0])).toEqual(["Supabase", "Render", "Vercel", "E2B", "Google", "Brevo"]);
     expect(data.account.profile).toMatchObject({ id: userId, displayName: "Test" });
     expect(data.courses).toEqual([expect.objectContaining({ goalText: "Pass my placement interview" })]);
     expect(data.practice.submissions).toEqual([expect.objectContaining({ answer: LEARNER_CODE })]);
