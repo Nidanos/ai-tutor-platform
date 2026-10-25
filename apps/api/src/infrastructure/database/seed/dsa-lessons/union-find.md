@@ -160,7 +160,6 @@ flowchart LR
 #include <algorithm>
 #include <iostream>
 #include <vector>
-
 // One array does both jobs: a leader holds minus its club's size, every other member holds who it reports to.
 struct Clubs {
     std::vector<int> up;
@@ -184,14 +183,12 @@ struct Clubs {
         return true;
     }
 };
-
 int main() {
     const int n = 100000;
     std::vector<int> chain(n);  // without sizes: each merge hangs the old root under the next item
     for (int i = 0; i < n; i++) chain[i] = i + 1 < n ? i + 1 : i;
     int steps = 0;
     for (int x = 0; chain[x] != x; x = chain[x]) steps++;
-
     Clubs clubs(n);
     for (int i = 0; i + 1 < n; i++) clubs.join(i, i + 1);
     int deepest = 0;

@@ -187,21 +187,17 @@ flowchart LR
 ```cpp
 #include <initializer_list>
 #include <iostream>
-
 struct Node { int value; Node* next; };
-
 // Append through a tail pointer, O(1) per node; the dummy head means the first node is no special case.
 Node* build(std::initializer_list<int> values) {
     Node dummy{0, nullptr}, *tail = &dummy;
     for (int v : values) tail = tail->next = new Node{v, nullptr};
     return dummy.next;
 }
-
 void printAndFree(Node* n) {
     for (Node* next; n; n = next) { std::cout << n->value << ' '; next = n->next; delete n; }
     std::cout << '\n';
 }
-
 Node* reverse(Node* head) {
     Node* prev = nullptr;
     while (head) {
@@ -212,7 +208,6 @@ Node* reverse(Node* head) {
     }
     return prev;
 }
-
 // Put every node below pivot before the rest, keeping both groups in their order: no new nodes, O(1) memory.
 Node* partition(Node* head, int pivot) {
     Node lowDummy{0, nullptr}, highDummy{0, nullptr};
@@ -225,7 +220,6 @@ Node* partition(Node* head, int pivot) {
     low->next = highDummy.next;
     return lowDummy.next;
 }
-
 int main() {
     printAndFree(reverse(build({1, 2, 3, 4})));
     printAndFree(partition(build({7, 2, 9, 4, 3, 8}), 5));

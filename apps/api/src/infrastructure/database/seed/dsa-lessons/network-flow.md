@@ -176,15 +176,14 @@ flowchart LR
 ```cpp
 #include <algorithm>
 #include <iostream>
-#include <queue>
 #include <utility>
 #include <vector>
-
 // The residual graph as edge lists: each pipe and its way back are stored side by side, at e and e ^ 1.
 struct Network {
     struct Pipe { int to, room, size; };  // size: the pipe's capacity (0 for a way back)
     std::vector<Pipe> pipes;
     std::vector<std::vector<int>> out;  // for each vertex, the indexes of the pipes leaving it
+    std::vector<int> via;               // the pipe that first reached each vertex in the latest search
     explicit Network(int n) : out(n) {}
     void addPipe(int a, int b, int room) {
         out[a].push_back((int)pipes.size()), pipes.push_back({b, room, room});
@@ -194,18 +193,11 @@ struct Network {
     std::pair<int, int> maxFlow(int s, int t) {
         int total = 0, rounds = 0;
         for (;;) {
-            std::vector<int> via(out.size(), -1);  // the pipe that first reached each vertex
-            std::queue<int> frontier;
-            frontier.push(s);
-            while (!frontier.empty() && via[t] == -1) {
-                int at = frontier.front();
-                frontier.pop();
-                for (int e : out[at])
-                    if (pipes[e].room > 0 && pipes[e].to != s && via[pipes[e].to] == -1) {
-                        via[pipes[e].to] = e;
-                        frontier.push(pipes[e].to);
-                    }
-            }
+            via.assign(out.size(), -1);
+            std::vector<int> line = {s};  // the BFS queue: vertices are read in the order they were added
+            for (std::size_t i = 0; i < line.size() && via[t] == -1; i++)
+                for (int e : out[line[i]])
+                    if (pipes[e].room > 0 && pipes[e].to != s && via[pipes[e].to] == -1) via[pipes[e].to] = e, line.push_back(pipes[e].to);
             if (via[t] == -1) return {total, rounds};  // t is unreachable: the flow is maximum
             int amount = 1 << 30;
             for (int x = t; x != s; x = pipes[via[x] ^ 1].to) amount = std::min(amount, pipes[via[x]].room);
@@ -214,26 +206,16 @@ struct Network {
         }
     }
 };
-
 int main() {
     Network net(6);
     int list[][3] = {{0, 1, 10}, {0, 2, 10}, {1, 2, 2}, {1, 3, 4}, {1, 4, 8}, {2, 4, 9}, {3, 5, 10}, {4, 3, 6}, {4, 5, 10}};
     for (auto& p : list) net.addPipe(p[0], p[1], p[2]);
     auto [flow, rounds] = net.maxFlow(0, 5);
-    // The vertices still reachable from 0 through pipes with room left form the source side of a minimum cut.
-    std::vector<bool> side(6, false);
-    std::vector<int> todo = {0};
-    side[0] = true;
-    while (!todo.empty()) {
-        int at = todo.back();
-        todo.pop_back();
-        for (int e : net.out[at])
-            if (net.pipes[e].room > 0 && !side[net.pipes[e].to]) side[net.pipes[e].to] = true, todo.push_back(net.pipes[e].to);
-    }
+    auto sourceSide = [&](int v) { return v == 0 || net.via[v] != -1; };  // what the last search, which missed 5, reached
     std::cout << "maximum flow " << flow << " in " << rounds << " augmentations\nminimum cut:";
     for (int at = 0; at < 6; at++)
         for (int e : net.out[at])
-            if (e % 2 == 0 && side[at] && !side[net.pipes[e].to]) std::cout << ' ' << at << "->" << net.pipes[e].to << " (" << net.pipes[e].size << ')';
+            if (e % 2 == 0 && sourceSide(at) && !sourceSide(net.pipes[e].to)) std::cout << ' ' << at << "->" << net.pipes[e].to << " (" << net.pipes[e].size << ')';
     std::cout << '\n';
 }
 ```
@@ -244,7 +226,7 @@ minimum cut: 0->1 (10) 2->4 (9)
 ```
 
 1. Each round, BFS finds a path with the fewest edges among those with spare capacity. That needs only 4 rounds here, against 6 for the depth-first version on the same network.
-2. After the last round, a search over the residual graph from 0 reaches only 0 and 2.
+2. The last round's search can't reach 5, and over the residual graph it reaches only 0 and 2. That is the search the cut needs, so `via` keeps what it reached.
 3. The original edges from {0, 2} to the rest are 0 → 1 (10) and 2 → 4 (9). Their total, 19, equals the maximum flow, so this is a minimum cut: no flow can do better.
 4. Each pipe's way back sits right next to it, at index `e ^ 1`, so sending flow along a pipe and opening room on its way back are two updates to neighbouring entries. That keeps memory at O(E), where a matrix needs O(V²).
 

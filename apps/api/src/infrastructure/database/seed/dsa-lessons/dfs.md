@@ -298,9 +298,7 @@ stateDiagram-v2
 ```cpp
 #include <iostream>
 #include <vector>
-
 using Graph = std::vector<std::vector<int>>;
-
 // Each vertex is UNSEEN, ON_PATH (its search is still running) or DONE. An edge to an ON_PATH vertex closes a cycle.
 enum Mark { UNSEEN, ON_PATH, DONE };
 bool cycleFrom(const Graph& g, std::vector<Mark>& mark, int v) {

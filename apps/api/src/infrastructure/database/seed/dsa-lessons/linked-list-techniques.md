@@ -165,9 +165,7 @@ flowchart LR
 ```cpp
 #include <iostream>
 #include <vector>
-
 struct Node { int value; Node* next; };
-
 // Floyd: if there's a loop, hare catches up with tortoise inside it.
 Node* loopStart(Node* head) {
     Node* tortoise = head;
@@ -204,7 +202,6 @@ int main() {
     do walker = walker->next, length++;
     while (walker != start);
     std::cout << "loop starts at " << start->value << ", length " << length << '\n';
-
     n[7].next = nullptr;              // remove the loop again
     Node x{100, &n[5]}, y{200, &x};  // a second list 200 -> 100 that joins at node 5
     std::cout << "lists join at " << meetingPoint(&n[0], &y)->value << '\n';

@@ -192,9 +192,7 @@ flowchart TB
 #include <numeric>
 #include <random>
 #include <vector>
-
-// Bottom-up gcd over ranges: leaves at node[size..2·size-1]; gcd's identity is 0, since gcd(0, x) = x.
-struct GcdTree {
+struct GcdTree {  // bottom-up gcd over ranges: leaves at node[size..2·size-1]; gcd's identity is 0, as gcd(0, x) = x
     int size;
     std::vector<long long> node;
     explicit GcdTree(const std::vector<long long>& a) : size((int)a.size()), node(2 * a.size(), 0) {
@@ -214,13 +212,11 @@ struct GcdTree {
         return g;
     }
 };
-
 int main() {
     GcdTree t({12, 18, 24, 36, 9, 27, 30, 6});
     std::cout << "[0, 4): " << t.gcdOf(0, 4) << ", [2, 7): " << t.gcdOf(2, 7);
     t.change(4, 48), t.change(5, 72);
     std::cout << "; after a[4] = 48 and a[5] = 72: " << t.gcdOf(2, 7) << '\n';
-
     std::mt19937 rng(11);
     std::vector<long long> a(1000);
     for (auto& v : a) v = 6 * (1 + rng() % 1000);  // every value a multiple of 6, so gcds stay interesting
@@ -230,8 +226,7 @@ int main() {
         int i = int(rng() % 1000), from = int(rng() % 1000), to = from + 1 + int(rng() % (1000 - from));
         long long x = 6 * (1 + rng() % 1000);
         big.change(i, x), a[i] = x;
-        long long slow = 0;
-        for (int k = from; k < to; k++) slow = std::gcd(slow, a[k]);
+        long long slow = std::accumulate(a.begin() + from, a.begin() + to, 0LL, [](long long g, long long v) { return std::gcd(g, v); });
         if (big.gcdOf(from, to) != slow) wrong++;
     }
     std::cout << "3000 random changes and queries on 1000 items: " << wrong << " wrong\n";

@@ -169,7 +169,6 @@ flowchart TB
 
 ```cpp
 #include <iostream>
-
 struct Node { int key; Node* left = nullptr; Node* right = nullptr; };
 Node* insert(Node* r, int key) {
     if (!r) return new Node{key};
@@ -194,8 +193,7 @@ Node* erase(Node* r, int key) {
     }
     return r;
 }
-// Valid exactly when the inorder walk only goes up; `prev` is the last node it visited.
-bool increasing(const Node* t, const Node*& prev) {
+bool increasing(const Node* t, const Node*& prev) {  // valid exactly when the inorder walk only goes up
     if (!t) return true;
     if (!increasing(t->left, prev) || (prev && prev->key >= t->key)) return false;
     prev = t;
@@ -236,9 +234,7 @@ int main() {
 
 ```cpp
 #include <iostream>
-
 struct Node { int key; Node* left = nullptr; Node* right = nullptr; };
-
 bool increasing(const Node* t, const Node*& prev) {
     if (!t) return true;
     if (!increasing(t->left, prev) || (prev && prev->key >= t->key)) return false;
