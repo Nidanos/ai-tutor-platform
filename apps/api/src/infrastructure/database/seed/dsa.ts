@@ -180,5 +180,6 @@ export const dsaSkills: SkillSeed[] = [
 
   // ── Putting it together ──────────────────────────────────────────────────────
   skill("problem-solving", "Problem solving from constraints", 5, ["sliding-window", "binary-search-on-answer", "greedy", "dp-basics", "shortest-paths", "topological-sort"],
-    "Turning a problem statement into a working solution: reading the limits, choosing the structure and technique, and combining several of them."),
+    "Turning a problem statement into a working solution: reading the limits, choosing the structure and technique, and combining several of them.",
+    [wikipedia("How_to_Solve_It", "How to Solve It (Pólya's four steps)"), wikipedia("Algorithmic_paradigm", "Algorithmic paradigm")]),
 ];
