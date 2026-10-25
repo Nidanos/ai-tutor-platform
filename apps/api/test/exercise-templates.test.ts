@@ -33,6 +33,12 @@ describe("cpp-basics template bank", () => {
       }
     }
   });
+
+  it("gives starters that compile: a gap is a wrong value with a // TODO, never a /* comment */ in its place", () => {
+    // The sandbox check runs every starter and needs it to compile and fail a test (verify-exercise.ts).
+    const gaps = [...cppPracticeBank, ...dsaPracticeBank].filter((t) => /\/\*[^*]*TODO/.test(t.starterCode)).map((t) => t.title);
+    expect(gaps).toEqual([]);
+  });
 });
 
 describe("DSA practice bank", () => {

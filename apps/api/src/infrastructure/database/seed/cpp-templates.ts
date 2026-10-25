@@ -207,7 +207,7 @@ void solve(int days) {
 
 void solve(int a, int b, int c) {
     int sum = a + b + c;
-    double average = /* TODO: divide so the decimals are kept */;
+    double average = 0;  // TODO: divide so the decimals are kept
     std::cout << average << "\\n";
 }
 `,
@@ -334,7 +334,7 @@ void solve(int a, int b) {
 
 void solve(int total, int people) {
     int share = total / people;
-    int left = /* TODO: what's left after everyone pays share? */;
+    int left = 0;  // TODO: what's left after everyone pays share?
     std::cout << share << " " << left << "\\n";
 }
 `,
