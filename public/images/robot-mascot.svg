@@ -1,0 +1,74 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 440" fill="none">
+  <defs>
+    <linearGradient id="shell" x1="100" y1="100" x2="310" y2="350" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#FFFFFF"/>
+      <stop offset=".48" stop-color="#C9DCFF"/>
+      <stop offset="1" stop-color="#718CFF"/>
+    </linearGradient>
+    <linearGradient id="laptop" x1="110" y1="290" x2="290" y2="380" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#247BFF"/>
+      <stop offset=".55" stop-color="#6044FF"/>
+      <stop offset="1" stop-color="#C04BFF"/>
+    </linearGradient>
+    <linearGradient id="face" x1="120" y1="120" x2="280" y2="240" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#111936"/>
+      <stop offset="1" stop-color="#080D25"/>
+    </linearGradient>
+    <linearGradient id="body" x1="130" y1="260" x2="270" y2="420" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#F5F8FF"/>
+      <stop offset=".6" stop-color="#A6C8FF"/>
+      <stop offset="1" stop-color="#6485FF"/>
+    </linearGradient>
+    <linearGradient id="glow" x1="0" y1="0" x2="1" y2="1">
+      <stop stop-color="#76E7FF"/>
+      <stop offset="1" stop-color="#A56BFF"/>
+    </linearGradient>
+    <filter id="shadow" x="-30%" y="-30%" width="160%" height="170%">
+      <feGaussianBlur stdDeviation="8"/>
+    </filter>
+  </defs>
+
+  <!-- Soft shadow -->
+  <ellipse cx="205" cy="408" rx="78" ry="13" fill="#6B55FF" opacity=".25" filter="url(#shadow)"/>
+
+  <!-- Antenna -->
+  <path d="M200 93 L211 55" stroke="#7899FF" stroke-width="10" stroke-linecap="round"/>
+  <circle cx="214" cy="48" r="17" fill="url(#shell)" stroke="#A9C9FF" stroke-width="2"/>
+  <circle cx="208" cy="42" r="5" fill="#FFFFFF" opacity=".8"/>
+
+  <!-- Floating robot body -->
+  <path d="M126 269 Q105 300 119 352 L145 394 Q190 430 238 402 L273 354 Q286 310 267 272Z"
+        fill="url(#body)" stroke="#A6C7FF" stroke-width="2"/>
+  <path d="M143 290 Q170 317 252 294" stroke="#FFFFFF" stroke-width="7" stroke-linecap="round" opacity=".55"/>
+
+  <!-- Arms behind laptop -->
+  <ellipse cx="126" cy="324" rx="25" ry="35" transform="rotate(-25 126 324)" fill="url(#shell)"/>
+  <ellipse cx="274" cy="327" rx="27" ry="42" transform="rotate(25 274 327)" fill="url(#shell)"/>
+
+  <!-- Head shell -->
+  <rect x="64" y="94" width="272" height="196" rx="82" fill="url(#shell)" stroke="#D9E6FF" stroke-width="3"/>
+  <path d="M102 116 Q150 94 204 108" stroke="#FFFFFF" stroke-width="8" stroke-linecap="round" opacity=".8"/>
+
+  <!-- Face -->
+  <rect x="82" y="117" width="236" height="151" rx="65" fill="url(#face)" stroke="#A9BFFF" stroke-width="3"/>
+  <path d="M123 187 Q137 160 153 187" stroke="#77E7FF" stroke-width="9" stroke-linecap="round"/>
+  <path d="M247 187 Q263 160 278 187" stroke="#77E7FF" stroke-width="9" stroke-linecap="round"/>
+  <path d="M171 208 Q200 235 229 208" stroke="url(#glow)" stroke-width="9" stroke-linecap="round"/>
+
+  <!-- Laptop -->
+  <path d="M104 276 Q102 270 111 273 L264 298 Q273 300 270 310 L252 365 L122 344Z"
+        fill="url(#laptop)" stroke="#A8C8FF" stroke-width="2"/>
+  <path d="M122 344 L252 365 L265 377 Q267 381 259 381 L137 362 Q130 360 122 344Z"
+        fill="#5D48F8" stroke="#9AB6FF" stroke-width="2"/>
+  <path d="M181 304 L190 320 L207 328 L190 335 L181 352 L173 335 L156 328 L173 320Z"
+        fill="#FFFFFF"/>
+
+  <!-- Front arm holding laptop -->
+  <path d="M249 316 Q270 294 287 314 Q304 337 282 355 Q263 371 231 354 L211 343 Q204 335 213 328 Q220 322 230 330 L246 338 Q260 342 266 330Z"
+        fill="url(#shell)" stroke="#BDD4FF" stroke-width="2"/>
+
+  <!-- Highlights -->
+  <path d="M87 145 Q95 126 114 126" stroke="#FFFFFF" stroke-width="4" stroke-linecap="round" opacity=".65"/>
+  <circle cx="307" cy="213" r="13" fill="url(#glow)" opacity=".75"/>
+  <circle cx="310" cy="210" r="7" fill="#B8F5FF" opacity=".8"/>
+</svg>
