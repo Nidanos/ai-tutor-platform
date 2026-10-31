@@ -77,6 +77,7 @@
 | Database: Supabase (on AWS), ADR-0024 | Everything, stored | India (Mumbai) | Supabase DPA | To accept |
 | Application hosting: Render, ADR-0024 (an own VM later, ADR-0010) | Everything, while processed; no storage | Singapore | Render DPA | To accept |
 | Web hosting: Vercel (college phase) | Requests and IP addresses; no database | Global edge | Vercel DPA | To accept |
+| Code editor files: jsDelivr (CDN), 31 Oct | IP address and browser details when the editor loads; no account data | Global CDN | jsDelivr terms and privacy policy | To check; self-hosting the editor removes it |
 | E2B (code sandbox) | Code + tests, no identity | Outside India (check) | E2B terms + DPA | To accept |
 | AI provider: Google Gemini **paid tier** (ADR-0010) | Code + exercise context for hints; level, recent results and weak prerequisites for lesson notes (ADR-0019); no identity | Outside India | Gemini API paid terms (no training on our data) | To accept |
 | Email delivery: Brevo (ADR-0017) | Email address and the email itself (a reset link), no name | EU (France, Belgium, Germany) | DPA in Brevo's terms (Appendix 3) | To accept |
@@ -86,7 +87,7 @@
 
 ## 7. Engineering rules (privacy by design)
 1. **No name, email, DOB or IP in AI prompts or sandbox runs.** Send code and exercise context only.
-2. No analytics or third-party scripts in the web app. Only the essential `at` and `rt` cookies.
+2. No analytics or third-party scripts in the web app. Only the essential `at` and `rt` cookies. One exception for now: the code editor (Monaco) loads its files from jsDelivr, listed as a provider, until we serve them ourselves.
 3. **Child accounts:** never include them in training exports, research exports or product analytics.
 4. Store passwords with argon2id and tokens as SHA-256 only (built). HTTPS everywhere. Backups encrypted.
 5. Never log secrets or code. Logs that contain IPs follow the 1-year rule.
