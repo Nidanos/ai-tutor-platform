@@ -1,6 +1,7 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import Link from "next/link";
+import type { ReactNode } from "react";
 import { marked } from "marked";
 import styles from "./legal.module.css";
 
@@ -29,11 +30,12 @@ function toHtml(file: string) {
     return marked.parse(markdown, { async: false });
 }
 
-type LegalPageProps = {
-    file: "terms-of-service.md" | "privacy-policy.md";
-};
+// A policy from DOCS/legal, or a page written here (the providers list).
+type LegalPageProps =
+    | { file: "terms-of-service.md" | "privacy-policy.md"; children?: never }
+    | { file?: never; children: ReactNode };
 
-function LegalPage({ file }: LegalPageProps) {
+function LegalPage({ file, children }: LegalPageProps) {
     return (
         <main className={styles.page}>
             <nav className={styles.nav}>
@@ -42,7 +44,11 @@ function LegalPage({ file }: LegalPageProps) {
                     <Link href="/terms">Terms of Service</Link> · <Link href="/privacy">Privacy Policy</Link>
                 </span>
             </nav>
-            <article className={styles.doc} dangerouslySetInnerHTML={{ __html: toHtml(file) }} />
+            {file ? (
+                <article className={styles.doc} dangerouslySetInnerHTML={{ __html: toHtml(file) }} />
+            ) : (
+                <article className={styles.doc}>{children}</article>
+            )}
         </main>
     );
 }

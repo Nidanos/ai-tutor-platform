@@ -28,7 +28,7 @@ Drafts tailored to Nidanos. **They are not legal advice.** A lawyer should revie
 ## Placeholders to fill before launch
 `[PRODUCT]` · `[DOMAIN]` · `[ADDRESS]` · `[ENTITY]` (legal form and registration number) · hosting and payment vendors (email: Brevo, ADR-0017)
 
-The site's `/terms` and `/privacy` pages are built from these files (19 Oct). They show the text as the pilot version, with **working values** in the blanks: AI-Tutor by Nidanos, nidanos.com, Nidanos Private Limited, and "to be added before public launch" for the address (`apps/web/src/app/(legal)/LegalPage.tsx`). **Review them before the pilot:** the `privacy@`, `grievance@` and `support@nidanos.com` mailboxes must exist, the Grievance Officer needs a postal address, and the providers list the privacy policy points to (`nidanos.com/privacy/providers`) doesn't exist yet.
+The site's `/terms` and `/privacy` pages are built from these files (19 Oct). They show the text as the pilot version, with **working values** in the blanks: AI-Tutor by Nidanos, nidanos.com, Nidanos Private Limited, and "to be added before public launch" for the address (`apps/web/src/app/(legal)/LegalPage.tsx`). **Review them before the pilot:** the `privacy@`, `grievance@` and `support@nidanos.com` mailboxes must exist, the Grievance Officer needs a postal address, and the providers list the privacy policy links to is the site's `/privacy/providers` page, built from `packages/types/providers.json` (the same list the data download names).
 
 ## Key dates
 - **Now → 10 Nov 2026 (MVP):** consent at register, rights endpoints, no analytics

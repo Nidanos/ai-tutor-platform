@@ -62,7 +62,7 @@ We **never sell** personal data. We share it only with service providers (data p
 | Email delivery | Your email address | Sign-in and account emails |
 | Payment provider (once paid plans start) | What the payment needs | Taking payments |
 
-The current list of named providers is at `[DOMAIN]/privacy/providers`. We may also disclose data when Indian law or a court order requires it.
+The current list of named providers is on our [providers page](/privacy/providers). We may also disclose data when Indian law or a court order requires it.
 
 ## 6. Where your data is stored
 Our database is hosted **in India**. Our application servers run in **Singapore**, and some other providers in section 5, like the code sandbox, the AI model provider and the email delivery service, may also process data **outside India**. The DPDP Act allows this, except to countries the Government of India restricts, and we never send data to those countries. We send only what each task needs: the code sandbox and AI model provider never get your name or email, and the email delivery service gets only your email address.
