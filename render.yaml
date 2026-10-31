@@ -25,6 +25,8 @@ services:
         generateValue: true
       - key: WEB_ORIGIN # the Vercel site's address, no trailing slash
         sync: false
+      - key: DEV_WEB_ORIGIN # the team's local web app may use this API (ADR-0024)
+        value: http://localhost:3000
       - key: ORIGIN_SECRET # the same value as in the Vercel project
         sync: false
       - key: E2B_API_KEY

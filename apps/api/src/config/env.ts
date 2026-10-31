@@ -10,7 +10,8 @@ export const env = z
     PORT: z.coerce.number().default(3001),
     DATABASE_URL: z.url(),
     JWT_SECRET: z.string().min(32),
-    WEB_ORIGIN: z.url(), // the only origin allowed to send cookie-authenticated writes
+    WEB_ORIGIN: z.url(), // the origin allowed to send cookie-authenticated writes
+    DEV_WEB_ORIGIN: z.url().optional(), // the team's `next dev` against this API, e.g. http://localhost:3000 (ADR-0024)
     ORIGIN_SECRET: z.string().min(32).optional(), // Vercel sends it with /api requests: then its X-Forwarded-For is the visitor (ADR-0024)
     REDIS_URL: z.url().default("redis://localhost:6379"), // the submissions queue
     E2B_API_KEY: z.string().optional(), // only needed to run learner code (ADR-0003)

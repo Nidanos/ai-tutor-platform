@@ -102,6 +102,11 @@ describe("auth", () => {
     await c.post(`${AUTH}/logout`).set("Origin", "https://evil.example").expect(403);
   });
 
+  it("accepts cookie-carrying writes from the team's local web app", async () => {
+    const { c } = await registerAndLogin();
+    await c.post(`${AUTH}/logout`).set("Origin", env.DEV_WEB_ORIGIN!).expect(204);
+  });
+
   it("throttles the 6th failed login for one email", async () => {
     const { account } = await registerAndLogin();
     const attempt = () => client().post(`${AUTH}/login`).send({ email: account.email, password: "wrong password" });
