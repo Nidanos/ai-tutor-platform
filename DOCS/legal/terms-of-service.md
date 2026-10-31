@@ -44,7 +44,7 @@ Hints, explanations and diagrams are partly written by AI. **They can be wrong o
 We work hard to keep [PRODUCT] running, but it's provided **"as is"**. During the beta especially, there may be downtime, bugs or changes, and features may be added or removed. If we shut down a paid service, we'll refund the unused part of what you paid.
 
 ## 8. Closing your account
-- You can **delete your account at any time** in Settings. What happens to your data is explained in the [Privacy Policy](privacy-policy.md), section 9.
+- You can **delete your account at any time** on your Account page. What happens to your data is explained in the [Privacy Policy](privacy-policy.md), section 9.
 - We may close accounts that break these terms, or that the law requires us to close.
 
 ## 9. Limits on our responsibility
