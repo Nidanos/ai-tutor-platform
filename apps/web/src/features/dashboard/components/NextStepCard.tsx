@@ -1,6 +1,6 @@
 import { ArrowRight, BookOpenCheck } from "lucide-react";
 import type { useDashboardData } from "../useDashboardData";
-import Panel from "./Panel";
+import Panel from "@/components/ui/Panel";
 import LoadState from "./LoadState";
 
 type Data = ReturnType<typeof useDashboardData>;

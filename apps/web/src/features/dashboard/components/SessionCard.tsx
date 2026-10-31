@@ -1,6 +1,6 @@
 import { Clock3, Play, PauseCircle, ArrowRight } from "lucide-react";
 import type { useDashboardData } from "../useDashboardData";
-import Panel from "./Panel";
+import Panel from "@/components/ui/Panel";
 import LoadState from "./LoadState";
 
 type Props = { data: ReturnType<typeof useDashboardData>; onStart: () => void; onOpen: (id: string) => void };

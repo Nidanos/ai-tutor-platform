@@ -1,4 +1,5 @@
-import { LogOut, Sparkles } from "lucide-react";
+import Link from "next/link";
+import { LogOut, Sparkles, UserRound } from "lucide-react";
 
 type Props = { displayName: string; onLogout: () => Promise<void> };
 
@@ -13,9 +14,15 @@ export default function DashboardHeader({ displayName, onLogout }: Props) {
       </h1>
       <p className="mt-1 text-sm text-slate-400">Your learning journey, all in one place.</p>
     </div>
-    <button type="button" onClick={() => void onLogout()}
-      className="inline-flex items-center gap-2 rounded-xl border border-slate-700 px-4 py-2 text-sm hover:bg-slate-800">
-      <LogOut size={16} /> Log out
-    </button>
+    <div className="flex items-center gap-2">
+      <Link href="/account"
+        className="inline-flex items-center gap-2 rounded-xl border border-slate-700 px-4 py-2 text-sm hover:bg-slate-800">
+        <UserRound size={16} /> Account
+      </Link>
+      <button type="button" onClick={() => void onLogout()}
+        className="inline-flex items-center gap-2 rounded-xl border border-slate-700 px-4 py-2 text-sm hover:bg-slate-800">
+        <LogOut size={16} /> Log out
+      </button>
+    </div>
   </header>;
 }
