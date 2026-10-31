@@ -57,6 +57,7 @@ We **never sell** personal data. We share it only with service providers (data p
 |---|---|---|
 | Database hosting (India region) | All the data in section 2 | Storing it |
 | Application hosting (Singapore) | All the data in section 2, while our servers process it | Running our servers |
+| Website hosting and file delivery | Your requests, IP address and browser details, but no account data | Showing you the website and the code editor |
 | Code sandbox | Your submitted code and the exercise's tests, but no name or email | Running your code safely, in isolation |
 | AI model provider (on paid, no-training terms) | Your code and the exercise context; for lesson notes, your scores and recent results, not your code. Never your name or email | Writing hints, explanations and lesson notes |
 | Email delivery | Your email address | Sign-in and account emails |

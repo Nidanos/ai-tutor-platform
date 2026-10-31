@@ -1,9 +1,14 @@
 {
-  "updated": "1 November 2026",
+  "updated": "31 October 2026",
   "providers": [
     { "provider": "Supabase (India region)", "purpose": "Storing our database", "data": "All of this data" },
     { "provider": "Render (Singapore)", "purpose": "Running our servers", "data": "All of this data, while our servers process it" },
     { "provider": "Vercel", "purpose": "Serving the website", "data": "Your requests and IP address, no database access" },
+    {
+      "provider": "jsDelivr",
+      "purpose": "Delivering the code editor's files to your browser",
+      "data": "Your IP address and browser details when the code editor loads, no account data"
+    },
     { "provider": "E2B", "purpose": "Running your code in an isolated sandbox", "data": "Your submitted code and the exercise's tests, no name or email" },
     {
       "provider": "Google Gemini (paid, no-training terms)",
