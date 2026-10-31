@@ -45,7 +45,7 @@ Two further uses are **optional**, **off by default**, and have their own tick b
 
 "De-identified" means we remove your name, email and any other details that point to you.
 
-You can **withdraw any consent at any time**, as easily as you gave it: **Settings → Privacy**, or email `privacy@[DOMAIN]`. Withdrawing doesn't affect what we did before you withdrew. Withdrawing your main consent means closing your account (section 9).
+You can **withdraw any consent at any time**, as easily as you gave it: **Account → Privacy**, or email `privacy@[DOMAIN]`. Withdrawing doesn't affect what we did before you withdrew. Withdrawing your main consent means closing your account (section 9).
 
 ## 4. Improving [PRODUCT]
 We study **de-identified and aggregated** data, such as "40% of learners needed a hint on this exercise", to fix confusing exercises and improve hints. This never uses anything that identifies you.
@@ -80,10 +80,10 @@ Anyone can learn on [PRODUCT], but **if you are under 18, a parent or legal guar
 ## 8. Your rights
 | Right | How to use it |
 |---|---|
-| **Access**: a summary of your data, how we use it, and who we shared it with | Settings → Privacy → Download my data, or email us |
+| **Access**: a summary of your data, how we use it, and who we shared it with | Account → Privacy → Download my data, or email us |
 | **Correction and update** | Edit your profile, or email us |
-| **Erasure** | Settings → Delete account (you confirm with your password), or email us |
-| **Withdraw consent** | Settings → Privacy, or email us |
+| **Erasure** | Account → Delete account (you confirm with your password), or email us |
+| **Withdraw consent** | Account → Privacy, or email us |
 | **Nominate** someone to act for you if you die or can't act yourself | Email us |
 | **Grievance** | Section 10 |
 
