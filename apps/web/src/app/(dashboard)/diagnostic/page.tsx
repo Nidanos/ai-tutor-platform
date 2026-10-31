@@ -1,4 +1,4 @@
-import DiagnosticContainer from "@/components/diagnostic/DiagnosticContainer";
+import DiagnosticContainer from "@/features/diagnostic/components/DiagnosticContainer";
 
 export default function DiagnosticPage() {
   return <DiagnosticContainer />;

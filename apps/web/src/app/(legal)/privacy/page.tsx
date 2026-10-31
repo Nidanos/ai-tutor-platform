@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import LegalPage from "../LegalPage";
+import LegalPage from "@/features/legal/LegalPage";
 
 export const metadata: Metadata = { title: "Privacy Policy · AI Tutor" };
 

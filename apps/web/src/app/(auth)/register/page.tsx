@@ -1,6 +1,6 @@
-import LoginLayout from "../layout/LoginLayout";
-import WelcomePanel from "../layout/WelcomePanel";
-import SignupCard from "../layout/SignupCard";
+import LoginLayout from "@/features/auth/layout/LoginLayout";
+import WelcomePanel from "@/features/auth/layout/WelcomePanel";
+import SignupCard from "@/features/auth/layout/SignupCard";
 
 export default function SignupPage() {
     return (
