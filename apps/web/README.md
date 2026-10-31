@@ -5,11 +5,11 @@ src/
   app/                   routes only: page.tsx and layout.tsx, a few lines that render a feature
     (auth)/              login, register, forgot and reset password
     page.tsx             the landing page at /
-    (dashboard)/         learner screens (/dashboard, /diagnostic); its layout.tsx sends anyone signed out to /login
+    (dashboard)/         learner screens (/dashboard, /diagnostic, /account); its layout.tsx sends anyone signed out to /login
     (legal)/             privacy and terms
   features/<name>/       everything for one feature: components/, api.ts, small helpers
-    auth/  dashboard/  diagnostic/  landing/  legal/
-  components/ui/         shared building blocks: Button, Input, Markdown
+    account/  auth/  dashboard/  diagnostic/  landing/  legal/
+  components/ui/         shared building blocks: Button, Input, Markdown, Panel
   components/editor/     the one C++ code editor, for the placement test and exercises
   lib/api/client.ts      fetch wrapper: the API's envelope, errors and token refresh
   lib/courses.ts         the courses learners can pick, shared by the dashboard and placement test
