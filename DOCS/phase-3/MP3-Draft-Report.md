@@ -1,6 +1,6 @@
 # AI Tutor: An Evidence-Based Adaptive Learning System with Deliberate Scaffolding Withdrawal
 
-> **Draft report for Review 3 (Implementation, Testing and Draft Report), 23 October 2026.** Status as of 23 October 2026: all 33 endpoints live, 248 automated tests passing, 483 exercises and 207 lessons proven in the real sandbox, and the deployment files checked locally.
+> **Draft report for Review 3 (Implementation, Testing and Draft Report), 23 October 2026.** Status as of 23 October 2026: all 33 endpoints live, 248 automated tests passing, 483 exercises and 207 lessons proven in the real sandbox, and the deployment files checked locally. Hosting updated on 26 October (ADR-0024): the pilot runs on Vercel, Render and Supabase.
 > Prepared to the MCA-269 "Format of Project Report" and the Annexure-IV chapter scheme. Typesetting rules (Times New Roman 12, 1.5 spacing, margins 3.0/2.0/2.54/2.54 cm, blank page before each chapter) are applied in the final printed copy.
 
 ---
@@ -137,8 +137,8 @@ Page numbers are added in the printed copy.
 **4. Functional Modules and Users.** Users: **Learner**, **Author** (maintains the skill graph and templates), **Admin** (analytics). Thirteen modules: M1 Accounts, consent and data rights, M2 Skill graph, M3 Diagnostic, M4 Mastery model, M5 Recommender, M6 Exercises and lessons, M7 Execution and grading, M8 Hint ladder, M9 Sessions, M10 Revision, M11 Progress, M12 Scaffolding fade, M13 Analytics.
 
 **5. Tools/Platforms.**
-- **5.1 Hardware:** development on a laptop with a 4-core or better processor, 8–16 GB RAM, 256 GB SSD. Production: one cloud VM (4 ARM cores, 24 GB RAM, Oracle Cloud Always Free) plus managed sandboxes.
-- **5.2 Software:** Windows 11 / Ubuntu 24.04; front end Next.js 16, React 19, TypeScript, Monaco editor; back end Node.js 22, Express 5, TypeScript; database PostgreSQL 16 with Drizzle ORM; Redis 7 with BullMQ; E2B sandboxes with clang 19 (C++20); Google Gemini API; Brevo email API; Docker, pnpm, Git/GitHub, Vitest.
+- **5.1 Hardware:** development on a laptop with a 4-core or better processor, 8–16 GB RAM, 256 GB SSD. Production for the pilot: Vercel for the web app, Render (Singapore) for the API and its queue, and Supabase (Mumbai) for PostgreSQL, all on free plans, plus managed sandboxes; an older laptop takes the nightly backups.
+- **5.2 Software:** Windows 11 / Ubuntu 24.04; front end Next.js 16, React 19, TypeScript, Monaco editor; back end Node.js 22, Express 5, TypeScript; database PostgreSQL (16 locally, 17 on Supabase) with Drizzle ORM; Redis 7 with BullMQ; E2B sandboxes with clang 19 (C++20); Google Gemini API; Brevo email API; Docker, pnpm, Git/GitHub, Vitest.
 
 **6. Methodology.** 6.1 Incremental and iterative development. 6.2 It suits a system whose correctness is partly statistical: each increment produces a working system whose predictions can be checked against real learner performance, and the design decisions are recorded as they are made (architecture decision records), so later increments build on settled ground.
 
@@ -245,8 +245,10 @@ The budget is a student budget, so every running cost was measured or quoted, no
 
 | Item | Choice | Cost |
 |---|---|---|
-| Hosting (API, worker, database, Redis) | Oracle Cloud Always Free VM in an India region; fallback Azure for Students credit | ₹0 per month |
-| Web hosting | Vercel free plan during the college phase | ₹0 |
+| Hosting (API, worker, queue) | Render free web service and Key Value, Singapore. Oracle Cloud Always Free was the plan, but Mumbai had no capacity in 63 tries (ADR-0024) | ₹0 per month |
+| Database | Supabase free plan, Mumbai: 500 MB | ₹0 per month |
+| Web hosting | Vercel free plan during the college phase, at tutor.nidanos.com | ₹0 |
+| Backups | An older laptop we own, as a home server: nightly encrypted dump, 14 days kept | ₹0 |
 | Code execution | E2B, billed per second while a sandbox runs; $100 starting credit | about ₹0.01 per submission |
 | Exercise generation | Gemini 3.8 Flash (3.1 Pro on a third try), once per exercise, then frozen; its own cap of ₹300 per month | about ₹1.5 per exercise; skills 6–20 were hand-written instead, saving about ₹110–150 |
 | Lessons | 207 hand-written for both courses and frozen; generation with a fact check is ready for later courses, with its own cap of ₹300 per month | ₹0 so far; about ₹0.6 per generated lesson plus ₹0.15 for its check |
@@ -273,7 +275,7 @@ One design decision is a direct result of this study. The first design kept one 
   - account emails (password reset, deletion notice) go through Brevo (EU), which receives only the email address;
   - learners can correct, download or delete their data, and switch the opt-ins on and off; a deletion waits 7 days (logging in cancels it), then keeps anonymous numbers only for learners who opted in;
   - the Terms of Service and Privacy Policy are published at `/terms` and `/privacy`, built from the same texts learners accept;
-  - data is stored in India.
+  - data is stored in India (Supabase, Mumbai), and processed in Singapore while the API handles a request (ADR-0024).
 - **Licensing.** No third-party course content is copied. Skill names, descriptions, lessons and exercises are our own, and external references appear only as links. The source code is published under the PolyForm Noncommercial License 1.0.0: anyone may study and run it, but commercial use needs the team's permission.
 - **Schedule.** All 33 endpoints (the 23 planned, plus forgot and reset password, six for data rights and two for lessons) were live by Review 3 (section 4.5). The DSA exercise bank and placement test were finished on 21–22 October, ahead of plan. On 23 October calibration was added, and the deployment files, the pilot data export and the pilot survey were written; the frontend, running the deployment, the first live AI runs (once billing is active on 7 November) and the pilot are planned up to 10 November 2026.
 
@@ -303,12 +305,13 @@ One design decision is a direct result of this study. The first design kept one 
 20. The DSA placement test: a reading item and a code task for each of the 49 skills (98 items), under the C++ test's rules.
 21. Calibration from each first try (ADR-0021); the review queue recorded as worked out on read (ADR-0022); generation kept to C++ basics for the pilot (ADR-0023).
 22. Deployment files checked locally, the pilot data export and the pilot survey.
+23. Pilot hosting on Vercel, Render and Supabase after Oracle had no capacity, with nightly backups to the home server (ADR-0024).
 
 Every increment ended with automated tests and a real end-to-end run before the next one began. Larger designs (the placement test, hints, generation) were also reviewed by adversarial checks that tried to break them, and the holes they found were fixed before the code was committed (Table 9).
 
 **Analysis tools used:**
 - **Requirements:** the SRS from Phase 1, numbered as FR-Mx-yy and NFR-xx.
-- **Decisions:** each one recorded as an Architecture Decision Record (ADR-0001 to ADR-0023), with the options compared and the reason for the choice. For example, ADR-0003 compares Judge0, Piston and E2B on compiler version, memory-limit support, network isolation and cost.
+- **Decisions:** each one recorded as an Architecture Decision Record (ADR-0001 to ADR-0024), with the options compared and the reason for the choice. For example, ADR-0003 compares Judge0, Piston and E2B on compiler version, memory-limit support, network isolation and cost.
 - **Measurement before optimisation:** timings were measured step by step before anything was changed.
 
 **Pilot baseline.** The planned "Phase 0" (running the whole loop on paper with a learner before coding) was **not carried out**. It was replaced by a measured baseline of one anonymised pilot learner (Learner A: reading 10/11, writing 0/4), which confirmed the central design choice of separate reading and writing scores. A pilot with real learners on the finished system is planned before the final report.
@@ -337,7 +340,7 @@ Every increment ended with automated tests and a real end-to-end run before the 
 | S. DSA exercise bank: 245 exercises with speed tests | R | 20–21 Oct | Done (planned to 2 Nov) |
 | T. DSA placement test: 98 items | S | 22 Oct | Done (planned for 3–5 Nov) |
 | U. Calibration; review-queue and generation-scope decisions | T | 23 Oct | Done |
-| V. Deployment files, pilot data export, pilot survey | U | 23 Oct | Done (run on Oracle and Vercel by 30 Oct) |
+| V. Deployment files, pilot data export, pilot survey | U | 23 Oct | Done (deployed with K, on Vercel, Render and Supabase: ADR-0024) |
 | M. Gemini billing activation | – | 7 Nov | Planned (₹2,500 of the ₹3,000 prepayment left) |
 | I3. First live AI runs: frozen hints, live notes, extra generated exercise variants | I2, R, M | 7–8 Nov | Planned |
 | K. Deployment, pilot, final report | H, I3, L, V | 5–10 Nov | Planned |
@@ -394,8 +397,8 @@ gantt
 | Purpose | Specification |
 |---|---|
 | Development machine | Windows 11 laptop, multi-core processor, 8–16 GB RAM, SSD |
-| Staging and backup server | Older laptop running Ubuntu Server 24.04 LTS (AMD Ryzen 5 4600H, 8 GB RAM) |
-| Production server (planned) | Oracle Cloud Always Free ARM VM: up to 4 cores, 24 GB RAM, India region |
+| Backup server | Older laptop running Ubuntu Server 24.04 LTS (AMD Ryzen 5 4600H, 8 GB RAM): nightly encrypted backups of the pilot database |
+| Production (pilot) | Render free web service (512 MB, 0.1 CPU, Singapore) for the API and queue; Supabase free PostgreSQL (500 MB, Mumbai); Vercel for the web app |
 | Sandboxes | E2B micro-VMs: 2 vCPU, 512 MiB RAM each, created per submission |
 | Learner's device | Any modern browser; no installation |
 
@@ -1543,7 +1546,7 @@ A live hint is blocked if it holds 25 % or more of the code only the solution ha
 | Brute force | Required with generated tests: it passes the hand-written tests, **agrees** on at least one generated test and then **times out**. Disagreeing or crashing rejects the exercise, and finishing every test in time means the tests can't tell fast from slow |
 | Starter | Must fail a test. A slow starter fails by timing out, which makes "make it fast enough" a natural rung-2 task |
 
-**Figure 12: Deployment**, as decided for the MVP (ADR-0010)
+**Figure 12: Deployment**, as decided for the pilot (ADR-0024; ADR-0010's own VM comes later)
 
 ```mermaid
 ---
@@ -1556,24 +1559,24 @@ config:
       bottom: 14
 ---
 flowchart TB
-  B["Browser"] -->|HTTPS| V["Vercel<br/>Next.js web + /api proxy"]
-  M["Mobile app (later)"] -->|Bearer token| C
-  V -->|/api| C["Oracle Cloud VM, India<br/>Caddy HTTPS"]
-  subgraph VM["Docker Compose on the VM"]
-    API["API + queue worker<br/>(Node 22)"]
-    PG[("PostgreSQL 16")]
-    RD[("Redis 7")]
+  B["Browser"] -->|HTTPS| V["Vercel: tutor.nidanos.com<br/>Next.js web + /api proxy"]
+  M["Mobile app (later)"] -->|Bearer token| API
+  V -->|/api + origin secret| API
+  subgraph R["Render, Singapore (free)"]
+    API["API + queue worker<br/>(Node 22, one process)"]
+    RD[("Key Value<br/>queue")]
   end
+  PG[("Supabase, Mumbai<br/>PostgreSQL 17")]
   subgraph EXT["Outside services"]
     E2B["E2B sandboxes, internet off<br/>code + tests, no identity"]
     G["Google Gemini API<br/>content and hints"]
     BR["Brevo email (EU)<br/>account emails, address only"]
   end
-  C --> API
-  API --> PG
+  P["Pinger<br/>/health every 10 min"] -.-> API
   API --> RD
+  API -->|session pooler| PG
   API --> EXT
-  PG -.->|nightly encrypted backup| L["Staging laptop<br/>(Ubuntu 24.04)"]
+  PG -.->|nightly encrypted backup| L["Home server laptop<br/>(Ubuntu 24.04)"]
 ```
 
 
@@ -1814,7 +1817,7 @@ pnpm hints:generate                   # once billing is active (GEMINI_PAID=true
 ```
 **Build the sandbox template once:** `pnpm sandbox:build` creates the `ai-tutor-cpp` machine (Debian 13, clang 19) on E2B.
 
-**Deploy:** `deploy/README.md` is the runbook: the production Compose file (Caddy, API, Postgres, Redis) on the VM, the web app on Vercel, the checks after deploying, and nightly encrypted backups.
+**Deploy:** `deploy/README.md` is the runbook: Supabase, the Render Blueprint (`render.yaml`), Vercel with the tutor.nidanos.com domain, the checks after deploying, and the nightly encrypted backup on the home server. The Compose file (Caddy, API, Postgres, Redis) for an own VM is kept for later (ADR-0010).
 
 ## 4.5 Implementation
 
@@ -1839,7 +1842,7 @@ pnpm hints:generate                   # once billing is active (GEMINI_PAID=true
 
 **Real runs at this stage:** a placement test on real E2B placed a learner who knew 3 skills with 6 questions (5 reading, 1 code), graded the code in about 6 seconds and fast-tracked those 3 skills to the last fade stage; the first recommendation was then the next new skill. Sessions, progress, hints, analytics and generation were each run against the development database, the password reset was walked through in a real browser, and the data rights on the running server, including the erasure of that test account (A-10). A DSA placement test through the running API placed a learner who knew 4 skills exactly, with 17 questions: 14 reading, and 3 code tasks run on real E2B with their speed tests (A-8). The 207 lessons and 483 exercises were each proven on real E2B. On the web, the sign-in pages (with the password reset) and the Terms and Privacy pages are built. The production stack ran locally on 23 October: the image builds, migrations and the seed run inside it, HTTPS works through Caddy, a made-up `X-Forwarded-For` is ignored unless it comes with Vercel's secret header, and an encrypted backup restores into a scratch database.
 
-**Planned for the MVP (10 November):** Gemini billing activation (7 November), then the first live AI runs: live hints, lesson notes, the frozen hints, and extra generated exercise variants; frontend screens (in progress, due 31 October), including the Settings screens for data rights; the Brevo account and sending domain for real account emails; running the deployment on Oracle Cloud and Vercel (its files are written and checked locally); and a pilot with real learners, with the data export and the survey ready.
+**Planned for the MVP (10 November):** Gemini billing activation (7 November), then the first live AI runs: live hints, lesson notes, the frozen hints, and extra generated exercise variants; frontend screens (in progress, due 31 October), including the Settings screens for data rights; the Brevo account and sending domain for real account emails; running the deployment on Vercel, Render and Supabase (ADR-0024; its files are written and checked locally); and a pilot with real learners, with the data export and the survey ready.
 
 ## 4.6 Users Training
 
@@ -1881,11 +1884,11 @@ All 33 endpoints are live, backed by 248 automated tests run on every push, 483 
 ## 5.2 System Specifications
 
 ### 5.2.1 H/W Requirement
-- **Server:** 2+ CPU cores, 4 GB+ RAM, 20 GB disk (the Oracle Always Free VM offers up to 4 ARM cores and 24 GB).
+- **Server:** none of our own for the pilot: Render's free service gives the API 512 MB and 0.1 CPU, and Supabase's free plan 500 MB of database. An own VM later needs 2+ CPU cores, 4 GB+ RAM and 20 GB disk.
 - **Client:** any device with a modern browser.
 
 ### 5.2.2 S/W Requirement
-- **Server:** Linux (Ubuntu 24.04), Docker; Node.js 22, PostgreSQL 16, Redis 7.
+- **Server:** Render runs the API's Docker image (Node.js 22), with Key Value for the queue; PostgreSQL 17 on Supabase. An own VM later: Ubuntu 24.04, Docker, PostgreSQL 16, Redis 7.
 - **Accounts:** an E2B account (sandboxes), a Gemini API key, and a Brevo account (account emails) with the sending domain authenticated.
 - **Client:** Chrome, Edge, Firefox or Safari (current versions).
 
@@ -1897,7 +1900,7 @@ All 33 endpoints are live, backed by 248 automated tests run on every push, 483 
 - **Lessons are fixed per level.** The 207 lessons are hand-written, so a lesson does not change for one learner; the live note that personalises it waits for billing. A lesson's correctness rests on its gates and on review: the sandbox proves its programs' outputs, not every sentence.
 - **Live AI waits for billing.** Live hints and exercise generation are built and tested with a fake model, but stay off until the ₹3,000 prepayment is complete and activates the paid tier (the remaining ₹2,500 on 7 November); until then learners get frozen hints or a general nudge, and lessons come without their live note.
 - **Account emails wait for setup.** Real reset and deletion emails need the Brevo key and the sending domain; until then they are printed in the API terminal (in development only: production refuses to start without the key).
-- **Client IP.** The per-IP limits trust only our own proxy; the Vercel and Caddy setup that passes on the visitor's real address is built and was checked locally (`deploy/`); it is checked again on the live servers.
+- **Client IP.** The per-IP limits trust only our own proxy; the API takes the visitor's real address from Vercel only with the origin secret Vercel adds (ADR-0024). It was checked locally and is checked again on the live servers.
 - **Data rights screens and the rest of retention.** The data-rights API is built, but not yet the Settings screens. The email address and date of birth are changed by email, not in the app. The 3-year inactivity job and the yearly clean-up of sign-in records are still to build. After a deletion request, an access token still works on the learning endpoints until it expires (at most 15 minutes).
 - **Adults only during the pilot.** Under-18s can't sign up until the parent-approval flow is built.
 - **Legal pages carry working values.** The company name, the domain and the Grievance Officer's postal address are placeholders until Nidanos is registered, and a lawyer-reviewed version replaces both texts before public launch.
@@ -2583,6 +2586,8 @@ The same account erased as the hourly job does it, 8 days later:
   logins:   mobile, ended, kept a year as a security record
   log in with the old email and password → 401
 ```
+
+The provider list above is from 19 October. Since ADR-0024 the download names Supabase (India region), Render (Singapore) and Vercel in place of Oracle Cloud.
 
 Screen snapshots of the web interface will be added here in the final report.
 

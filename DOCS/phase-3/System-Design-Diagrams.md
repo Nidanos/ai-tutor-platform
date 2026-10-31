@@ -54,24 +54,24 @@ config:
       bottom: 14
 ---
 flowchart TB
-  B["Browser"] -->|HTTPS| V["Vercel<br/>Next.js web + /api proxy"]
-  M["Mobile app (later)"] -->|Bearer token| C
-  V -->|/api| C["Oracle Cloud VM, India<br/>Caddy HTTPS"]
-  subgraph VM["Docker Compose on the VM"]
-    API["API + queue worker<br/>(Node 22)"]
-    PG[("PostgreSQL 16")]
-    RD[("Redis 7")]
+  B["Browser"] -->|HTTPS| V["Vercel: tutor.nidanos.com<br/>Next.js web + /api proxy"]
+  M["Mobile app (later)"] -->|Bearer token| API
+  V -->|/api + origin secret| API
+  subgraph R["Render, Singapore (free)"]
+    API["API + queue worker<br/>(Node 22, one process)"]
+    RD[("Key Value<br/>queue")]
   end
+  PG[("Supabase, Mumbai<br/>PostgreSQL 17")]
   subgraph EXT["Outside services"]
     E2B["E2B sandboxes, internet off<br/>code + tests, no identity"]
     G["Google Gemini API<br/>content and hints"]
     BR["Brevo email (EU)<br/>account emails, address only"]
   end
-  C --> API
-  API --> PG
+  P["Pinger<br/>/health every 10 min"] -.-> API
   API --> RD
+  API -->|session pooler| PG
   API --> EXT
-  PG -.->|nightly encrypted backup| L["Staging laptop<br/>(Ubuntu 24.04)"]
+  PG -.->|nightly encrypted backup| L["Home server laptop<br/>(Ubuntu 24.04)"]
 ```
 
 <div style="page-break-before: always"></div>
