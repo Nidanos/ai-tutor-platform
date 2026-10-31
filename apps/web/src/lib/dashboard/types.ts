@@ -1,0 +1,32 @@
+export type CourseSlug = "cpp-basics" | "dsa";
+export type CourseOption = { slug: CourseSlug; title: string };
+export type SkillRef = { id: string; slug: string; name: string };
+export type ExerciseRung = 1 | 2 | 3 | 4 | 5;
+
+export type ProgressSummary = {
+  total: number;
+  locked: number;
+  ready: number;
+  in_progress: number;
+  cleared: number;
+  review_due: number;
+};
+
+export type ProgressResponse = {
+  course: { slug: string };
+  summary: ProgressSummary;
+  skills: Array<{ skill: SkillRef; status: string }>;
+  outside: Array<{ skill: SkillRef; course: { slug: string }; status: string }>;
+};
+
+export type Recommendation = {
+  id: string;
+  skill: SkillRef;
+  rung: ExerciseRung;
+  reason: "new_skill" | "review";
+  exerciseId: string | null;
+};
+export type RecommendationResponse = {
+  recommendation: Recommendation | null;
+  waitingFor: Array<{ skill: SkillRef; course: { slug: string } }>;
+};
