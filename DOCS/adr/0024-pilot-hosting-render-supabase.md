@@ -17,7 +17,7 @@ ADR-0010 put the API, the queue and Postgres on one Oracle Cloud Always Free VM 
 | Postgres | **Supabase**, **Mumbai**, through the shared pooler in session mode (Render has no IPv6) | Free: 500 MB |
 | Backups | **The home server**, an old laptop running Ubuntu in India: `deploy/backup-laptop.sh` from cron at 23:30 IST and on start-up, `pg_dump` encrypted with AES-256, kept 14 days on its second disk | — |
 
-- **Address:** `tutor.nidanos.com`, a Vercel custom domain (Cloudflare DNS, a DNS-only CNAME to Vercel). `WEB_ORIGIN` is set to it: the email links and the origin check use it.
+- **Address:** `tutor.nidanos.com`, a Vercel custom domain (Cloudflare DNS, a DNS-only CNAME to Vercel: proxied, every visitor would arrive from a Cloudflare address and share one rate limit). `WEB_ORIGIN` is set to it: the email links and the origin check use it.
 - **Why the home server holds only backups:** it also runs other products and agents, and was switched off at night to save power (four times in five weeks, about 10 hours each). Down, it stops nothing in the pilot, and the next run catches up.
 - **Kept awake:** a free web service sleeps after 15 minutes without requests, and a sleeping one runs no queue work and no hourly erasure. An outside pinger requests `/health` every 10 minutes; one always-on service uses 744 of the 750 free hours.
 - **Client IP (ADR-0008):** there is no Caddy. The API keeps Vercel's visitor IP only when the request carries `ORIGIN_SECRET`, which Vercel adds and only Vercel knows (`vercel-visitor.ts`); otherwise Render's own proxy decides. `ORIGIN_SECRET` is required in production.
@@ -30,5 +30,6 @@ ADR-0010 put the API, the queue and Postgres on one Oracle Cloud Always Free VM 
 - Render may restart a free service at any time; in-memory rate-limit counters start again when it does.
 - Supabase pauses a free project after a week without database use. During the pilot that can't happen; afterwards it needs a manual restore from the dashboard.
 - Supabase's free plan has no backups of its own: the home server's nightly dump is the only copy. A missed night (server off) is caught up when it starts again.
+- Render's `onrender.com` address sits behind Cloudflare, so a caller that skips Vercel gets Cloudflare's address as its IP (checked 31 Oct). It can't choose an IP and never shares a rate limit with the site's learners, but direct callers share a few buckets among themselves. Fix this before the mobile app calls the API directly.
 - No shell on a free Render service: migrations, the seed, `exercises:verify` and `lessons:seed` run from the dev laptop against Supabase.
 - **Later:** an own VM (Azure for Startups once Nidanos is registered) with `deploy/docker-compose.yml`, unchanged; moving is a dump and restore.
