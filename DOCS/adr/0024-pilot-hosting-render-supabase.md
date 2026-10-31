@@ -31,5 +31,6 @@ ADR-0010 put the API, the queue and Postgres on one Oracle Cloud Always Free VM 
 - Supabase pauses a free project after a week without database use. During the pilot that can't happen; afterwards it needs a manual restore from the dashboard.
 - Supabase's free plan has no backups of its own: the home server's nightly dump is the only copy. A missed night (server off) is caught up when it starts again.
 - Render's `onrender.com` address sits behind Cloudflare, so a caller that skips Vercel gets Cloudflare's address as its IP (checked 31 Oct). It can't choose an IP and never shares a rate limit with the site's learners, but direct callers share a few buckets among themselves. Fix this before the mobile app calls the API directly.
+- The team's local web app (`next dev` on http://localhost:3000, `API_URL` set to the Render address) uses this API and its database: `DEV_WEB_ORIGIN` lets its cookie-carrying writes past the origin check. The site's cookies are SameSite, so no other page can send a learner's. Test accounts use `@test.dev`, which the pilot export leaves out.
 - No shell on a free Render service: migrations, the seed, `exercises:verify` and `lessons:seed` run from the dev laptop against Supabase.
 - **Later:** an own VM (Azure for Startups once Nidanos is registered) with `deploy/docker-compose.yml`, unchanged; moving is a dump and restore.

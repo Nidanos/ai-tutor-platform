@@ -62,6 +62,12 @@ pnpm --filter @ai-tutor/api hints:generate     # writes the frozen hints once (n
 pnpm dev
 ```
 
+**Web app only, against the deployed API** (no Docker, database or API keys): put
+`API_URL=https://ai-tutor-api-sa79.onrender.com` in `apps/web/.env.local`, then run `pnpm --filter @ai-tutor/web dev` and open
+http://localhost:3000 in Chrome, Edge, Firefox or Brave (Safari may drop the API's secure cookies on plain http).
+Sign up with an `@test.dev` email: the pilot export leaves those accounts out. It is the live database, so
+don't use real learners' details.
+
 ## License
 
 Source-available under the [PolyForm Noncommercial License 1.0.0](LICENSE.md). You may read, run and change this code for personal study, research, teaching and other noncommercial purposes. **Any commercial use, or use for gain, needs written permission from the copyright holders** (Ashwani Kumar Puri, Aman Dogra and Aditi Tanwar, Nidanos).
