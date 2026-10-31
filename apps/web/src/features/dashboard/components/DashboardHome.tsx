@@ -8,6 +8,7 @@ import { startSession } from "../api";
 import DashboardHeader from "./DashboardHeader";
 import CourseSelector from "./CourseSelector";
 import NextStepCard from "./NextStepCard";
+import PlacementCard from "./PlacementCard";
 import ProgressCard from "./ProgressCard";
 import SessionCard from "./SessionCard";
 import { useDashboardData } from "../useDashboardData";
@@ -34,6 +35,7 @@ export default function DashboardHome({ user, onLogout }: Props) {
 
   return <main className="mx-auto min-h-screen max-w-7xl space-y-6 bg-slate-950 px-4 py-6 text-slate-100 sm:px-6 lg:px-8">
     <DashboardHeader displayName={user.displayName} onLogout={onLogout} />
+    <PlacementCard />
     <CourseSelector value={course} onChange={setCourse} />
     {actionError && <p role="alert" className="rounded-xl border border-rose-400/30 p-3 text-sm text-rose-300">{actionError}</p>}
     <section className="grid gap-5 lg:grid-cols-2">
