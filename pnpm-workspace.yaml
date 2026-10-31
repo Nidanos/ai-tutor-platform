@@ -9,3 +9,10 @@ ignoredBuiltDependencies:
 # Monaco pins an old DOMPurify with known XSS advisories; drop this once monaco-editor ships >= 3.4.17.
 overrides:
   dompurify: 3.4.17
+  # Patched versions for advisories in express's (body-parser, qs) and e2b's (undici, glob, minimatch) dependencies,
+  # 31 Oct. Drop each once the parent package depends on it.
+  body-parser: 2.4.0
+  qs: 6.17.1
+  undici: 8.12.3
+  glob: 14.0.3
+  minimatch: 11.0.3
