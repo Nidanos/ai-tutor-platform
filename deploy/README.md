@@ -87,7 +87,7 @@ The home server is an old laptop running Ubuntu 24.04 (`kfl-server` on the home 
 4. Dumps are kept 14 days on the server's second disk. Check one each month, on the server:
    ```bash
    f=$(ls -t /mnt/data/backups/ai-tutor/ai-tutor-*.dump.enc | head -1)
-   openssl enc -d -aes-256-cbc -pbkdf2 -iter 600000 -pass file:$HOME/.ai-tutor-backup/passphrase -in "$f" | /usr/lib/postgresql/17/bin/pg_restore --list | grep -c "TABLE DATA"   # about 40 tables
+   openssl enc -d -aes-256-cbc -pbkdf2 -iter 600000 -pass file:$HOME/.ai-tutor-backup/passphrase -in "$f" | /usr/lib/postgresql/17/bin/pg_restore --list | grep -c "TABLE DATA"   # about 80: ours plus Supabase's own
    ```
    For a real restore, decrypt to a file and run `pg_restore --clean --no-owner -d '<session pooler URI>'` on it.
 

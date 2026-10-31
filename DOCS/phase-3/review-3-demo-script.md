@@ -9,7 +9,7 @@ Suggested roles: Ashwani drives the terminal and answers the backend questions; 
 - [ ] Docker Desktop running, then from the repo root: `git pull`, `pnpm install`, `docker compose up -d`
 - [ ] In `apps/api`: `pnpm db:migrate` and `pnpm db:seed` (nothing new should be added)
 - [ ] `pnpm sandbox:smoke`: "All six verdicts correct" proves the E2B key and credit work
-- [ ] `pnpm test`: 204 passed
+- [ ] `pnpm test`: 253 passed
 - [ ] One full rehearsal: `pnpm demo:walk --pause`, with the API running (below)
 - [ ] GitHub, Actions tab: the latest CI run on `main` is green (keep the tab open to show it)
 - [ ] Laptop charged; a phone hotspot ready (E2B needs internet)
