@@ -1,6 +1,6 @@
-import LoginLayout from "../layout/LoginLayout";
-import WelcomePanel from "../layout/WelcomePanel";
-import ForgotPasswordCard from "../layout/ForgotPasswordCard";
+import LoginLayout from "@/features/auth/layout/LoginLayout";
+import WelcomePanel from "@/features/auth/layout/WelcomePanel";
+import ForgotPasswordCard from "@/features/auth/layout/ForgotPasswordCard";
 
 export default function ForgotPasswordPage() {
     return (

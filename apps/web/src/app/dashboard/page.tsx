@@ -2,7 +2,7 @@
 
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { useAuth } from "@/components/auth/AuthProvider";
+import { useAuth } from "@/features/auth/AuthProvider";
 
 export default function DashboardPage() {
   const { user, isLoading, logout } = useAuth();
