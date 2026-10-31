@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { providers, updated } from "@ai-tutor/types/providers.json";
-import LegalPage from "../../LegalPage";
+import LegalPage from "@/features/legal/LegalPage";
 
 export const metadata: Metadata = { title: "Service providers · AI Tutor" };
 

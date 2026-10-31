@@ -1,6 +1,6 @@
-import LoginLayout from "../layout/LoginLayout";
-import WelcomePanel from "../layout/WelcomePanel";
-import ResetPasswordCard from "../layout/ResetPasswordCard";
+import LoginLayout from "@/features/auth/layout/LoginLayout";
+import WelcomePanel from "@/features/auth/layout/WelcomePanel";
+import ResetPasswordCard from "@/features/auth/layout/ResetPasswordCard";
 
 export default function ResetPasswordPage() {
     return (
