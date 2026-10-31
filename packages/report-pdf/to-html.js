@@ -1,5 +1,6 @@
 // Markdown → print-ready HTML, set to the MCA-269 rules: A4, Times New Roman 12, 1.5 spacing, margins
-// L 3.0 / R 2.0 / T,B 2.54 cm, chapter headings 20 pt centred, code 10 pt Courier New.
+// L 3.0 / R 2.0 / T,B 2.54 cm, page numbers at the foot, a blank page before each chapter, chapter headings
+// 20 pt centred, code 10 pt Courier New.
 import { marked } from "marked";
 
 // Mermaid reads the diagram text back from the page, so <<interface>> and the like must survive as text.
@@ -10,7 +11,13 @@ const baseCode = renderer.code.bind(renderer);
 renderer.code = (token) => (token.lang === "mermaid" ? `<div class="mermaid">${escapeHtml(token.text)}</div>` : baseCode(token));
 
 const CSS = `
-@page { size: A4; margin: 2.54cm 2cm 2.54cm 3cm; }
+@page { size: A4; margin: 2.54cm 2cm 2.54cm 3cm; @bottom-center { content: counter(page); font: 11pt "Times New Roman", Times, serif; } }
+@page :first { @bottom-center { content: none; } }
+.blank-page { break-before: page; height: 1px; }
+/* The Markdown's own title and working notes: the printed copy starts at the cover page. */
+body > h1:first-child, body > h1:first-child + blockquote, body > h1:first-child + blockquote + hr { display: none; }
+.cover { text-align: center; padding-top: 3cm; font-size: 14pt; }
+.cover table { width: auto; margin: 1.5cm auto; font-size: 12pt; }
 body { font-family: "Times New Roman", Times, serif; font-size: 12pt; line-height: 1.5; text-align: justify; color: #000; }
 h1 { font-size: 20pt; text-align: center; margin: 30pt 0; page-break-before: always; }
 h1:first-of-type { page-break-before: avoid; }
@@ -42,8 +49,15 @@ mermaid.run({ querySelector: ".mermaid" }).then(() => {
 
 export function toHtml(markdown) {
   const title = escapeHtml(markdown.match(/^# (.+)$/m)?.[1] ?? "Report");
+  // MCA-269: a blank page before each chapter.
+  // The cover prints centred, without its working heading. A single line break is kept, as on the cover and
+  // the certificate's signature lines; the chapters put each paragraph on one line, so nothing else changes.
+  const body = marked
+    .parse(markdown, { renderer, breaks: true })
+    .replace(/<h1([^>]*)>CHAPTER/g, '<div class="blank-page"></div><h1$1>CHAPTER')
+    .replace(/<h2>Cover Page[^<]*<\/h2>([\s\S]*?)<hr>/, '<section class="cover">$1</section><hr>');
   return `<!doctype html><html><head><meta charset="utf-8"><title>${title}</title>
-<style>${CSS}</style></head><body>${marked.parse(markdown, { renderer })}
+<style>${CSS}</style></head><body>${body}
 <script src="https://cdn.jsdelivr.net/npm/mermaid@11.4.1/dist/mermaid.min.js"></script>
 <script>${SCRIPT}</script></body></html>`;
 }
