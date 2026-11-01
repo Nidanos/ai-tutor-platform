@@ -11,8 +11,9 @@ export default function AccountPage({ user, onUserUpdated, onDeleted }: Props) {
   const isAdult = Boolean(user?.dateOfBirth && isAtLeastEighteen(user.dateOfBirth));
   return <main className="min-w-0 space-y-5 text-white">
     <AccountHeader />
-    <ProfileSettings key={user?.id ?? "signed-out"} user={user} onUpdated={onUserUpdated} />
-    {user && isAdult && <ConsentSettings key={user.id} enabled />}
+    {/* Keyed by user so each form starts fresh for a different sign-in; the prefixes keep the sibling keys unique. */}
+    <ProfileSettings key={`profile:${user?.id ?? "signed-out"}`} user={user} onUpdated={onUserUpdated} />
+    {user && isAdult && <ConsentSettings key={`consent:${user.id}`} enabled />}
     <AccountDataActions enabled={Boolean(user)} onDeleted={onDeleted} />
   </main>;
 }
