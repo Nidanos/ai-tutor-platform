@@ -40,7 +40,7 @@ export default function DiagnosticContainer() {
   const [isCompleting, setIsCompleting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  async function handleStartDiagnostic() {
+  async function handleStartDiagnostic(retake = false) {
     if (!course) return;
     try {
       setIsStarting(true);
@@ -49,7 +49,7 @@ export default function DiagnosticContainer() {
       const response = await startDiagnostic({
         course,
         language: "cpp",
-        retake: false,
+        retake,
       });
 
       setDiagnostic(response.diagnostic);
@@ -185,7 +185,7 @@ export default function DiagnosticContainer() {
               selected={course}
               onSelect={setCourse}
               onBack={() => setScreen("intro")}
-              onContinue={handleStartDiagnostic}
+              onContinue={() => void handleStartDiagnostic()}
               isLoading={isStarting}
             />
           )}
@@ -238,10 +238,13 @@ export default function DiagnosticContainer() {
             </div>
           )}
 
-          {screen === "complete" && diagnostic?.status === "completed" && (
+          {screen === "complete" && diagnostic?.status === "completed" && course && (
             <DiagnosticComplete
               results={diagnostic}
+              course={course}
               onFinish={handleGoToDashboard}
+              onRetake={() => void handleStartDiagnostic(true)}
+              isRetaking={isStarting}
             />
           )}
 
