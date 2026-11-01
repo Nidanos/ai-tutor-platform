@@ -102,6 +102,14 @@ const testsOf = (userId: string) =>
     .innerJoin(enrollments, eq(enrollments.id, diagnosticAttempts.enrollmentId))
     .where(eq(enrollments.userId, userId));
 
+export const findLastPlacedCourseId = async (userId: string) =>
+  (
+    await attempts()
+      .where(and(eq(enrollments.userId, userId), eq(diagnosticAttempts.status, "completed")))
+      .orderBy(desc(diagnosticAttempts.completedAt))
+      .limit(1)
+  )[0]?.courseId;
+
 // For M1 (DPDP access): every placement test, with its answers and estimates.
 export async function learnerPlacements(userId: string) {
   const [tests, answers, estimates] = await Promise.all([

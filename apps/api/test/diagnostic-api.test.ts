@@ -211,6 +211,15 @@ describe("POST /diagnostic/:id/complete", () => {
     expect(await nextStep(t)).toMatchObject({ rung: 5 }); // fast-tracked: straight to Build
   });
 
+  it("names the placed course on GET /auth/me once a test is finished", async () => {
+    const t = await placementCourse();
+    const placed = async () => (await request(app).get("/api/v1/auth/me").set("Authorization", t.auth).expect(200)).body.data.user.placementCourse;
+    const { diagnosticId } = await t.start();
+    expect(await placed()).toBeNull(); // started is not finished
+    await t.post(`/${diagnosticId}/complete`, {});
+    expect(await placed()).toBe(t.course.slug);
+  });
+
   it("starts a skill only read correctly at rung 2: Predict is skipped, writing still starts at 0", async () => {
     const t = await placementCourse();
     const { diagnosticId } = await t.start();

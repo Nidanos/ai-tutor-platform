@@ -1,9 +1,9 @@
 import { Binary, Check, Code2 } from "lucide-react";
 
 import type { CourseSlug } from "@ai-tutor/types";
-import { COURSE_OPTIONS } from "@/lib/courses";
+import { COURSES } from "@/lib/courses";
 
-// The course list is shared with the dashboard (lib/courses.ts); this adds what the picker shows.
+// The course list is shared with the learner screens (lib/courses.ts); this adds what the picker shows.
 const DETAILS: Record<CourseSlug, { description: string; Icon: typeof Code2 }> = {
   "cpp-basics": { description: "New to programming, or to C++. Start from your first program.", Icon: Code2 },
   dsa: { description: "You can already write C++. Practise the structures and techniques problems need.", Icon: Binary },
@@ -29,7 +29,7 @@ export default function CoursePicker({ selected, onSelect, onBack, onContinue, i
       </p>
 
       <div role="radiogroup" aria-label="Course" className="mt-7 grid gap-4 sm:grid-cols-2">
-        {COURSE_OPTIONS.map(({ slug, title }) => {
+        {COURSES.map(({ slug, title }) => {
           const { description, Icon } = DETAILS[slug];
           const isSelected = slug === selected;
           return (

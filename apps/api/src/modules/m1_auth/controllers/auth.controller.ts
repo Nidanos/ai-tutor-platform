@@ -3,6 +3,7 @@ import { clearAuthCookies, REFRESH_COOKIE, setAuthCookies } from "../../../share
 import { ACCESS_TTL_SECONDS } from "../../../shared/auth/tokens.js";
 import { ok } from "../../../shared/http/envelope.js";
 import { forgotPasswordBody, loginBody, registerBody, resetPasswordBody, tokenBody } from "../schemas/auth.schemas.js";
+import { placedCourse } from "../../m3_diagnostic/services/diagnostic.service.js";
 import * as auth from "../services/auth.service.js";
 
 const device = (req: Request) => ({ userAgent: req.get("user-agent")?.slice(0, 300), ip: req.ip });
@@ -39,7 +40,8 @@ export const logout: RequestHandler = async (req, res) => {
 };
 
 export const me: RequestHandler = async (req, res) => {
-  res.json(ok({ user: await auth.me(req.auth!.userId) }));
+  const [user, placementCourse] = await Promise.all([auth.me(req.auth!.userId), placedCourse(req.auth!.userId)]);
+  res.json(ok({ user: { ...user, placementCourse } }));
 };
 
 // 202 and the same words whether or not the account exists (ADR-0017).

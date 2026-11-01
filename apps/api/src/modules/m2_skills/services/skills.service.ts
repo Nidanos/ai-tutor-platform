@@ -9,6 +9,7 @@ export async function getSkill(id: string, q?: Tx | typeof db) {
 }
 
 export const getSkills = (ids: string[]) => repo.findSkills(ids);
+export const getCourseSlug = repo.findCourseSlug;
 
 export async function getCourse(slug: string, languageCode: string) {
   const course = await repo.findCourseBySlug(slug, languageCode);
