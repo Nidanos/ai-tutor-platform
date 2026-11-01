@@ -1,0 +1,3 @@
+import { Icon } from "@/components/ui/Icon";
+
+export default function SidebarFooter() { return <div className="mt-auto hidden p-3.5 lg:block"><div className="relative overflow-hidden rounded-2xl border border-violet-400/20 bg-gradient-to-br from-violet-900/30 to-blue-950/60 px-4 py-4 text-violet-200"><Icon name="sparkle" size={24} className="text-violet-300"/><p className="mt-4 font-serif text-lg italic leading-6">Small steps.<br/>Big progress.</p><svg viewBox="0 0 120 24" className="mt-3 h-6 w-28" fill="none" aria-hidden="true"><path d="M2 14 C8 14 8 5 15 5 S22 20 29 20 S36 5 43 5 S50 20 57 20 S64 5 71 5 S78 20 85 20 S92 5 99 5" stroke="#a855f7" strokeWidth="4" strokeLinecap="round"/></svg></div></div>; }

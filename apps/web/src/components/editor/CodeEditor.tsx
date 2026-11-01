@@ -4,12 +4,14 @@ type CodeEditorProps = {
   value: string;
   onChange: (value: string) => void;
   height?: string;
+  readOnly?: boolean;
 };
 
 export default function CodeEditor({
   value,
   onChange,
   height = "420px",
+  readOnly = false,
 }: CodeEditorProps) {
   return (
     <div className="overflow-hidden rounded-xl border border-white/10 bg-panel">
@@ -20,6 +22,7 @@ export default function CodeEditor({
         onChange={(nextValue) => onChange(nextValue ?? "")}
         theme="vs-dark"
         options={{
+          readOnly,
           minimap: { enabled: false },
           fontSize: 14,
           lineHeight: 23,

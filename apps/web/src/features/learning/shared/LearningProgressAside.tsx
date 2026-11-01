@@ -1,0 +1,7 @@
+import { ArrowRight, Lightbulb } from "lucide-react";
+type Props = { completed: number; total: number; onStart: () => void };
+export default function LearningProgressAside({ completed, total, onStart }: Props) {
+  const percent = total === 0 ? 0 : Math.round(completed / total * 100);
+  const card = "rounded-2xl border border-blue-800/80 bg-gradient-to-br from-blue-950/90 to-indigo-950/80 p-5 sm:p-6";
+  return <aside className="space-y-5"><section className={card}><h2 className="font-bold">Overall Progress</h2><div className="mx-auto my-6 grid size-36 place-items-center rounded-full" style={{ background: `conic-gradient(#8b5cf6 ${percent}%, #23345f ${percent}% 100%)` }}><div className="grid size-28 place-items-center rounded-full bg-[#111b3d]"><span className="text-3xl font-bold">{percent}%</span></div></div><p className="text-center text-sm text-blue-200">{completed} of {total} subtopics completed</p></section><section className={card}><Lightbulb className="text-purple-400" size={26}/><h2 className="mt-3 font-bold">Ready to learn?</h2><p className="mt-2 text-sm leading-6 text-blue-200">Start with the fundamentals and build confidence through practice.</p><button type="button" onClick={onStart} className="mt-5 inline-flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-blue-600 to-purple-600 px-4 py-3 font-semibold">Start Learning <ArrowRight size={17}/></button></section></aside>;
+}

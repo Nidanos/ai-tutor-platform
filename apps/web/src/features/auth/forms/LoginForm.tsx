@@ -80,7 +80,8 @@ function LoginForm() {
             text: `Welcome back, ${user.displayName}!`,
         });
 
-        router.push("/dashboard");
+        // A learner who hasn't finished a placement test takes one first.
+        router.push(user.placementCourse ? "/dashboard" : "/diagnostic");
     } catch (error) {
         setStatusMessage({
             type: "error",

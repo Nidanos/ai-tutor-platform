@@ -12,6 +12,8 @@ export type AuthUser = {
   dateOfBirth: string | null;
   status: "active" | "pending_parent";
   createdAt: string;
+  // The course of the latest finished placement test; null until the first one is finished.
+  placementCourse: CourseSlug | null;
 };
 
 // The seeded courses (apps/api seed/data.ts); every course is in C++ for now.
@@ -23,3 +25,4 @@ export type Consent = { kind: ConsentKind; policyVersion: string; grantedAt: str
 
 export * from "./dashboard.js";
 export * from "./diagnostic.js";
+export * from "./learning.js";

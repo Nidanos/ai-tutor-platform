@@ -11,11 +11,20 @@ export type ProgressSummary = {
   review_due: number;
 };
 
+export type SkillStatus = "locked" | "ready" | "in_progress" | "cleared" | "review_due";
+
 export type ProgressResponse = {
   course: { slug: string };
   summary: ProgressSummary;
-  skills: Array<{ skill: SkillRef; status: string }>;
-  outside: Array<{ skill: SkillRef; course: { slug: string }; status: string }>;
+  skills: Array<{
+    skill: SkillRef & { description: string | null; difficulty: number };
+    prerequisites: string[];
+    reading: { score: number; effective: number };
+    writing: { score: number; effective: number };
+    stage: number | null;
+    status: SkillStatus;
+  }>;
+  outside: Array<{ skill: SkillRef; course: { slug: string }; status: "cleared" | "in_progress" | "not_started" }>;
 };
 
 export type Recommendation = {

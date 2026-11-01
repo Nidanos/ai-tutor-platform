@@ -1,0 +1,2 @@
+import { Sparkles } from "lucide-react";
+export default function AccountHeader() { return <header className="flex min-h-28 items-center justify-between gap-5"><div><p className="text-sm text-indigo-300">Account</p><h1 className="mt-2 text-4xl font-bold tracking-tight">Account settings</h1><p className="mt-2 text-indigo-200">Manage your profile, privacy and learning preferences.</p></div><Sparkles aria-hidden="true" className="hidden size-16 text-violet-400 sm:block"/></header>; }

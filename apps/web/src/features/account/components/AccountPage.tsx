@@ -1,45 +1,26 @@
-"use client";
+import AccountHeader from "./AccountHeader";
+import ProfileSettings from "./ProfileSettings";
+import ConsentSettings from "./ConsentSettings";
+import AccountDataActions from "./AccountDataActions";
+import type { AuthUser } from "@ai-tutor/types";
 
-import Link from "next/link";
-import { useRouter } from "next/navigation";
-import { ArrowLeft, LogOut } from "lucide-react";
-import { useAuth } from "@/features/auth/AuthProvider";
-import DeleteSection from "./DeleteSection";
-import PrivacySection from "./PrivacySection";
-import ProfileSection from "./ProfileSection";
+type Props = { user: AuthUser | null; onUserUpdated: (user: AuthUser) => void; onDeleted: () => void };
 
-// The (dashboard) layout renders this only for a signed-in user.
-export default function AccountPage() {
-  const { user, logout } = useAuth();
-  const router = useRouter();
+/** Account composition; authenticated identity remains owned by the app shell. */
+export default function AccountPage({ user, onUserUpdated, onDeleted }: Props) {
+  const isAdult = Boolean(user?.dateOfBirth && isAtLeastEighteen(user.dateOfBirth));
+  return <main className="min-w-0 space-y-5 text-white">
+    <AccountHeader />
+    <ProfileSettings key={user?.id ?? "signed-out"} user={user} onUpdated={onUserUpdated} />
+    {user && isAdult && <ConsentSettings key={user.id} enabled />}
+    <AccountDataActions enabled={Boolean(user)} onDeleted={onDeleted} />
+  </main>;
+}
 
-  async function handleLogout() {
-    await logout();
-    router.replace("/login");
-  }
-
-  return (
-    <div className="min-h-screen bg-slate-950 text-slate-100">
-      <main className="mx-auto max-w-5xl space-y-6 px-4 py-6 sm:px-6 lg:px-8">
-        <header className="flex flex-wrap items-center justify-between gap-4">
-          <div>
-            <Link href="/dashboard" className="inline-flex items-center gap-1 text-sm text-cyan-300 hover:text-cyan-200">
-              <ArrowLeft size={16} /> Dashboard
-            </Link>
-            <h1 className="mt-2 text-2xl font-bold tracking-tight sm:text-3xl">Account</h1>
-            <p className="mt-1 text-sm text-slate-400">Your profile, your privacy choices and your data.</p>
-          </div>
-          <button type="button" onClick={() => void handleLogout()}
-            className="inline-flex items-center gap-2 rounded-xl border border-slate-700 px-4 py-2 text-sm hover:bg-slate-800">
-            <LogOut size={16} /> Log out
-          </button>
-        </header>
-        <section className="grid gap-5 lg:grid-cols-2">
-          <ProfileSection user={user!} />
-          <PrivacySection />
-        </section>
-        <DeleteSection timezone={user!.timezone} />
-      </main>
-    </div>
-  );
+/** The pilot consent controls are restricted to adult accounts by the API contract. */
+function isAtLeastEighteen(value: string): boolean {
+  const birth = new Date(`${value}T00:00:00`);
+  const today = new Date();
+  const cutoff = new Date(today.getFullYear() - 18, today.getMonth(), today.getDate());
+  return Number.isFinite(birth.getTime()) && birth <= cutoff;
 }

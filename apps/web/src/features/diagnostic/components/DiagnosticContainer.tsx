@@ -28,7 +28,7 @@ type DiagnosticState = DiagnosticInProgress | DiagnosticCompleted | null;
 
 export default function DiagnosticContainer() {
   const router = useRouter();
-  const { user } = useAuth();
+  const { user, reloadUser } = useAuth();
 
   const [screen, setScreen] = useState<Screen>("intro");
   const [course, setCourse] = useState<CourseSlug | null>(null);
@@ -152,7 +152,9 @@ export default function DiagnosticContainer() {
     }
   }
 
-  function handleGoToDashboard() {
+  // The user's placementCourse changes with a finished test, and the dashboard opens that course.
+  async function handleGoToDashboard() {
+    await reloadUser();
     router.push("/dashboard");
   }
 

@@ -80,8 +80,11 @@ type User = {
   dateOfBirth: string | null; // "YYYY-MM-DD"
   status: "active" | "pending_parent"; // pending_parent = under 18, waiting for a parent (none are made during the pilot)
   createdAt: string;  // ISO date
+  placementCourse: "cpp-basics" | "dsa" | null; // GET /auth/me only: the course of the latest finished placement test, null before the first
 };
 ```
+
+After login, send a learner whose `placementCourse` is `null` to `/diagnostic`, and everyone else to `/dashboard`, which opens that course.
 
 ## 4b. Submissions (live, 15 Oct)
 
@@ -199,7 +202,7 @@ type Recommendation = {
 type WaitingFor = Array<{ skill: { id: string; slug: string; name: string }; course: { slug: string } }>;
 ```
 
-- **Dashboard "What next" card:** call this, show the skill name, the rung ("Level 2 of 5") and, for reviews, a "Review" badge. The button opens `/exercise/{exerciseId}`, which calls `GET /exercises/:id` (that starts the attempt).
+- **Dashboard "What next" card:** call this, show the skill name, the rung ("Level 2 of 5") and, for reviews, a "Review" badge. The button opens `/practice/{exerciseId}`, which calls `GET /exercises/:id` (that starts the attempt).
 - If the learner has an unfinished attempt, this returns **the same exercise** again, so it doubles as "continue where you left off".
 - `exerciseId: null`: show "New exercises for this skill are being prepared" (the server has queued one; ask again in a minute). `recommendation: null` with an empty `waitingFor`: show "Course complete". With `waitingFor` (20 Oct): DSA builds on C++ basics, so show "First finish these in C++ basics: Loops, Vectors…" with a button that switches to that course.
 - `404 COURSE_NOT_FOUND` for an unknown course.
@@ -261,7 +264,7 @@ type Session = {
     id: string; seq: number; kind: "exercise" | "review";
     skill: { id: string; slug: string; name: string };
     rung: 1 | 2 | 3 | 4 | 5;
-    exerciseId: string;              // open /exercise/{exerciseId}
+    exerciseId: string;              // open /practice/{exerciseId}
   } | null;                          // null: the next exercise is being prepared, or the session ended
 };
 ```
@@ -432,7 +435,7 @@ type LessonResponse = { level: LessonLevel; lesson: Lesson | null };
 type NoteResponse = { note: { bodyMd: string } | null };
 ```
 
-- **Lesson page** (`/learn/{skillId}`): open it before a skill's first exercise, and from the progress map. Show, in order: the explanation, the diagram, the example (the code, then its output in a separate box, then the walkthrough), the common mistakes, and the check.
+- **Lesson page** (`/learn?skill={skill name}`): open it before a skill's first exercise, and from the progress map. Show, in order: the explanation, the diagram, the example (the code, then its output in a separate box, then the walkthrough), the common mistakes, and the check.
 - **The check:** show `check.code` and ask "What does this print?" with a text box. Only after the learner answers, show `check.output` and `check.explanationMd`, and say whether they matched (compare ignoring trailing spaces). It's practice only: there is no API call and no effect on progress.
 - **Diagram:** render `diagram` with Mermaid, initialised with `securityLevel: "strict"` (never `"loose"`). Render every `...Md` field with the same safe Markdown renderer as hints: no raw HTML.
 - **Note:** after the lesson loads, call `POST .../note`. If `note` isn't null, show `bodyMd` in a small "For you" box above the explanation; if it's null, show nothing. The server reuses a note until the learner practises again, so calling it on every visit is fine. It shares the hint rate limit (10 a minute), so ignore a `429` here. Notes stay null until billing is on.
@@ -443,7 +446,7 @@ type NoteResponse = { note: { bodyMd: string } | null };
 | Moment | Do this |
 | --- | --- |
 | Sign-up submit | `POST /register` → on `201` go to `/login` with "Account created, please log in" (no `pending_parent` accounts are made during the pilot). On `409` show "Already registered" + a link to login |
-| Login submit | `POST /login` → on `204` call `GET /me`, keep the user in app state, go to the dashboard. First time on the dashboard: `POST /diagnostic/start` and offer the placement test if it is `in_progress` with no answers yet. On `401` show `error.message` (it never says which field was wrong, on purpose) |
+| Login submit | `POST /login` → on `204` call `GET /me`, keep the user in app state, then go to `/diagnostic` if `placementCourse` is `null` and to the dashboard otherwise. On `401` show `error.message` (it never says which field was wrong, on purpose) |
 | App starts | `GET /me` → `200` logged in; `401` (after one refresh try) logged out |
 | Any call returns `401` | Call `POST /refresh` **once**, then retry the call. If refresh fails, clear the user and go to `/login` |
 | Logout | `POST /logout`, clear the user, go to `/login` |
