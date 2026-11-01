@@ -5,21 +5,53 @@ import {
   Sparkles,
 } from "lucide-react";
 
-import type { DiagnosticCompleted } from "@ai-tutor/types";
+import { useEffect, useState } from "react";
+import type { CourseSlug, DiagnosticCompleted } from "@ai-tutor/types";
+import { getProgress } from "@/lib/api/learning";
+import { PLACEMENT_ATTEMPTS } from "../api";
 
+type Scores = { reading: number; writing: number };
 type DiagnosticCompleteProps = {
   results: DiagnosticCompleted;
+  course: CourseSlug;
   onFinish: () => void;
+  onRetake: () => void;
+  isRetaking?: boolean;
 };
 
 function asPercent(value: number) {
-  return `${Math.round(value * 100)}%`;
+  return `${Math.floor(value * 100)}%`;
+}
+
+// Where practice starts for each skill (API guide, section 4f): proven in code, read correctly, or neither.
+function startingPoint({ reading, writing }: Scores) {
+  if (writing > 0) return { label: "Fast-tracked: one Build exercise clears it", tone: "border-teal-300/40 text-teal-200" };
+  if (reading > 0) return { label: "Starts at level 2", tone: "border-blue-300/40 text-blue-200" };
+  return { label: "Starts from the beginning", tone: "border-indigo-300/30 text-indigo-200" };
 }
 
 export default function DiagnosticComplete({
   results,
+  course,
   onFinish,
+  onRetake,
+  isRetaking = false,
 }: DiagnosticCompleteProps) {
+  const retakesLeft = PLACEMENT_ATTEMPTS - results.attemptNo;
+  // Placement only ever raises a score, so after a weaker retake (or earlier practice) the saved score, not
+  // this test's estimate, is where practice starts.
+  const [saved, setSaved] = useState<Map<string, Scores>>(new Map());
+  useEffect(() => {
+    let active = true;
+    getProgress(course)
+      .then(({ skills }) => { if (active) setSaved(new Map(skills.map((s) => [s.skill.id, { reading: s.reading.score, writing: s.writing.score }]))); })
+      .catch(() => undefined);
+    return () => { active = false; };
+  }, [course, results.diagnosticId]);
+  const scoresOf = (result: DiagnosticCompleted["results"][number]): Scores => ({
+    reading: Math.max(result.estReading, saved.get(result.skill.id)?.reading ?? 0),
+    writing: Math.max(result.estWriting, saved.get(result.skill.id)?.writing ?? 0),
+  });
   return (
     <section className="relative mx-auto flex w-full max-w-[1400px] items-center justify-center px-3 py-3 sm:px-4 sm:py-5 xl:px-40">
       <div className="relative z-10 w-full max-w-4xl rounded-3xl border border-indigo-400/50 bg-gradient-to-br from-blue-950/80 via-indigo-950/80 to-purple-950/80 px-4 py-5 text-center shadow-2xl shadow-violet-950/30 backdrop-blur-xl sm:px-10 sm:py-8 lg:px-14 lg:py-7">
@@ -46,7 +78,12 @@ export default function DiagnosticComplete({
         <p className="mx-auto mt-3 max-w-xl text-base leading-relaxed text-indigo-100/90 sm:mt-4 sm:text-xl">
           Your diagnostic assessment is complete.
           <br />
-          Here's your skill-wise assessment summary.
+          Here's where your practice starts for each skill.
+        </p>
+
+        <p className="mx-auto mt-3 max-w-xl text-sm leading-relaxed text-indigo-200/80">
+          The test stops as soon as it knows where to start you, so a short test is normal. A score of 0% only
+          means the skill isn't proven yet: practice builds it from there.
         </p>
 
         <div className="mx-auto mt-6 grid w-full max-w-2xl gap-4 text-left sm:mt-8">
@@ -55,36 +92,35 @@ export default function DiagnosticComplete({
               No skill estimates were returned for this attempt.
             </p>
           ) : (
-            results.results.map((result) => (
+            results.results.map((result) => { const scores = scoresOf(result); return (
               <div
                 key={result.skill.id}
                 className="rounded-2xl border border-indigo-400/30 bg-indigo-950/50 p-4 sm:p-5"
               >
-                <h3 className="text-lg font-semibold text-white">
-                  {result.skill.name}
-                </h3>
-                <div className="mt-4 grid grid-cols-3 gap-3 text-center">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <h3 className="text-lg font-semibold text-white">
+                    {result.skill.name}
+                  </h3>
+                  <span className={`rounded-full border px-3 py-1 text-xs ${startingPoint(scores).tone}`}>
+                    {startingPoint(scores).label}
+                  </span>
+                </div>
+                <div className="mt-4 grid grid-cols-2 gap-3 text-center">
                   <div>
                     <p className="text-xs text-indigo-300 sm:text-sm">Reading</p>
                     <p className="mt-1 text-xl font-bold text-blue-300">
-                      {asPercent(result.estReading)}
+                      {asPercent(scores.reading)}
                     </p>
                   </div>
                   <div>
                     <p className="text-xs text-indigo-300 sm:text-sm">Writing</p>
                     <p className="mt-1 text-xl font-bold text-violet-300">
-                      {asPercent(result.estWriting)}
-                    </p>
-                  </div>
-                  <div>
-                    <p className="text-xs text-indigo-300 sm:text-sm">Confidence</p>
-                    <p className="mt-1 text-xl font-bold text-teal-300">
-                      {asPercent(result.confidence)}
+                      {asPercent(scores.writing)}
                     </p>
                   </div>
                 </div>
               </div>
-            ))
+            ); })
           )}
         </div>
 
@@ -95,6 +131,20 @@ export default function DiagnosticComplete({
         >
           Go to Dashboard <span aria-hidden="true">→</span>
         </button>
+
+        {retakesLeft > 0 && (
+          <div className="mx-auto mt-4 max-w-sm">
+            <button
+              type="button"
+              onClick={onRetake}
+              disabled={isRetaking}
+              className="w-full rounded-2xl border border-indigo-300/40 px-5 py-3 text-sm font-semibold text-indigo-100 transition hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-50 sm:text-base"
+            >
+              {isRetaking ? "Starting the retake..." : `Retake the placement test (${retakesLeft} left)`}
+            </button>
+            <p className="mt-2 text-xs text-indigo-200/80">A retake can only raise where you start, never lower it.</p>
+          </div>
+        )}
 
         <p className="mt-4 flex items-center justify-center gap-2 text-xs text-indigo-200 sm:mt-6 sm:text-base">
           <Sparkles size={16} className="shrink-0 text-violet-300 sm:h-[18px] sm:w-[18px]" />

@@ -9,6 +9,9 @@ import type {
   DiagnosticStartResponse,
 } from "@ai-tutor/types";
 
+// The API allows a first try and two retakes per course (MAX_ATTEMPTS in the diagnostic service).
+export const PLACEMENT_ATTEMPTS = 3;
+
 export async function startDiagnostic(
   request: DiagnosticStartRequest
 ): Promise<DiagnosticStartResponse> {
