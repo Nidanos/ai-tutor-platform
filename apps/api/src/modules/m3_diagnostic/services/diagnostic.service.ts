@@ -1,5 +1,5 @@
 import { AppError } from "../../../shared/errors/app-error.js";
-import { getCourse, getSkillGraph } from "../../m2_skills/services/skills.service.js";
+import { getCourse, getCourseSlug, getSkillGraph } from "../../m2_skills/services/skills.service.js";
 import { effectiveStates } from "../../m4_mastery/services/mastery-read.service.js";
 import { seedFromDiagnostic } from "../../m4_mastery/services/mastery.service.js";
 import { getRunnableExercise, verifiedIds } from "../../m6_exercises/services/exercises.service.js";
@@ -166,6 +166,13 @@ export async function complete(userId: string, diagnosticId: string) {
 
 // For M13: placement tests started and completed.
 export const placementStats = repo.placementStats;
+
+// For M1 (GET /auth/me): the web app sends a learner with no finished placement test to take one,
+// and opens the course of the latest one.
+export async function placedCourse(userId: string) {
+  const courseId = await repo.findLastPlacedCourseId(userId);
+  return courseId ? ((await getCourseSlug(courseId)) ?? null) : null;
+}
 
 // For M1: the learner's own placement tests (DPDP access), and their erasure.
 export const learnerPlacements = repo.learnerPlacements;

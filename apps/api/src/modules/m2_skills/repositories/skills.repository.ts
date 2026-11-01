@@ -27,6 +27,9 @@ export const findSkillsWithCourse = (ids: string[]) =>
         .where(inArray(skills.id, ids))
     : Promise.resolve([]);
 
+export const findCourseSlug = async (id: string) =>
+  (await db.select({ slug: courses.slug }).from(courses).where(eq(courses.id, id)))[0]?.slug;
+
 // Only a course that is offered in this language.
 export const findCourseBySlug = async (slug: string, languageCode: string) =>
   (
